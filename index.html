@@ -459,7 +459,13 @@
     display:grid; place-items:center; padding:24px;
     animation:fadein .2s var(--ease);
   }
+  .overlay.flash{ animation:timerflash .7s var(--ease); }
   @keyframes fadein{from{opacity:0}to{opacity:1}}
+  @keyframes timerflash{
+    0%{background:rgba(8,10,15,.65);}
+    20%{background:rgba(81,216,138,.45);}
+    100%{background:rgba(8,10,15,.65);}
+  }
   .timer{
     background:linear-gradient(180deg, rgba(40,46,60,.85), rgba(22,26,35,.85));
     border:1px solid var(--line-2);
@@ -543,6 +549,26 @@
     margin-top:8px; padding:9px 12px; border-radius:12px;
     background:rgba(255,107,92,.08); border:1px solid rgba(255,107,92,.25);
     font-size:12px; color:#ffbab2; font-weight:600;
+  }
+  .swap{
+    margin-top:8px; padding:12px 14px; border-radius:14px;
+    background:linear-gradient(135deg, rgba(122,178,255,.12), rgba(91,158,255,.04));
+    border:1px solid rgba(122,178,255,.28);
+  }
+  .swap-head{
+    font-size:12px; font-weight:700; color:#cfe2ff;
+    display:flex; align-items:center; gap:6px; margin-bottom:8px;
+  }
+  .swap-head b{color:#fff; font-weight:700;}
+  .swap-head svg{flex:none;}
+  .swap-list{display:flex; flex-direction:column; gap:4px; margin-bottom:8px;}
+  .swap-alt{
+    font-size:12.5px; color:var(--ink2); font-weight:500;
+    padding:5px 0; line-height:1.45;
+  }
+  .swap-foot{
+    font-size:10.5px; color:var(--faint); font-weight:500;
+    line-height:1.5; padding-top:8px; border-top:1px solid rgba(255,255,255,.06);
   }
 
   /* ============ STAT CARDS (Hoje/Corpo) ============ */
@@ -849,6 +875,74 @@
   }
   .food-item .fmac b{color:var(--ok); font-weight:800; font-size:13px;}
   .food-item .fmac .sep{color:var(--faint); margin:0 4px;}
+
+  /* ============ ALIMENTO PERSONALIZADO ============ */
+  .custom-btn{
+    margin-top:10px; width:100%;
+    background:var(--glass-2); border:1px dashed rgba(255,255,255,.16);
+    color:var(--ink2); border-radius:12px; padding:11px;
+    font-size:13px; font-weight:600; cursor:pointer; letter-spacing:-.01em;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    font-family:inherit;
+  }
+  .custom-btn:active{background:var(--glass-3);}
+  .custom-btn .ic{display:grid; place-items:center; color:var(--ok);}
+  .custom-form{
+    margin-top:12px; padding:14px;
+    background:rgba(81,216,138,.05);
+    border:1px solid rgba(81,216,138,.18);
+    border-radius:14px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .cf-input{
+    width:100%; background:var(--glass); border:1px solid var(--line-2);
+    color:var(--ink); border-radius:10px; padding:11px 12px;
+    font-size:14px; font-weight:500; -webkit-appearance:none;
+    font-family:inherit;
+  }
+  .cf-input:focus{outline:none; border-color:rgba(81,216,138,.45); background:rgba(81,216,138,.06);}
+  .cf-input::placeholder{color:var(--faint);}
+  .cf-macros{
+    display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;
+  }
+  .cf-mac{display:flex; flex-direction:column; gap:4px;}
+  .cf-mac label{
+    font-size:10.5px; font-weight:700; color:var(--muted);
+    letter-spacing:.04em; text-transform:uppercase; text-align:center;
+  }
+  .cf-i{
+    display:flex; align-items:center; gap:3px;
+    background:var(--glass); border:1px solid var(--line-2);
+    border-radius:10px; padding:6px 8px;
+  }
+  .cf-i:focus-within{border-color:rgba(81,216,138,.45); background:rgba(81,216,138,.06);}
+  .cf-i input{
+    flex:1; min-width:0; background:none; border:none; color:var(--ink);
+    font-size:15px; font-weight:700; text-align:center;
+    font-variant-numeric:tabular-nums; -webkit-appearance:none;
+    font-family:inherit;
+    padding:4px 0;
+  }
+  .cf-i input:focus{outline:none;}
+  .cf-i span{font-size:10px; color:var(--faint); font-weight:600;}
+  .cf-actions{display:flex; gap:8px; margin-top:4px;}
+  .cf-actions button{
+    flex:1; border-radius:10px; padding:11px;
+    font-size:13.5px; font-weight:700; cursor:pointer; letter-spacing:-.01em;
+    border:1px solid transparent; font-family:inherit;
+  }
+  .cf-cancel{
+    background:var(--glass-2); color:var(--ink2); border-color:var(--line-2);
+  }
+  .cf-cancel:active{background:var(--glass-3);}
+  .cf-add{
+    background:linear-gradient(135deg,#5fe195,#3cb56a); color:#fff;
+    box-shadow:0 1px 0 rgba(255,255,255,.2) inset, 0 6px 16px -4px rgba(81,216,138,.4);
+  }
+  .cf-add:active{transform:scale(.98);}
+  .cf-hint{
+    margin:0; font-size:11px; color:var(--faint); line-height:1.45; text-align:center;
+  }
 </style>
 </head>
 <body>
@@ -1323,6 +1417,157 @@ function detectPlateau(id){
   const last3=h.slice(-3).map(s=>bestE1RM(s.sets));
   return last3[2] <= last3[0] && last3[2] <= last3[1];
 }
+// Quantas semanas o usuário tem treinado esse exercício específico
+function weeksOnExercise(id){
+  const h=(ST.logs[id]||[]).filter(s=>hasValidDone(s.sets));
+  if(!h.length) return 0;
+  return Math.floor(daysBetween(h[0].date, today())/7)+1;
+}
+// Plateau persistente APÓS deload (segundo Schoenfeld, Helms: só trocar se deload feito não destravou)
+function shouldSwapExercise(id){
+  if(!detectPlateau(id)) return null;
+  const lastDeload = ST.meta.lastDeloadWeek||0;
+  const exerciseWeeks = weeksOnExercise(id);
+  // Só sugere troca se houve deload depois do início desse exercício
+  // (proxy: lastDeload > 0 e usuário já está há >=6 semanas no exercício)
+  if(lastDeload>0 && exerciseWeeks>=6) return "plateau-pos-deload";
+  // Ou se exercício passou de 12 semanas (variar pra ganhar hipertrofia regional)
+  if(exerciseWeeks>=12) return "tempo-longo";
+  return null;
+}
+// Mapa de alternativas — priorizando posição alongada (Wolf et al 2023) e mesmo grupo
+const EXERCISE_ALTERNATIVES = {
+  "Supino inclinado halter 30°":[
+    "Supino inclinado na máquina (mais estável)",
+    "Crucifixo inclinado na máquina (alongado)",
+    "Supino inclinado smith (carga maior)",
+  ],
+  "Supino reto halter ou máquina":[
+    "Crucifixo reto na máquina (alongado)",
+    "Supino reto smith",
+    "Flexão de braço (lastra com mochila)",
+  ],
+  "Crucifixo na polia baixa":[
+    "Crucifixo na máquina (mais alongado)",
+    "Peck deck",
+    "Crucifixo com halter inclinado",
+  ],
+  "Elevação lateral halter":[
+    "Lateral no cabo atrás do corpo (alongado)",
+    "Lateral na máquina (constante)",
+    "Lateral inclinada com halter",
+  ],
+  "Elevação lateral (halter ou polia)":[
+    "Lateral no cabo atrás do corpo (alongado)",
+    "Lateral na máquina (constante)",
+    "Lateral inclinada com halter",
+  ],
+  "Elevação lateral (polia ou halter)":[
+    "Lateral no cabo atrás do corpo (alongado)",
+    "Lateral na máquina (constante)",
+    "Lateral inclinada com halter",
+  ],
+  "Tríceps francês / extensão acima da cabeça":[
+    "Francês com halter inclinado (mais alongado)",
+    "Extensão na polia overhead com corda",
+    "Skull crusher com barra EZ",
+  ],
+  "Tríceps na polia (corda)":[
+    "Tríceps polia barra reta",
+    "Mergulho em paralelas (carga corporal+lastra)",
+    "Coice na polia",
+  ],
+  "Tríceps na polia":[
+    "Tríceps polia corda",
+    "Mergulho em paralelas (carga corporal+lastra)",
+    "Extensão na polia overhead",
+  ],
+  "Puxada na polia (pegada aberta)":[
+    "Puxada na polia (pegada neutra)",
+    "Remada cavalinho (alongado)",
+    "Barra fixa lastra (se aguentar)",
+  ],
+  "Puxada na polia (pegada neutra/fechada)":[
+    "Puxada na polia (pegada aberta)",
+    "Remada cavalinho (alongado)",
+    "Pullover na polia (alongado)",
+  ],
+  "Remada sentada na polia ou máquina":[
+    "Remada cavalinho (alongado)",
+    "Remada curvada com halter",
+    "Remada baixa com barra T",
+  ],
+  "Remada na polia ou máquina":[
+    "Remada cavalinho (alongado)",
+    "Remada curvada com halter",
+    "Pullover na polia",
+  ],
+  "Crucifixo inverso (peck deck/polia)":[
+    "Crucifixo inverso na polia (cruzado, alongado)",
+    "Face pull na polia alta",
+    "Voador inverso na máquina",
+  ],
+  "Crucifixo inverso":[
+    "Face pull na polia alta",
+    "Crucifixo inverso na polia (cruzado, alongado)",
+    "Voador inverso com halter inclinado",
+  ],
+  "Rosca inclinada com halter":[
+    "Rosca scott com halter (alongado)",
+    "Rosca no cabo baixo unilateral (alongado)",
+    "Rosca concentrada",
+  ],
+  "Rosca direta na polia ou halter":[
+    "Rosca inclinada com halter (alongado)",
+    "Rosca scott na máquina",
+    "Rosca martelo no cabo com corda",
+  ],
+  "Rosca martelo":[
+    "Rosca martelo no cabo corda",
+    "Rosca inversa com barra",
+    "Rosca martelo cruzada",
+  ],
+  "Desenvolvimento sentado com halter":[
+    "Desenvolvimento na máquina",
+    "Desenvolvimento smith sentado",
+    "Arnold press",
+  ],
+  "Peck deck ou crucifixo máquina":[
+    "Crucifixo inclinado na máquina (alongado)",
+    "Crucifixo na polia alta (cruzado)",
+    "Supino com halter foco em squeeze",
+  ],
+  "Extensão de tríceps acima da cabeça":[
+    "Francês deitado com EZ",
+    "Tríceps polia overhead com corda",
+    "Tríceps unilateral overhead com halter",
+  ],
+  "Mesa flexora":[
+    "Stiff com halter (alongado)",
+    "Cadeira flexora (alternativa)",
+    "Bom dia leve",
+  ],
+  "Cadeira extensora":[
+    "Hack machine leve (se não der náusea)",
+    "Avanço unilateral leve (controlado)",
+    "Sissy squat",
+  ],
+  "Abdominal declinado com anilha":[
+    "Crunch na polia alta (lastra)",
+    "Abdominal na máquina",
+    "Abdominal infra com elástico",
+  ],
+  "Cadeira romana (joelho dobrado)":[
+    "Elevação de pernas suspenso (joelho dobrado)",
+    "Abdominal infra na cadeira",
+    "Reverse crunch no banco declinado",
+  ],
+  "Panturrilha":[
+    "Panturrilha em pé na máquina",
+    "Panturrilha sentado (sóleo)",
+    "Panturrilha no leg press",
+  ],
+};
 
 /* ============ VOLUME SEMANAL (últimos 7 dias) ============ */
 function weeklyVolume(){
@@ -1514,10 +1759,24 @@ function renderDay(d){
     const sug=suggestNext(id, e);
     const sugBlock = sug ? `<div class="suggest">${I.spark}<span>Meta: <span class="v">${fmtKg(sug.kg)}kg × ${sug.reps}</span></span><span class="why">${sug.why}</span></div>` : '';
 
-    // plateau
+    // plateau + sugestão de troca de exercício
     const plateau=detectPlateau(id);
-    const platBlock = (plateau && !sug) ? `` : '';
-    const platBlock2 = plateau ? `<div class="plateau">${I.flame} 3 sessões sem progresso · considera trocar exercício ou reduzir reps com mais carga</div>` : '';
+    const swap = shouldSwapExercise(id);
+    const alts = EXERCISE_ALTERNATIVES[e.n] || [];
+    let platBlock2 = '';
+    if(swap && alts.length){
+      const wks = weeksOnExercise(id);
+      const reason = swap==='plateau-pos-deload'
+        ? `Plateau persistente após deload · ${wks} sem nesse exercício`
+        : `${wks} semanas no mesmo exercício · oportunidade de variar ângulo (Schoenfeld 2021)`;
+      platBlock2 = `<div class="swap">
+        <div class="swap-head">${I.trend} Considere trocar: <b>${reason}</b></div>
+        <div class="swap-list">${alts.map(a=>`<div class="swap-alt">• ${esc(a)}</div>`).join('')}</div>
+        <div class="swap-foot">Posição alongada cresce mais (Wolf et al 2023). Próximo treino: testa uma alternativa.</div>
+      </div>`;
+    } else if(plateau){
+      platBlock2 = `<div class="plateau">${I.flame} 3 sessões sem progresso · tenta deload essa semana (volume -50% ou kg -20%) antes de trocar exercício</div>`;
+    }
 
     // PR badge (sessão de hoje)
     const todayPR = tod && isPRSession(id, tod.sets);
@@ -1705,6 +1964,21 @@ function renderHoje(){
     <div class="foodbox">
       <input id="foodSearch" class="foodsearch" placeholder="Buscar alimento (ex: pão, ovo, whey, feijão)" oninput="updateFoodResults()" autocomplete="off">
       <div id="foodResults" class="foodlist"></div>
+      <button type="button" class="custom-btn" onclick="toggleCustomFood()"><span class="ic">${I.plus}</span>Alimento personalizado</button>
+      <div id="customFoodForm" class="custom-form hidden">
+        <input id="cf_name" class="cf-input" placeholder="Nome (ex: Pão da padaria) *" autocomplete="off">
+        <input id="cf_q" class="cf-input" placeholder="Porção (opcional, ex: 1 fatia 50g)" autocomplete="off">
+        <div class="cf-macros">
+          <div class="cf-mac"><label>Proteína</label><div class="cf-i"><input id="cf_p" inputmode="decimal" placeholder="0"><span>g</span></div></div>
+          <div class="cf-mac"><label>Carbs</label><div class="cf-i"><input id="cf_c" inputmode="decimal" placeholder="0"><span>g</span></div></div>
+          <div class="cf-mac"><label>Calorias</label><div class="cf-i"><input id="cf_k" inputmode="decimal" placeholder="0"><span>kcal</span></div></div>
+        </div>
+        <div class="cf-actions">
+          <button type="button" class="cf-cancel" onclick="toggleCustomFood()">Cancelar</button>
+          <button type="button" class="cf-add" onclick="addCustomFood()">Adicionar</button>
+        </div>
+        <p class="cf-hint">Em branco = 0. Se você não souber as calorias mas souber proteína, ok — preenche só o que tem.</p>
+      </div>
     </div>
     <div class="macro-block" style="margin-top:14px">
       <div class="macro-row">
@@ -1816,6 +2090,33 @@ function removeFoodEntry(idx){
   ST.protein[t].splice(idx,1);
   if(!ST.protein[t].length) delete ST.protein[t];
   saveK('protein');
+  renderHoje();
+}
+let customFoodOpen=false;
+function toggleCustomFood(){
+  customFoodOpen=!customFoodOpen;
+  const f=document.getElementById('customFoodForm');
+  if(!f) return;
+  f.classList.toggle('hidden', !customFoodOpen);
+  if(customFoodOpen){
+    setTimeout(()=>{ const n=document.getElementById('cf_name'); if(n) n.focus(); }, 50);
+  }
+}
+function addCustomFood(){
+  const nm=(document.getElementById('cf_name').value||'').trim();
+  if(!nm){ alert('Coloca o nome do alimento.'); return; }
+  const q=(document.getElementById('cf_q').value||'').trim();
+  const p=num(document.getElementById('cf_p').value);
+  const c=num(document.getElementById('cf_c').value);
+  const k=num(document.getElementById('cf_k').value);
+  if(p<=0 && c<=0 && k<=0){
+    if(!confirm('Tudo zerado. Adicionar mesmo assim?')) return;
+  }
+  const t=today();
+  if(!ST.protein[t] || !Array.isArray(ST.protein[t])) ST.protein[t]=[];
+  ST.protein[t].push({n:nm, q:q||'porção', p, c, k});
+  saveK('protein');
+  customFoodOpen=false;
   renderHoje();
 }
 function toggleSuppl(k){
@@ -2139,7 +2440,7 @@ function resetData(){
 }
 
 /* ============ TIMER ============ */
-let tTotal=90, tLeft=90, tRun=false, tInt=null, aCtx=null;
+let tTotal=90, tLeft=90, tRun=false, tInt=null, aCtx=null, wakeLock=null;
 const CIRC=2*Math.PI*96;
 function fmt(s){ return Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,'0'); }
 function paint(){
@@ -2148,7 +2449,6 @@ function paint(){
   document.getElementById('ringfill').style.strokeDashoffset=off;
 }
 function setTimer(s){
-  // Para qualquer timer anterior antes de resetar — evita race com tInt antigo
   if(tInt){ clearInterval(tInt); tInt=null; }
   tRun=false;
   const ppb=document.getElementById('ppbtn'); if(ppb) ppb.textContent='Iniciar';
@@ -2166,6 +2466,21 @@ function closeTimer(){
   document.getElementById('overlay').classList.add('hidden');
 }
 function toggleTimer(){ tRun? stopTimer() : startTimer(); }
+async function requestWakeLock(){
+  try{
+    if('wakeLock' in navigator){
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', ()=>{ wakeLock=null; });
+    }
+  }catch(e){}
+}
+function releaseWakeLock(){
+  try{ if(wakeLock){ wakeLock.release(); wakeLock=null; } }catch(e){}
+}
+// Re-adquire wake lock se o usuário sair e voltar pro app (visibility change)
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState==='visible' && tRun && !wakeLock){ requestWakeLock(); }
+});
 function startTimer(){
   if(tRun) return; if(tLeft<=0) tLeft=tTotal; tRun=true;
   document.getElementById('ppbtn').textContent='Pausar';
@@ -2173,27 +2488,57 @@ function startTimer(){
     aCtx=aCtx||new (window.AudioContext||window.webkitAudioContext)();
     if(aCtx.state==='suspended') aCtx.resume();
   }catch(e){}
+  requestWakeLock();
   const end=Date.now()+tLeft*1000;
   tInt=setInterval(()=>{
     tLeft=Math.max(0,(end-Date.now())/1000);
     paint();
-    if(tLeft<=0){ stopTimer(); beep(); }
+    if(tLeft<=0){ stopTimer(); chime(); flashDone(); }
   }, 100);
 }
 function stopTimer(){
-  tRun=false; clearInterval(tInt);
+  tRun=false; clearInterval(tInt); tInt=null;
   const b=document.getElementById('ppbtn'); if(b) b.textContent='Iniciar';
+  releaseWakeLock();
 }
-function beep(){
+// Chime suave (acorde maior C5-E5-G5 com envelope tipo sino)
+function chime(){
+  // vibração curta primeiro (independe do áudio)
+  try{ if('vibrate' in navigator) navigator.vibrate([120, 60, 120]); }catch(e){}
   if(!aCtx) return;
-  [0,0.18,0.36].forEach(t=>{
-    const o=aCtx.createOscillator(), g=aCtx.createGain();
-    o.frequency.value=880; o.connect(g); g.connect(aCtx.destination);
-    g.gain.setValueAtTime(0.001,aCtx.currentTime+t);
-    g.gain.exponentialRampToValueAtTime(0.4,aCtx.currentTime+t+0.02);
-    g.gain.exponentialRampToValueAtTime(0.001,aCtx.currentTime+t+0.16);
-    o.start(aCtx.currentTime+t); o.stop(aCtx.currentTime+t+0.17);
+  // C5, E5, G5 — acorde maior, suave, decai como sino
+  const notes = [523.25, 659.25, 783.99];
+  notes.forEach((freq, i)=>{
+    const startAt = aCtx.currentTime + i*0.10;
+    // Oscilador principal (seno = suave, sem harmônicos agressivos)
+    const o = aCtx.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = freq;
+    // Oscilador "abafador" 1 oitava abaixo dá corpo
+    const o2 = aCtx.createOscillator();
+    o2.type = 'sine';
+    o2.frequency.value = freq/2;
+    const g = aCtx.createGain();
+    const g2 = aCtx.createGain();
+    o.connect(g); o2.connect(g2);
+    g.connect(aCtx.destination); g2.connect(aCtx.destination);
+    // envelope: ataque rápido, decay longo e suave (tipo sino)
+    g.gain.setValueAtTime(0.001, startAt);
+    g.gain.exponentialRampToValueAtTime(0.22, startAt+0.015);
+    g.gain.exponentialRampToValueAtTime(0.001, startAt+1.4);
+    g2.gain.setValueAtTime(0.001, startAt);
+    g2.gain.exponentialRampToValueAtTime(0.10, startAt+0.025);
+    g2.gain.exponentialRampToValueAtTime(0.001, startAt+1.6);
+    o.start(startAt); o.stop(startAt+1.5);
+    o2.start(startAt); o2.stop(startAt+1.7);
   });
+}
+// Flash visual no overlay pra reforço quando timer chega no fim
+function flashDone(){
+  const ov = document.getElementById('overlay');
+  if(!ov || ov.classList.contains('hidden')) return;
+  ov.classList.add('flash');
+  setTimeout(()=>ov.classList.remove('flash'), 700);
 }
 
 /* ============ SW REGISTER ============ */
