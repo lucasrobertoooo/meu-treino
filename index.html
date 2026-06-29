@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Treino">
+<meta name="theme-color" content="#0d0f14">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Treino · ABCD</title>
+<style>
+  :root{
+    --bg0:#0a0c11; --bg1:#10131a; --bg2:#161a23;
+    --ink:#f1f3f7; --ink2:#d8dde8; --muted:#8a94a6; --faint:#5a6273;
+    --glass:rgba(255,255,255,.045);
+    --glass-2:rgba(255,255,255,.07);
+    --glass-3:rgba(255,255,255,.10);
+    --hi:rgba(255,255,255,.10);
+    --hi-soft:rgba(255,255,255,.05);
+    --line:rgba(255,255,255,.06);
+    --line-2:rgba(255,255,255,.10);
+    --shadow-1:0 1px 0 rgba(255,255,255,.06) inset, 0 -1px 0 rgba(0,0,0,.4) inset, 0 10px 30px -10px rgba(0,0,0,.7);
+    --shadow-2:0 1px 0 rgba(255,255,255,.08) inset, 0 20px 50px -20px rgba(0,0,0,.85);
+    --shadow-press:0 0 0 1px rgba(255,255,255,.04) inset, 0 2px 6px rgba(0,0,0,.5) inset;
+    --push:#ff6b5c; --pull:#5b9eff; --core:#f5b94e; --ok:#51d88a;
+    --push-grad:linear-gradient(135deg,#ff7d6f,#e54838);
+    --pull-grad:linear-gradient(135deg,#7ab2ff,#3a7fe0);
+    --core-grad:linear-gradient(135deg,#ffd178,#e09a2c);
+    --r-lg:22px; --r-md:16px; --r-sm:12px;
+    --ease:cubic-bezier(.4,0,.2,1);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; color:var(--ink); overflow-x:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Inter",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased; font-feature-settings:"ss01","cv11";}
+  body{
+    background:
+      radial-gradient(120% 80% at 0% 0%, rgba(91,158,255,.10), transparent 50%),
+      radial-gradient(110% 70% at 100% 0%, rgba(255,107,92,.07), transparent 55%),
+      linear-gradient(180deg,#0a0c11 0%,#10131a 30%,#0e1118 100%);
+    background-attachment:fixed;
+    min-height:100vh;
+    padding-bottom:calc(96px + env(safe-area-inset-bottom));
+  }
+  .num{font-variant-numeric:tabular-nums; font-feature-settings:"tnum";}
+
+  /* ============ HEADER ============ */
+  header{
+    position:sticky; top:0; z-index:30;
+    padding:calc(14px + env(safe-area-inset-top)) 20px 14px;
+    background:linear-gradient(180deg, rgba(10,12,17,.85), rgba(10,12,17,.55) 70%, transparent);
+    backdrop-filter:blur(20px) saturate(180%); -webkit-backdrop-filter:blur(20px) saturate(180%);
+  }
+  header h1{margin:0; font-size:22px; letter-spacing:-.025em; font-weight:700; color:var(--ink);}
+  header h1 .tag{
+    display:inline-block; margin-left:8px; padding:3px 9px; border-radius:8px;
+    font-size:11px; font-weight:600; letter-spacing:.02em; color:var(--ink2);
+    background:var(--glass-2); border:1px solid var(--line-2);
+    vertical-align:3px;
+  }
+  header .sub{margin:4px 0 0; font-size:13px; color:var(--muted); font-weight:500;}
+
+  main{padding:18px 16px 0; max-width:580px; margin:0 auto;}
+  .hidden{display:none !important;}
+
+  h2.sec{
+    font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--faint); margin:24px 6px 12px; font-weight:700;
+  }
+
+  /* ============ DAY CARDS (Treinos A/B/C/D) ============ */
+  .day{
+    position:relative; display:flex; align-items:center; gap:16px;
+    background:var(--glass); border:1px solid var(--line-2);
+    border-radius:var(--r-lg); padding:16px 18px 16px 16px;
+    margin-bottom:12px; cursor:pointer;
+    box-shadow:var(--shadow-1);
+    backdrop-filter:blur(20px) saturate(160%); -webkit-backdrop-filter:blur(20px) saturate(160%);
+    transition:transform .15s var(--ease), background .2s var(--ease);
+    overflow:hidden;
+  }
+  .day::before{
+    content:""; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
+    background:linear-gradient(180deg, rgba(255,255,255,.05) 0%, transparent 40%);
+  }
+  .day:active{transform:scale(.985); background:var(--glass-2);}
+  .day .badge{
+    flex:none; width:56px; height:56px; border-radius:18px;
+    display:grid; place-items:center;
+    font-weight:800; font-size:24px; color:#fff; letter-spacing:-.02em;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.25) inset,
+      0 -2px 6px rgba(0,0,0,.2) inset,
+      0 8px 20px -6px rgba(0,0,0,.5);
+    position:relative;
+  }
+  .day .badge::after{
+    content:""; position:absolute; inset:0; border-radius:inherit;
+    background:linear-gradient(180deg, rgba(255,255,255,.18), transparent 50%);
+    pointer-events:none;
+  }
+  .day.push .badge{background:var(--push-grad);}
+  .day.pull .badge{background:var(--pull-grad);}
+  .day .meta{flex:1; min-width:0;}
+  .day .meta .t{font-size:17px; font-weight:700; letter-spacing:-.01em;}
+  .day .meta .f{font-size:13px; color:var(--muted); margin-top:2px; font-weight:500;}
+  .day .meta .cnt{font-size:11px; color:var(--faint); margin-top:4px; font-weight:600; letter-spacing:.02em;}
+  .day .chev{color:var(--faint); display:flex; align-items:center;}
+
+  /* ============ BACK BAR ============ */
+  .backbar{display:flex; align-items:center; gap:10px; margin:0 0 18px;}
+  .back{
+    display:inline-flex; align-items:center; gap:6px;
+    background:var(--glass-2); border:1px solid var(--line-2);
+    color:var(--ink); border-radius:14px; padding:10px 14px 10px 12px;
+    font-size:14px; font-weight:600; cursor:pointer; letter-spacing:-.01em;
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    box-shadow:var(--shadow-1);
+  }
+  .back:active{background:var(--glass-3);}
+
+  /* ============ EXERCISE CARDS ============ */
+  .ex{
+    background:var(--glass); border:1px solid var(--line-2);
+    border-radius:var(--r-lg); margin-bottom:16px; overflow:hidden;
+    box-shadow:var(--shadow-2);
+    backdrop-filter:blur(20px) saturate(160%); -webkit-backdrop-filter:blur(20px) saturate(160%);
+    position:relative;
+  }
+  .ex::before{
+    content:""; position:absolute; top:0; left:0; right:0; height:1px;
+    background:linear-gradient(90deg, transparent, rgba(255,255,255,.15), transparent);
+    pointer-events:none;
+  }
+  .photo{
+    position:relative; width:100%; aspect-ratio:1.85/1; overflow:hidden;
+    background:linear-gradient(135deg,#1c2029,#0f1218);
+  }
+  .photo img{
+    width:100%; height:100%; object-fit:cover; display:block;
+    filter:brightness(.92) contrast(1.05) saturate(.88);
+    transition:transform .4s var(--ease), opacity .3s var(--ease);
+    opacity:0;
+  }
+  .photo img.loaded{opacity:1;}
+  .photo::after{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(180deg, rgba(10,12,17,.08) 0%, rgba(10,12,17,.55) 65%, rgba(10,12,17,.95) 100%);
+  }
+  .photo .ovr{
+    position:absolute; left:16px; right:16px; bottom:14px; z-index:2;
+    display:flex; align-items:flex-end; gap:10px;
+  }
+  .photo .name{
+    flex:1; font-size:18px; font-weight:700; line-height:1.2;
+    letter-spacing:-.015em; color:#fff;
+    text-shadow:0 1px 3px rgba(0,0,0,.5);
+  }
+  .photo .ph-fallback{
+    position:absolute; inset:0; display:grid; place-items:center;
+    color:var(--faint); font-size:13px; font-weight:600;
+  }
+  .pill{
+    font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+    padding:4px 9px; border-radius:8px; flex:none;
+    background:rgba(255,255,255,.14); color:#fff; backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.15);
+    align-self:flex-start;
+  }
+  .pill.iso{background:rgba(140,150,170,.25); color:#e8ebf0;}
+  .pill.core{background:rgba(245,185,78,.30); color:#ffd887; border-color:rgba(245,185,78,.25);}
+  .pill.comp{background:rgba(255,107,92,.28); color:#ffbab2; border-color:rgba(255,107,92,.25);}
+
+  .ex .body{padding:16px 16px 14px;}
+  .target{
+    display:flex; align-items:center; gap:14px; margin-bottom:10px;
+    font-size:13px; color:var(--muted); font-weight:500;
+  }
+  .target .met{
+    display:inline-flex; align-items:baseline; gap:5px;
+    color:var(--ink); font-weight:600;
+  }
+  .target .met b{font-size:16px; font-weight:700; letter-spacing:-.01em;}
+  .target .dot{width:3px; height:3px; border-radius:50%; background:var(--faint);}
+  .cue{
+    font-size:13.5px; color:var(--ink2); line-height:1.5; margin-top:6px;
+    padding:12px 14px; border-radius:14px;
+    background:rgba(255,255,255,.03); border:1px solid var(--line);
+  }
+  .cue em{color:#fff; font-style:normal; font-weight:600;}
+
+  .exbtns{display:flex; gap:8px; margin-top:14px;}
+  .xb{
+    flex:1; display:inline-flex; align-items:center; justify-content:center; gap:7px;
+    text-decoration:none;
+    background:var(--glass-2); border:1px solid var(--line-2);
+    color:var(--ink); border-radius:14px; padding:11px;
+    font-size:13.5px; font-weight:600; cursor:pointer; letter-spacing:-.01em;
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    box-shadow:0 1px 0 rgba(255,255,255,.05) inset;
+    transition:background .15s var(--ease);
+  }
+  .xb:active{background:var(--glass-3);}
+  .xb.rest{color:var(--core);}
+  .xb svg{flex:none;}
+
+  /* ============ LOGGING ============ */
+  .log{
+    background:rgba(0,0,0,.18);
+    border-top:1px solid var(--line);
+    padding:14px 16px 16px;
+  }
+  .last{
+    font-size:12px; color:var(--faint); margin-bottom:11px;
+    display:flex; align-items:center; gap:6px;
+  }
+  .last svg{opacity:.7;}
+  .last b{color:var(--pull); font-weight:700;}
+  .colhead{display:grid; grid-template-columns:28px 1fr 1fr 38px; gap:8px; margin-bottom:8px;}
+  .colhead span{
+    font-size:9.5px; color:var(--faint); text-transform:uppercase;
+    letter-spacing:.08em; text-align:center; font-weight:700;
+  }
+  .setrow{
+    display:grid; grid-template-columns:28px 1fr 1fr 38px; gap:8px;
+    align-items:center; margin-bottom:8px;
+  }
+  .setrow .sn{
+    font-size:13px; color:var(--faint); font-weight:700; text-align:center;
+  }
+  .setrow input{
+    width:100%; background:var(--glass); border:1px solid var(--line-2);
+    color:var(--ink); border-radius:12px; padding:12px 8px;
+    font-size:16px; text-align:center; font-weight:700;
+    font-variant-numeric:tabular-nums; letter-spacing:-.01em;
+    transition:border-color .15s var(--ease), background .15s var(--ease);
+    -webkit-appearance:none;
+  }
+  .setrow input:focus{
+    outline:none; border-color:rgba(91,158,255,.55);
+    background:rgba(91,158,255,.07);
+    box-shadow:0 0 0 4px rgba(91,158,255,.10);
+  }
+  .setrow input::placeholder{color:var(--faint); font-weight:500;}
+  .setrow .chk{
+    width:38px; height:42px; border-radius:12px;
+    border:1px solid var(--line-2); background:var(--glass);
+    display:grid; place-items:center; cursor:pointer; color:var(--faint);
+    transition:all .18s var(--ease);
+  }
+  .setrow .chk.on{
+    background:linear-gradient(135deg,#5fe195,#3cb56a);
+    border-color:transparent; color:#fff;
+    box-shadow:0 1px 0 rgba(255,255,255,.25) inset, 0 4px 12px -2px rgba(81,216,138,.5);
+  }
+  .loghint{
+    font-size:11px; color:var(--faint); display:flex;
+    justify-content:space-between; align-items:center; margin-top:6px;
+    padding:0 2px;
+  }
+  .saved{
+    color:var(--ok); font-weight:700; opacity:0; transition:opacity .3s;
+    display:inline-flex; align-items:center; gap:4px;
+  }
+  .saved.show{opacity:1;}
+
+  /* ============ PRINCIPLES CARDS ============ */
+  .pcard{
+    background:var(--glass); border:1px solid var(--line-2);
+    border-radius:var(--r-lg); padding:18px 18px 16px;
+    margin-bottom:12px; position:relative; overflow:hidden;
+    backdrop-filter:blur(16px) saturate(160%);
+    box-shadow:var(--shadow-1);
+  }
+  .pcard::before{
+    content:""; position:absolute; left:0; top:0; bottom:0; width:3px;
+  }
+  .pcard.c-gold::before{background:linear-gradient(180deg,#ffd178,#e09a2c);}
+  .pcard.c-red::before{background:linear-gradient(180deg,#ff7d6f,#e54838);}
+  .pcard.c-blue::before{background:linear-gradient(180deg,#7ab2ff,#3a7fe0);}
+  .pcard.c-green::before{background:linear-gradient(180deg,#5fe195,#3cb56a);}
+  .pcard .hd{display:flex; align-items:center; gap:10px; margin-bottom:8px;}
+  .pcard .ic{
+    width:32px; height:32px; border-radius:10px; display:grid; place-items:center;
+    background:var(--glass-2); border:1px solid var(--line-2);
+  }
+  .pcard.c-gold .ic{color:var(--core);}
+  .pcard.c-red .ic{color:var(--push);}
+  .pcard.c-blue .ic{color:var(--pull);}
+  .pcard.c-green .ic{color:var(--ok);}
+  .pcard h3{margin:0; font-size:15px; font-weight:700; letter-spacing:-.01em; color:var(--ink);}
+  .pcard p{margin:0; font-size:13.5px; color:var(--ink2); line-height:1.55;}
+  .pcard p b{color:#fff;}
+
+  /* ============ VOLUME BARS ============ */
+  .volcard{
+    background:var(--glass); border:1px solid var(--line-2);
+    border-radius:var(--r-lg); padding:18px;
+    backdrop-filter:blur(16px); box-shadow:var(--shadow-1);
+  }
+  .vbar{display:flex; align-items:center; gap:12px; margin-bottom:10px;}
+  .vbar:last-of-type{margin-bottom:0;}
+  .vbar .vn{width:88px; font-size:13.5px; color:var(--ink2); font-weight:600; letter-spacing:-.01em;}
+  .vbar .track{
+    flex:1; height:10px; background:rgba(255,255,255,.05);
+    border-radius:5px; overflow:hidden;
+    box-shadow:0 1px 1px rgba(0,0,0,.4) inset;
+  }
+  .vbar .fill{
+    height:100%; border-radius:5px;
+    box-shadow:0 1px 0 rgba(255,255,255,.2) inset;
+  }
+  .vbar .vv{width:32px; font-size:12px; color:var(--muted); font-weight:700; text-align:right;}
+  .volnote{font-size:12px; color:var(--faint); margin:12px 0 0; line-height:1.5;}
+
+  /* ============ INFO / MAIS ============ */
+  .infocard{
+    background:var(--glass); border:1px solid var(--line-2);
+    border-radius:var(--r-lg); padding:18px;
+    margin-bottom:12px; backdrop-filter:blur(16px);
+    box-shadow:var(--shadow-1);
+  }
+  .infocard h3{margin:0 0 10px; font-size:15px; font-weight:700; letter-spacing:-.01em;}
+  .infocard p{margin:0 0 10px; font-size:13.5px; color:var(--ink2); line-height:1.55;}
+  .infocard p:last-child{margin-bottom:0;}
+  .anchor{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:11px 0; border-bottom:1px solid var(--line);
+    font-size:14px; color:var(--ink2);
+  }
+  .anchor:last-child{border-bottom:none;}
+  .anchor b{color:var(--pull); font-weight:700; font-variant-numeric:tabular-nums;}
+
+  .tools{display:flex; gap:8px; margin-top:12px;}
+  .tools button{
+    flex:1; background:var(--glass-2); border:1px solid var(--line-2);
+    color:var(--ink); border-radius:12px; padding:11px;
+    font-size:13px; font-weight:600; cursor:pointer; letter-spacing:-.01em;
+    backdrop-filter:blur(8px);
+  }
+  .tools button:active{background:var(--glass-3);}
+  textarea{
+    width:100%; height:120px; background:rgba(0,0,0,.25);
+    border:1px solid var(--line-2); color:var(--ink);
+    border-radius:12px; padding:12px; font-size:12px; margin-top:12px;
+    font-family:ui-monospace,SF Mono,Menlo,monospace;
+    -webkit-appearance:none;
+  }
+  .foot{
+    text-align:center; color:var(--faint); font-size:11px;
+    margin:24px 0 4px; line-height:1.6;
+  }
+
+  /* ============ BOTTOM NAV (Tab bar) ============ */
+  nav{
+    position:fixed; left:12px; right:12px; bottom:calc(10px + env(safe-area-inset-bottom));
+    z-index:35;
+    background:rgba(22,26,35,.72);
+    backdrop-filter:blur(30px) saturate(180%); -webkit-backdrop-filter:blur(30px) saturate(180%);
+    border:1px solid var(--line-2); border-radius:24px;
+    display:flex; padding:6px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.08) inset,
+      0 -1px 0 rgba(0,0,0,.4) inset,
+      0 20px 50px -10px rgba(0,0,0,.7);
+  }
+  nav button{
+    flex:1; background:none; border:none; color:var(--muted); cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    font-size:10.5px; font-weight:600; padding:9px 4px 7px;
+    border-radius:18px; letter-spacing:-.005em;
+    transition:all .2s var(--ease);
+    position:relative;
+  }
+  nav button .ic{
+    width:24px; height:24px; display:grid; place-items:center;
+    transition:transform .2s var(--ease);
+  }
+  nav button.on{
+    color:var(--ink);
+    background:var(--glass-2);
+    box-shadow:0 1px 0 rgba(255,255,255,.06) inset;
+  }
+  nav button.on .ic{color:var(--push);}
+  nav button:active .ic{transform:scale(.9);}
+
+  /* ============ FAB (Timer) ============ */
+  .fab{
+    position:fixed; right:20px; bottom:calc(94px + env(safe-area-inset-bottom));
+    z-index:32;
+    background:linear-gradient(135deg,#ff7d6f,#e54838);
+    color:#fff; border:none; border-radius:50%;
+    width:56px; height:56px; cursor:pointer;
+    display:grid; place-items:center;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.22) inset,
+      0 -3px 8px rgba(0,0,0,.25) inset,
+      0 10px 24px -4px rgba(229,72,56,.5),
+      0 4px 12px rgba(0,0,0,.4);
+    transition:transform .15s var(--ease);
+  }
+  .fab:active{transform:scale(.92);}
+
+  /* ============ TIMER OVERLAY ============ */
+  .overlay{
+    position:fixed; inset:0; z-index:50;
+    background:rgba(8,10,15,.65);
+    backdrop-filter:blur(24px) saturate(140%); -webkit-backdrop-filter:blur(24px) saturate(140%);
+    display:grid; place-items:center; padding:24px;
+    animation:fadein .2s var(--ease);
+  }
+  @keyframes fadein{from{opacity:0}to{opacity:1}}
+  .timer{
+    background:linear-gradient(180deg, rgba(40,46,60,.85), rgba(22,26,35,.85));
+    border:1px solid var(--line-2);
+    border-radius:32px; padding:28px 26px;
+    width:100%; max-width:340px; text-align:center;
+    backdrop-filter:blur(40px); -webkit-backdrop-filter:blur(40px);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.1) inset,
+      0 -2px 0 rgba(0,0,0,.3) inset,
+      0 30px 80px -20px rgba(0,0,0,.7);
+  }
+  .ring{position:relative; width:220px; height:220px; margin:8px auto 18px;}
+  .ring svg{transform:rotate(-90deg);}
+  .ring .tval{
+    position:absolute; inset:0; display:grid; place-items:center;
+    font-size:58px; font-weight:700; font-variant-numeric:tabular-nums;
+    letter-spacing:-.04em; color:var(--ink);
+  }
+  .presets{display:flex; gap:8px; justify-content:center; margin-bottom:16px;}
+  .preset{
+    background:var(--glass-2); border:1px solid var(--line-2);
+    color:var(--ink); border-radius:14px; padding:10px 14px;
+    font-size:13.5px; font-weight:700; cursor:pointer; letter-spacing:-.01em;
+    transition:all .15s var(--ease);
+  }
+  .preset:active{background:var(--glass-3);}
+  .preset.active{
+    background:rgba(255,107,92,.18); border-color:rgba(255,107,92,.35);
+    color:#ffb8b0;
+  }
+  .preset.core{color:var(--core);}
+  .preset.core.active{
+    background:rgba(245,185,78,.18); border-color:rgba(245,185,78,.35);
+    color:#ffd887;
+  }
+  .tctrl{display:flex; gap:10px;}
+  .tctrl button{
+    flex:1; border:none; border-radius:16px; padding:14px;
+    font-size:15px; font-weight:700; cursor:pointer; letter-spacing:-.01em;
+    transition:transform .12s var(--ease);
+  }
+  .tctrl button:active{transform:scale(.97);}
+  .tctrl .pp{
+    background:linear-gradient(135deg,#ff7d6f,#e54838); color:#fff;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.2) inset,
+      0 6px 16px -4px rgba(229,72,56,.5);
+  }
+  .tctrl .cl{
+    background:var(--glass-2); color:var(--ink);
+    border:1px solid var(--line-2);
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Treino<span class="tag">ABCD</span></h1>
+  <p class="sub" id="subline">Toque num treino para começar</p>
+</header>
+
+<main id="app"></main>
+
+<button class="fab" onclick="openTimer()" aria-label="Timer de descanso">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></svg>
+</button>
+
+<nav>
+  <button data-tab="treino" class="on" onclick="setTab('treino')">
+    <span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.4 14.4 9.6 9.6"/><path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/><path d="m21.5 21.5-1.4-1.4"/><path d="M3.9 3.9 2.5 2.5"/><path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/></svg></span>
+    Treinos
+  </button>
+  <button data-tab="princ" onclick="setTab('princ')">
+    <span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+    Princípios
+  </button>
+  <button data-tab="mais" onclick="setTab('mais')">
+    <span class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19.2 2.96a1 1 0 0 1 1.8.7c0 4.5-1 11.65-7 14.34"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg></span>
+    Mais
+  </button>
+</nav>
+
+<div class="overlay hidden" id="overlay">
+  <div class="timer">
+    <div class="ring">
+      <svg width="220" height="220">
+        <defs>
+          <linearGradient id="ringg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#ff7d6f"/>
+            <stop offset="100%" stop-color="#e54838"/>
+          </linearGradient>
+        </defs>
+        <circle cx="110" cy="110" r="96" stroke="rgba(255,255,255,.06)" stroke-width="12" fill="none"/>
+        <circle id="ringfill" cx="110" cy="110" r="96" stroke="url(#ringg)" stroke-width="12" fill="none"
+          stroke-linecap="round" stroke-dasharray="603.2" stroke-dashoffset="0"/>
+      </svg>
+      <div class="tval num" id="tval">1:30</div>
+    </div>
+    <div class="presets">
+      <button class="preset" data-s="90" onclick="setTimer(90)">1:30 iso</button>
+      <button class="preset" data-s="120" onclick="setTimer(120)">2:00 comp.</button>
+      <button class="preset core" data-s="45" onclick="setTimer(45)">0:45</button>
+    </div>
+    <div class="tctrl">
+      <button class="cl" onclick="closeTimer()">Fechar</button>
+      <button class="pp" id="ppbtn" onclick="toggleTimer()">Iniciar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============ ÍCONES (Lucide, inline) ============ */
+const I = {
+  chevR:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
+  arrowL:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>',
+  check:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  play:'<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  timer:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></svg>',
+  hist:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.74 9.74 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>',
+  flame:'<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>',
+  bolt:'<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4.09 12.97a1 1 0 0 0 .77 1.64h6.61L11 22l8.91-10.97a1 1 0 0 0-.77-1.64H12.5L13 2z"/></svg>',
+  brain:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/></svg>',
+  hourglass:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/></svg>',
+  moon:'<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
+  trend:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>',
+};
+
+/* ============ DADOS ============ */
+const WK = {
+  A:{name:"Push 1", focus:"Ênfase Peito", type:"push", ex:[
+    {n:"Supino inclinado halter 30°", s:4, r:"6-10", t:"comp", cue:"Principal do peito superior. Desce bem alongado; pensa em <em>espremer o peito</em> e juntar os cotovelos, não em empurrar o peso."},
+    {n:"Supino reto halter ou máquina", s:3, r:"8-12", t:"comp", cue:"Peito médio/inferior. Mesmo foco: sente o peito puxar."},
+    {n:"Crucifixo na polia baixa", s:3, r:"12-15", t:"iso", cue:"De baixo p/ cima. Punhos se encontram <em>acima da linha do peito</em>. Estica bem embaixo. Drop set na última."},
+    {n:"Elevação lateral halter", s:4, r:"12-20", t:"iso", cue:"Largura. <em>Sobe pelos cotovelos.</em> Parciais no fim da última série."},
+    {n:"Tríceps francês / extensão acima da cabeça", s:3, r:"10-15", t:"iso", cue:"Cabeça longa: braço alongado atrás da cabeça."},
+    {n:"Tríceps na polia (corda)", s:3, r:"12-15", t:"iso", cue:"Drop set na última série."},
+  ]},
+  B:{name:"Pull 1", focus:"Costas · bíceps · perna · core", type:"pull", ex:[
+    {n:"Puxada na polia (pegada aberta)", s:4, r:"8-12", t:"comp", cue:"Largura das costas. <em>Puxa com o cotovelo</em>, não com a mão."},
+    {n:"Remada sentada na polia ou máquina", s:3, r:"8-12", t:"comp", cue:"Espessura. Aperta as escápulas no fim."},
+    {n:"Crucifixo inverso (peck deck/polia)", s:3, r:"15-20", t:"iso", cue:"Deltoide posterior = ombro 3D + postura melhor."},
+    {n:"Elevação lateral (halter ou polia)", s:3, r:"12-20", t:"iso", cue:"Largura — objetivo nº1. Recupera rápido, aguenta a frequência."},
+    {n:"Rosca inclinada com halter", s:3, r:"8-12", t:"iso", cue:"Bíceps alongado. <em>Foca em sentir o bíceps.</em> Parciais no fim."},
+    {n:"Mesa flexora", s:3, r:"10-15", t:"iso", cue:"Posterior de coxa. Sem náusea."},
+    {n:"Cadeira extensora", s:3, r:"12-15", t:"iso", cue:"Quadríceps. Carga controlada."},
+    {n:"Abdominal declinado com anilha", s:3, r:"10-15", t:"core", cue:"Carregado. Anilha abraçada no peito; <em>enrola o tronco</em>. Sem dor na mão. Progride trocando a anilha."},
+    {n:"Cadeira romana (joelho dobrado)", s:3, r:"10-15", t:"core", cue:"Parte baixa. <em>Enrola a pelve p/ cima</em> (retroversão), não só levanta a perna. Desce devagar."},
+    {n:"Panturrilha", s:3, r:"12-20", t:"iso", cue:"Depois do core, antes do cardio."},
+  ]},
+  C:{name:"Push 2", focus:"Ênfase Ombro", type:"push", ex:[
+    {n:"Desenvolvimento sentado com halter", s:4, r:"6-10", t:"comp", cue:"Ombro completo (anterior + lateral)."},
+    {n:"Elevação lateral (polia ou halter)", s:4, r:"12-20", t:"iso", cue:"<em>Prioridade da largura.</em> Volume alto + parciais. Sobe pelos cotovelos."},
+    {n:"Supino inclinado halter 30°", s:3, r:"8-12", t:"comp", cue:"2ª dose de peito superior. Espreme o peito."},
+    {n:"Peck deck ou crucifixo máquina", s:3, r:"10-15", t:"iso", cue:"Contração e alongamento do peito."},
+    {n:"Extensão de tríceps acima da cabeça", s:3, r:"10-15", t:"iso", cue:"Cabeça longa."},
+    {n:"Tríceps na polia", s:2, r:"12-15", t:"iso", cue:"—"},
+  ]},
+  D:{name:"Pull 2", focus:"Costas · bíceps · perna · core", type:"pull", ex:[
+    {n:"Puxada na polia (pegada neutra/fechada)", s:4, r:"8-12", t:"comp", cue:"Ângulo diferente do treino B."},
+    {n:"Remada na polia ou máquina", s:3, r:"8-12", t:"comp", cue:"Espessura."},
+    {n:"Crucifixo inverso", s:3, r:"15-20", t:"iso", cue:"Deltoide posterior."},
+    {n:"Elevação lateral (halter ou polia)", s:3, r:"12-20", t:"iso", cue:"Mais volume pro deltoide lateral na semana."},
+    {n:"Rosca direta na polia ou halter", s:3, r:"10-15", t:"iso", cue:"Sente o bíceps. Drop set na última."},
+    {n:"Rosca martelo", s:2, r:"10-12", t:"iso", cue:"Braquial = engrossa e alarga o braço."},
+    {n:"Mesa flexora", s:2, r:"12-15", t:"iso", cue:"Perna leve."},
+    {n:"Cadeira extensora", s:2, r:"12-15", t:"iso", cue:"Perna leve."},
+    {n:"Abdominal declinado com anilha", s:3, r:"10-15", t:"core", cue:"Carregado. Anilha abraçada; enrola o tronco. Progride trocando a anilha."},
+    {n:"Cadeira romana (joelho dobrado)", s:3, r:"10-15", t:"core", cue:"Parte baixa. Retroversão de pelve, joelho dobrado. Controla a descida."},
+    {n:"Panturrilha", s:3, r:"12-20", t:"iso", cue:"Depois do core, antes do cardio."},
+  ]},
+};
+
+const REST = {comp:120, iso:90, core:90};
+
+/* Mapeamento exercício → ID no Free Exercise DB */
+const PHOTO_ID = {
+  "Supino inclinado halter 30°":"Incline_Dumbbell_Press",
+  "Supino reto halter ou máquina":"Dumbbell_Bench_Press",
+  "Crucifixo na polia baixa":"Low_Cable_Crossover",
+  "Elevação lateral halter":"Side_Lateral_Raise",
+  "Tríceps francês / extensão acima da cabeça":"Seated_Triceps_Press",
+  "Tríceps na polia (corda)":"Triceps_Pushdown_-_Rope_Attachment",
+  "Puxada na polia (pegada aberta)":"Wide-Grip_Lat_Pulldown",
+  "Remada sentada na polia ou máquina":"Seated_Cable_Rows",
+  "Crucifixo inverso (peck deck/polia)":"Reverse_Machine_Flyes",
+  "Elevação lateral (halter ou polia)":"Side_Lateral_Raise",
+  "Rosca inclinada com halter":"Incline_Dumbbell_Curl",
+  "Mesa flexora":"Lying_Leg_Curls",
+  "Cadeira extensora":"Leg_Extensions",
+  "Abdominal declinado com anilha":"Weighted_Crunches",
+  "Cadeira romana (joelho dobrado)":"Hanging_Leg_Raise",
+  "Panturrilha":"Standing_Calf_Raises",
+  "Desenvolvimento sentado com halter":"Seated_Dumbbell_Press",
+  "Peck deck ou crucifixo máquina":"Butterfly",
+  "Extensão de tríceps acima da cabeça":"Cable_Rope_Overhead_Triceps_Extension",
+  "Tríceps na polia":"Triceps_Pushdown_-_Rope_Attachment",
+  "Puxada na polia (pegada neutra/fechada)":"Close-Grip_Front_Lat_Pulldown",
+  "Remada na polia ou máquina":"Seated_Cable_Rows",
+  "Crucifixo inverso":"Reverse_Machine_Flyes",
+  "Rosca direta na polia ou halter":"Standing_Biceps_Cable_Curl",
+  "Rosca martelo":"Hammer_Curls",
+};
+const PHOTO_BASE = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
+function photoURL(name){
+  const id = PHOTO_ID[name];
+  return id ? `${PHOTO_BASE}${id}/0.jpg` : null;
+}
+
+const PRINC = [
+  ["gold","bolt","1. Sobrecarga progressiva","Registra tudo aqui. Faixa de reps (ex. 8-12): bateu o topo em todas as séries? <b>Sobe a carga na próxima.</b> Se em 8 semanas o peso não subiu, foi isso que faltou. Vale pro core também."],
+  ["red","flame","2. Perto da falha","A última série de cada exercício para a 0-1 rep do limite. Nos compostos pesados pode parar com <b>1-2 na reserva</b> — rende o mesmo com menos fadiga. Falha total e drop sets: guarde pros isoladores."],
+  ["red","brain","3. Mente-músculo (peito)","Seu peito não cresce quando ombro e tríceps roubam o movimento. Pensar em <b>espremer o peito</b> (juntar os cotovelos) quase dobrou o crescimento em estudo, em cargas moderadas. Não force nos pesos máximos."],
+  ["blue","hourglass","4. Descanso por tipo","Descansar pouco corta a carga da série seguinte. Compostos: <b>~2 min</b>. Isoladores: <b>~90s</b>. Acima de 90s não há ganho extra claro."],
+  ["green","trend","5. Alongamento + excêntrica","Cresce mais quem trabalha o músculo <b>esticado</b>: desce bem no inclinado, crucifixo, rosca inclinada, francês. Controla a descida em ~3 segundos."],
+  ["blue","moon","6. Cardio + recuperação","20-30 min de esteira inclinada Zona 2 ao fim do treino. Durma <b>7-9h</b> — é onde o músculo cresce. Se a energia cair, corte o cardio antes do treino."],
+];
+
+const VOL = [["Peito",16,"#ff6b5c"],["Costas",14,"#5b9eff"],["Ombro lat.",13,"#ff6b5c"],["Tríceps",10,"#ff6b5c"],["Bíceps",8,"#5b9eff"]];
+
+/* ============ ESTADO + STORAGE ============ */
+const LSKEY="meutreino_logs_v1";
+let logs={};
+try{ logs=JSON.parse(localStorage.getItem(LSKEY))||{}; }catch(e){ logs={}; }
+function save(){ try{ localStorage.setItem(LSKEY, JSON.stringify(logs)); }catch(e){} }
+function today(){ return new Date().toISOString().slice(0,10); }
+function exId(day,i){ return day+"_"+i; }
+function lastSession(id){
+  const h=logs[id]; if(!h||!h.length) return null;
+  const t=today();
+  for(let k=h.length-1;k>=0;k--){ if(h[k].date!==t) return h[k]; }
+  return h.length>1 ? h[h.length-2] : null;
+}
+function todaySession(id){
+  const h=logs[id]; if(!h) return null;
+  const t=today(); return h.find(s=>s.date===t)||null;
+}
+function upsertToday(id, sets){
+  if(!logs[id]) logs[id]=[];
+  const t=today();
+  const ex=logs[id].find(s=>s.date===t);
+  if(ex) ex.sets=sets; else logs[id].push({date:t, sets});
+  save();
+}
+
+/* ============ NAV ============ */
+let tab="treino", openDay=null;
+function setTab(t){
+  tab=t; openDay=null;
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  render(); window.scrollTo(0,0);
+}
+function openWorkout(d){ openDay=d; render(); window.scrollTo(0,0); }
+function backToList(){ openDay=null; render(); window.scrollTo(0,0); }
+
+/* ============ RENDER ============ */
+const app=document.getElementById('app');
+const sub=document.getElementById('subline');
+function render(){
+  if(tab==="treino") return openDay? renderDay(openDay) : renderDays();
+  if(tab==="princ") return renderPrinc();
+  if(tab==="mais") return renderMais();
+}
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+function renderDays(){
+  sub.textContent="Toque num treino para começar";
+  let h=`<h2 class="sec">Sua semana</h2>`;
+  for(const d of ["A","B","C","D"]){
+    const w=WK[d];
+    h+=`<div class="day ${w.type}" onclick="openWorkout('${d}')">
+      <div class="badge">${d}</div>
+      <div class="meta">
+        <div class="t">${w.name}</div>
+        <div class="f">${w.focus}</div>
+        <div class="cnt">${w.ex.length} EXERCÍCIOS</div>
+      </div>
+      <div class="chev">${I.chevR}</div>
+    </div>`;
+  }
+  h+=`<h2 class="sec">Volume semanal · séries duras</h2><div class="volcard">`;
+  const mx=16;
+  for(const [n,v,c] of VOL){
+    h+=`<div class="vbar">
+      <div class="vn">${n}</div>
+      <div class="track"><div class="fill" style="width:${v/mx*100}%;background:linear-gradient(90deg,${c}88,${c})"></div></div>
+      <div class="vv num">${v}</div>
+    </div>`;
+  }
+  h+=`<p class="volnote">Faixa produtiva: 10–20 séries por músculo na semana. Prioridades recebem mais.</p></div>`;
+  app.innerHTML=h;
+  attachImgHandlers();
+}
+
+function renderDay(d){
+  const w=WK[d];
+  sub.textContent=`${w.name} · ${w.focus}`;
+  let h=`<div class="backbar"><button class="back" onclick="backToList()">${I.arrowL}<span>Treinos</span></button></div>`;
+  w.ex.forEach((e,i)=>{
+    const id=exId(d,i);
+    const last=lastSession(id);
+    const tod=todaySession(id);
+    const pillT = e.t==="comp"?"composto":(e.t==="core"?"core":"isolador");
+    const pillC = e.t==="comp"?"comp":(e.t==="core"?"core":"iso");
+    const nset=parseInt(e.s)||3;
+    const url=photoURL(e.n);
+    let lastTxt;
+    if(last){
+      const sets = last.sets.map(s=>`<b>${s.kg||'–'}×${s.reps||'–'}</b>`).join(" · ");
+      lastTxt=`${I.hist} Última: ${sets}`;
+    } else {
+      lastTxt=`${I.hist} Primeira vez — crie sua base.`;
+    }
+    let rows="";
+    for(let k=0;k<nset;k++){
+      const tv=tod&&tod.sets[k]?tod.sets[k]:{};
+      const lv=last&&last.sets[k]?last.sets[k]:{};
+      rows+=`<div class="setrow">
+        <div class="sn">${k+1}</div>
+        <input class="num" inputmode="decimal" placeholder="${lv.kg||'kg'}" value="${tv.kg||''}" data-id="${id}" data-k="${k}" data-f="kg" oninput="onLog(this)">
+        <input class="num" inputmode="numeric" placeholder="${lv.reps||'reps'}" value="${tv.reps||''}" data-id="${id}" data-k="${k}" data-f="reps" oninput="onLog(this)">
+        <div class="chk ${tv.done?'on':''}" onclick="toggleDone('${id}',${k},this)">${I.check}</div>
+      </div>`;
+    }
+    const yt=`https://www.youtube.com/results?search_query=`+encodeURIComponent(e.n+" execução técnica academia");
+    const restS=REST[e.t];
+    const photoBlock = url
+      ? `<div class="photo">
+           <img src="${url}" alt="${esc(e.n)}" loading="lazy" decoding="async" onload="this.classList.add('loaded')" onerror="this.parentElement.classList.add('noimg'); this.remove();">
+           <div class="ovr">
+             <div class="name">${esc(e.n)}</div>
+             <div class="pill ${pillC}">${pillT}</div>
+           </div>
+         </div>`
+      : `<div class="photo noimg">
+           <div class="ph-fallback">Sem foto disponível</div>
+           <div class="ovr">
+             <div class="name">${esc(e.n)}</div>
+             <div class="pill ${pillC}">${pillT}</div>
+           </div>
+         </div>`;
+
+    h+=`<div class="ex">
+      ${photoBlock}
+      <div class="body">
+        <div class="target">
+          <span class="met"><b>${e.s}</b> séries</span>
+          <span class="dot"></span>
+          <span class="met"><b>${e.r}</b> reps</span>
+          <span class="dot"></span>
+          <span class="met"><b>${Math.floor(restS/60)}:${String(restS%60).padStart(2,'0')}</b> descanso</span>
+        </div>
+        ${e.cue!=="—"?`<div class="cue">${e.cue}</div>`:""}
+        <div class="exbtns">
+          <a class="xb" href="${yt}" target="_blank" rel="noopener">${I.play}<span>Vídeo</span></a>
+          <button class="xb rest" onclick="openTimer(${restS})">${I.timer}<span>Descanso ${Math.floor(restS/60)}:${String(restS%60).padStart(2,'0')}</span></button>
+        </div>
+      </div>
+      <div class="log">
+        <div class="last">${lastTxt}</div>
+        <div class="colhead"><span></span><span>Peso (kg)</span><span>Reps</span><span></span></div>
+        ${rows}
+        <div class="loghint"><span>Auto-salvo</span><span class="saved" id="sv_${id}">${I.check.replace('width="18" height="18"','width="12" height="12"')} salvo</span></div>
+      </div>
+    </div>`;
+  });
+  app.innerHTML=h;
+  attachImgHandlers();
+}
+
+function attachImgHandlers(){ /* hooks for future */ }
+
+function collect(id){
+  const inputs=document.querySelectorAll(`input[data-id="${id}"]`);
+  const map={};
+  inputs.forEach(inp=>{
+    const k=inp.dataset.k;
+    map[k]=map[k]||{};
+    map[k][inp.dataset.f]= inp.value.trim();
+  });
+  const tod=todaySession(id);
+  const sets=Object.keys(map).sort((a,b)=>a-b).map(k=>{
+    const prev=tod&&tod.sets[k]?tod.sets[k]:{};
+    return {kg:map[k].kg||"", reps:map[k].reps||"", done:prev.done||false};
+  });
+  return sets;
+}
+let svTimer=null;
+function flashSaved(id){
+  const el=document.getElementById('sv_'+id); if(!el) return;
+  el.classList.add('show'); clearTimeout(svTimer);
+  svTimer=setTimeout(()=>el.classList.remove('show'),1200);
+}
+function onLog(inp){ const id=inp.dataset.id; upsertToday(id, collect(id)); flashSaved(id); }
+function toggleDone(id,k,el){
+  el.classList.toggle('on');
+  const sets=collect(id);
+  if(sets[k]) sets[k].done=el.classList.contains('on');
+  upsertToday(id,sets); flashSaved(id);
+  if(el.classList.contains('on')){
+    const day=id.split('_')[0], i=+id.split('_')[1];
+    openTimer(REST[WK[day].ex[i].t]); startTimer();
+  }
+}
+
+function renderPrinc(){
+  sub.textContent="O que faz crescer de verdade";
+  let h=`<h2 class="sec">Princípios do ganho</h2>`;
+  for(const [c,ic,t,p] of PRINC){
+    h+=`<div class="pcard c-${c}">
+      <div class="hd"><div class="ic">${I[ic]}</div><h3>${t}</h3></div>
+      <p>${p}</p>
+    </div>`;
+  }
+  app.innerHTML=h;
+}
+
+function renderMais(){
+  sub.textContent="Nutrição, proporção e backup";
+  const anchors=[
+    ["Whey","1 scoop ≈ 24g"],
+    ["Iogurte grego / skyr","1 pote ≈ 15g"],
+    ["Ovo","1 un ≈ 6g"],
+    ["Cottage","1 pote ≈ 12g"],
+    ["Leguminosa","1 concha ≈ 12-15g"],
+    ["Queijo","1 fatia ≈ 7g"],
+    ["Leite","1 copo ≈ 8g"],
+  ];
+  let h=`
+  <h2 class="sec">Parecer maior e mais largo</h2>
+  <div class="pcard c-blue">
+    <div class="hd"><div class="ic">${I.trend}</div><h3>Largura = ombro ÷ cintura</h3></div>
+    <p>Não é tamanho absoluto, é contraste. Ombro e dorsal largos + cintura fina = <b>impressão de grande</b>. Lateral e puxada aberta são teus exercícios de maior impacto visual. <b>Não engrosse a cintura</b>: evite peso pesado em flexão lateral.</p>
+  </div>
+  <div class="pcard c-blue">
+    <div class="hd"><div class="ic">${I.bolt}</div><h3>Postura — ganho grátis e imediato</h3></div>
+    <p>Ombro pra trás e peito aberto te alargam na hora. Teu crucifixo inverso cuida disso. Custo zero, muda a silhueta no mesmo dia.</p>
+  </div>
+  <div class="pcard c-gold">
+    <div class="hd"><div class="ic">${I.flame}</div><h3>"Cheião" rápido</h3></div>
+    <p>Creatina + carboidrato enchem o músculo de água e glicogênio: visivelmente mais volumoso em 1-2 semanas. Volume real, aparece antes da hipertrofia.</p>
+  </div>
+
+  <h2 class="sec">Nutrição — a alavanca decisiva</h2>
+  <div class="infocard">
+    <p><b style="color:#fff">Proteína 150-160g/dia</b> (prioridade) · <b style="color:#fff">superávit leve</b> (~2.500-2.800 kcal). A balança é o juiz: média semanal subindo ~0,2-0,4 kg confirma o superávit.</p>
+  </div>
+  <div class="infocard"><h3>Âncoras de proteína</h3>`;
+  for(const [a,b] of anchors){ h+=`<div class="anchor"><span>${a}</span><b>${b}</b></div>`; }
+  h+=`<p style="margin-top:12px; font-size:12px; color:var(--faint)">Conta 6 âncoras/dia ≈ 130-160g, sem pesar nada.</p></div>
+  <div class="pcard c-green">
+    <div class="hd"><div class="ic">${I.bolt}</div><h3>Creatina — melhor custo-benefício</h3></div>
+    <p>Monohidratada, <b>3-5g/dia, todo dia</b> (inclusive descanso). Mais bem documentado pra força/volume — e como vegetariano você responde ainda melhor.</p>
+  </div>
+
+  <h2 class="sec">Backup dos teus dados</h2>
+  <div class="infocard">
+    <p>Os registros ficam salvos neste dispositivo. Faça backup de vez em quando (copie o texto e guarde onde quiser).</p>
+    <div class="tools">
+      <button onclick="exportData()">Exportar</button>
+      <button onclick="document.getElementById('imp').classList.toggle('hidden')">Importar</button>
+      <button onclick="resetData()">Apagar tudo</button>
+    </div>
+    <textarea id="exp" class="hidden" readonly></textarea>
+    <textarea id="imp" class="hidden" placeholder="Cole aqui um backup e toque em 'Confirmar importação'"></textarea>
+    <div class="tools hidden" id="impbtn"><button onclick="importData()">Confirmar importação</button></div>
+  </div>
+  <div class="foot">Adicione à Tela de Início no iPhone: Compartilhar → "Adicionar à Tela de Início".<br>Feito sob medida pro teu ABCD Push/Pull.</div>`;
+  app.innerHTML=h;
+}
+
+function exportData(){
+  const t=document.getElementById('exp'); t.classList.remove('hidden');
+  t.value=JSON.stringify(logs); t.select();
+}
+function importData(){
+  const v=document.getElementById('imp').value.trim(); if(!v) return;
+  try{ const o=JSON.parse(v); logs=o; save(); alert('Backup importado.'); render(); }
+  catch(e){ alert('Backup inválido.'); }
+}
+document.addEventListener('input',e=>{
+  if(e.target.id==='imp'){ document.getElementById('impbtn').classList.remove('hidden'); }
+});
+function resetData(){
+  if(confirm('Apagar todos os registros deste app?')){ logs={}; save(); render(); }
+}
+
+/* ============ TIMER ============ */
+let tTotal=90, tLeft=90, tRun=false, tInt=null, aCtx=null;
+const CIRC=2*Math.PI*96;
+function fmt(s){ return Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,'0'); }
+function paint(){
+  document.getElementById('tval').textContent=fmt(tLeft);
+  const off=CIRC*(1-tLeft/tTotal);
+  document.getElementById('ringfill').style.strokeDashoffset=off;
+}
+function setTimer(s){
+  tTotal=s; tLeft=s;
+  document.getElementById('ringfill').setAttribute('stroke-dasharray',CIRC);
+  document.querySelectorAll('.preset').forEach(b=>b.classList.toggle('active', +b.dataset.s===s));
+  paint();
+}
+function openTimer(s){
+  if(typeof s==='number') setTimer(s); else setTimer(tTotal);
+  document.getElementById('overlay').classList.remove('hidden'); paint();
+}
+function closeTimer(){
+  stopTimer();
+  document.getElementById('overlay').classList.add('hidden');
+}
+function toggleTimer(){ tRun? stopTimer() : startTimer(); }
+function startTimer(){
+  if(tRun) return; if(tLeft<=0) tLeft=tTotal; tRun=true;
+  document.getElementById('ppbtn').textContent='Pausar';
+  try{
+    aCtx=aCtx||new (window.AudioContext||window.webkitAudioContext)();
+    if(aCtx.state==='suspended') aCtx.resume();
+  }catch(e){}
+  const end=Date.now()+tLeft*1000;
+  tInt=setInterval(()=>{
+    tLeft=Math.max(0,(end-Date.now())/1000);
+    paint();
+    if(tLeft<=0){ stopTimer(); beep(); }
+  }, 100);
+}
+function stopTimer(){
+  tRun=false; clearInterval(tInt);
+  const b=document.getElementById('ppbtn'); if(b) b.textContent='Iniciar';
+}
+function beep(){
+  if(!aCtx) return;
+  [0,0.18,0.36].forEach(t=>{
+    const o=aCtx.createOscillator(), g=aCtx.createGain();
+    o.frequency.value=880; o.connect(g); g.connect(aCtx.destination);
+    g.gain.setValueAtTime(0.001,aCtx.currentTime+t);
+    g.gain.exponentialRampToValueAtTime(0.4,aCtx.currentTime+t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001,aCtx.currentTime+t+0.16);
+    o.start(aCtx.currentTime+t); o.stop(aCtx.currentTime+t+0.17);
+  });
+}
+
+/* ============ SW REGISTER ============ */
+if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost' || location.hostname==='127.0.0.1')){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+setTimer(90);
+render();
+</script>
+</body>
+</html>
