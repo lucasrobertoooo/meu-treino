@@ -759,15 +759,48 @@
   }
   .food-entry .fx:active{background:rgba(255,107,92,.15); color:#ffbab2;}
   .pbar{
-    margin-top:8px; height:6px; background:rgba(255,255,255,.05);
+    margin:5px 0 11px; height:6px; background:rgba(255,255,255,.05);
     border-radius:3px; overflow:hidden;
   }
   .pbar-fill{
-    height:100%; background:linear-gradient(90deg,#5fe19588,#5fe195);
-    border-radius:3px;
+    height:100%; border-radius:3px;
     box-shadow:0 1px 0 rgba(255,255,255,.2) inset;
     transition:width .3s var(--ease);
   }
+  .pbar-fill.prot{background:linear-gradient(90deg,#5fe19588,#5fe195);}
+  .pbar-fill.carb{background:linear-gradient(90deg,#7ab2ff88,#5b9eff);}
+  .pbar-fill.cal{background:linear-gradient(90deg,#ffd17888,#f5b94e);}
+
+  .macro-block{
+    padding:14px 14px 8px;
+    border-radius:14px;
+    background:rgba(0,0,0,.18);
+    border:1px solid var(--line);
+  }
+  .macro-row{display:flex; align-items:baseline; justify-content:space-between;}
+  .macro-row .ml{font-size:12.5px; color:var(--muted); font-weight:600; letter-spacing:-.01em;}
+  .macro-row .mv{font-size:14px; color:var(--ink); font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.01em;}
+  .macro-row .mv b{font-size:18px; font-weight:800;}
+  .macro-row .mv small{font-size:11px; color:var(--faint); font-weight:600;}
+  .macro-foot{
+    margin-top:10px; font-size:11px; color:var(--faint); text-align:center;
+    text-transform:uppercase; letter-spacing:.06em; font-weight:700;
+  }
+
+  /* food entry macros + result macros */
+  .food-entry .fmacros{
+    font-size:11px; font-weight:600; color:var(--muted);
+    font-variant-numeric:tabular-nums; white-space:nowrap;
+  }
+  .food-entry .fmacros b{color:var(--ok); font-weight:800; font-size:12px;}
+  .food-item .fmac{
+    font-size:11px; font-weight:600; color:var(--muted);
+    font-variant-numeric:tabular-nums; white-space:nowrap;
+    padding:5px 9px; background:rgba(255,255,255,.04);
+    border:1px solid var(--line); border-radius:8px;
+  }
+  .food-item .fmac b{color:var(--ok); font-weight:800; font-size:13px;}
+  .food-item .fmac .sep{color:var(--faint); margin:0 4px;}
 </style>
 </head>
 <body>
@@ -989,79 +1022,130 @@ const SUPL_LIST = [
   ["cafe","Cafeína pré-treino","3-6 mg/kg (200-400mg) 30min antes. +5-10% performance. Opcional."],
 ];
 
-// Banco de alimentos vegetariano brasileiro — proteína por porção típica
-// Fontes: TACO/UNICAMP, USDA, rótulos comerciais. Valores arredondados.
+// Banco de alimentos brasileiro — macros por porção típica
+// Campos: n (nome), q (porção), p (proteína g), c (carbs g), k (calorias kcal)
+// Fontes: TACO/UNICAMP 4ª ed, USDA FoodData Central, rótulos comerciais BR.
 const FOOD_DB = [
-  // suplementos
-  {n:"Whey protein", q:"1 scoop 30g", p:24},
-  {n:"Caseína", q:"1 scoop 30g", p:22},
-  {n:"Barra de proteína", q:"1 unid", p:15},
-  // ovos
-  {n:"Ovo inteiro", q:"1 un", p:6},
-  {n:"Clara de ovo", q:"1 un", p:3.5},
-  {n:"Omelete 3 ovos", q:"3 ovos", p:18},
-  // lácteos
-  {n:"Iogurte grego/skyr", q:"1 pote 150g", p:15},
-  {n:"Iogurte natural comum", q:"1 copo 170g", p:6},
-  {n:"Iogurte líquido", q:"1 garrafa 170g", p:5},
-  {n:"Cottage", q:"1 pote 200g", p:22},
-  {n:"Cottage", q:"1 c. sopa 30g", p:3},
-  {n:"Ricota", q:"100g", p:11},
-  {n:"Queijo mussarela", q:"1 fatia mercado 15g", p:4},
-  {n:"Queijo mussarela", q:"100g", p:25},
-  {n:"Queijo branco/minas", q:"1 fatia 30g", p:6},
-  {n:"Queijo prato", q:"1 fatia 15g", p:4},
-  {n:"Queijo coalho", q:"1 espeto 60g", p:15},
-  {n:"Queijo parmesão ralado", q:"1 c. sopa", p:2},
-  {n:"Requeijão", q:"1 c. sopa 20g", p:2},
-  {n:"Leite integral", q:"1 copo 200ml", p:7},
-  {n:"Leite desnatado", q:"1 copo 200ml", p:7},
-  {n:"Leite", q:"1 caneca 250ml", p:8},
-  // leguminosas
-  {n:"Feijão preto cozido", q:"1 concha 80g", p:6},
-  {n:"Feijão carioca cozido", q:"1 concha 80g", p:5},
-  {n:"Feijão (concha grande)", q:"~120g", p:8},
-  {n:"Lentilha cozida", q:"1 concha 80g", p:9},
-  {n:"Grão-de-bico cozido", q:"1 concha 80g", p:7},
-  {n:"Ervilha cozida", q:"1 xícara 150g", p:8},
-  {n:"Soja cozida", q:"1 xícara 180g", p:28},
-  {n:"Edamame", q:"1 xícara", p:17},
-  // soja derivados
-  {n:"Tofu firme", q:"100g", p:12},
-  {n:"Tofu sedoso", q:"100g", p:5},
-  {n:"Tempeh", q:"100g", p:19},
-  {n:"PVT proteína soja texturizada", q:"50g seca", p:25},
-  {n:"Leite de soja", q:"1 copo 200ml", p:6},
-  // grãos
-  {n:"Quinoa cozida", q:"1 xícara 185g", p:8},
-  {n:"Arroz integral cozido", q:"1 xícara 200g", p:5},
-  {n:"Arroz branco cozido", q:"1 xícara 200g", p:4},
-  {n:"Aveia em flocos", q:"3 c. sopa 30g", p:4},
-  {n:"Aveia em flocos", q:"1 xícara 80g", p:10},
-  {n:"Pão integral", q:"1 fatia 30g", p:4},
-  {n:"Pão francês", q:"1 unid 50g", p:4},
-  {n:"Pão de forma branco", q:"1 fatia 25g", p:2},
-  {n:"Macarrão integral cozido", q:"1 prato 150g", p:8},
-  {n:"Macarrão comum cozido", q:"1 prato 150g", p:6},
-  {n:"Tapioca", q:"1 unid 60g", p:0.5},
-  // nozes/sementes
-  {n:"Amendoim", q:"punhado 30g", p:8},
-  {n:"Castanha-do-pará", q:"5 un", p:4},
-  {n:"Castanha de caju", q:"punhado 30g", p:5},
-  {n:"Amêndoa", q:"punhado 30g", p:6},
-  {n:"Pasta de amendoim", q:"1 c. sopa 16g", p:4},
-  {n:"Chia", q:"1 c. sopa 12g", p:2},
-  {n:"Linhaça", q:"1 c. sopa 10g", p:2},
-  // outros
-  {n:"Pão de queijo", q:"1 unid 25g", p:1.5},
-  {n:"Hambúrguer vegetal/Futuro", q:"1 unid 100g", p:12},
-  {n:"Granola", q:"30g", p:3},
-  {n:"Brigadeiro de whey", q:"1 unid", p:5},
-  {n:"Pizza queijo (fatia)", q:"1 fatia", p:9},
-  {n:"Pizza muçarela (fatia)", q:"1 fatia", p:10},
-  {n:"Lasanha berinjela/queijo", q:"1 porção 200g", p:14},
-  {n:"Estrogonofe de palmito", q:"1 prato", p:8},
+  // SUPLEMENTOS
+  {n:"Whey protein", q:"1 scoop 30g", p:24, c:3, k:120},
+  {n:"Caseína", q:"1 scoop 30g", p:22, c:3, k:110},
+  {n:"Barra de proteína", q:"1 unid", p:15, c:20, k:200},
+  {n:"Brigadeiro de whey", q:"1 unid", p:5, c:14, k:120},
+
+  // OVOS
+  {n:"Ovo inteiro", q:"1 un", p:6, c:0, k:70},
+  {n:"Clara de ovo", q:"1 un", p:3.5, c:0, k:17},
+  {n:"Omelete 3 ovos", q:"3 ovos", p:18, c:1, k:230},
+
+  // LÁCTEOS
+  {n:"Iogurte grego", q:"1 pote 150g", p:15, c:6, k:100},
+  {n:"Skyr (proteico)", q:"1 pote 150g", p:17, c:5, k:105},
+  {n:"Iogurte natural comum", q:"1 copo 170g", p:6, c:9, k:110},
+  {n:"Iogurte líquido", q:"1 garrafa 170g", p:5, c:18, k:130},
+  {n:"Cottage", q:"1 pote 200g", p:22, c:7, k:200},
+  {n:"Cottage", q:"1 c. sopa 30g", p:3, c:1, k:30},
+  {n:"Ricota", q:"100g", p:11, c:3, k:175},
+  {n:"Queijo mussarela", q:"1 fatia 15g", p:4, c:0.5, k:45},
+  {n:"Queijo mussarela", q:"100g", p:25, c:3, k:300},
+  {n:"Queijo frescal", q:"1 fatia 30g", p:5, c:1, k:70},
+  {n:"Queijo branco/minas", q:"1 fatia 30g", p:6, c:1, k:70},
+  {n:"Queijo prato", q:"1 fatia 15g", p:4, c:0.5, k:55},
+  {n:"Queijo coalho", q:"1 espeto 60g", p:15, c:1, k:200},
+  {n:"Queijo parmesão ralado", q:"1 c. sopa", p:2, c:0, k:25},
+  {n:"Requeijão", q:"1 c. sopa 20g", p:2, c:1, k:60},
+  {n:"Leite integral", q:"1 copo 200ml", p:7, c:9, k:125},
+  {n:"Leite desnatado", q:"1 copo 200ml", p:7, c:10, k:70},
+  {n:"Leite", q:"1 caneca 250ml", p:8, c:12, k:155},
+
+  // PÃES
+  {n:"Pão francês", q:"1 unid 50g", p:4, c:28, k:145},
+  {n:"Pão de forma branco", q:"1 fatia 25g", p:2, c:13, k:65},
+  {n:"Pão integral", q:"1 fatia 30g", p:4, c:13, k:80},
+  {n:"Pão integral c/ sementes", q:"1 fatia 30g", p:4, c:12, k:85},
+  {n:"Pão italiano", q:"1 fatia 40g", p:4, c:22, k:110},
+  {n:"Ciabata", q:"1 unid 80g", p:7, c:43, k:215},
+  {n:"Fogaccia", q:"pedaço 100g", p:7, c:38, k:280},
+  {n:"Pão de queijo", q:"1 unid 25g", p:1.5, c:8, k:80},
+  {n:"Tapioca", q:"1 unid 60g", p:0.5, c:30, k:130},
+
+  // CEREAIS / MASSAS
+  {n:"Arroz branco cozido", q:"1 xícara 200g", p:4, c:56, k:260},
+  {n:"Arroz integral cozido", q:"1 xícara 200g", p:5, c:45, k:220},
+  {n:"Macarrão comum cozido", q:"1 prato 150g", p:6, c:42, k:200},
+  {n:"Macarrão integral cozido", q:"1 prato 150g", p:8, c:45, k:220},
+  {n:"Miojo (com tempero)", q:"1 pacote 80g", p:8, c:52, k:380},
+  {n:"Quinoa cozida", q:"1 xícara 185g", p:8, c:39, k:220},
+  {n:"Aveia em flocos", q:"3 c. sopa 30g", p:4, c:19, k:110},
+  {n:"Aveia em flocos", q:"1 xícara 80g", p:11, c:51, k:300},
+  {n:"Granola", q:"30g", p:3, c:22, k:130},
+
+  // LEGUMINOSAS
+  {n:"Feijão preto cozido", q:"1 concha 80g", p:6, c:13, k:75},
+  {n:"Feijão carioca cozido", q:"1 concha 80g", p:5, c:13, k:75},
+  {n:"Feijão (concha grande)", q:"~120g", p:8, c:20, k:110},
+  {n:"Lentilha cozida", q:"1 concha 80g", p:9, c:17, k:95},
+  {n:"Grão-de-bico cozido", q:"1 concha 80g", p:7, c:22, k:130},
+  {n:"Grão-de-bico assado (snack)", q:"30g", p:5, c:13, k:110},
+  {n:"Ervilha cozida", q:"1 xícara 150g", p:8, c:21, k:120},
+  {n:"Soja cozida", q:"1 xícara 180g", p:28, c:17, k:320},
+  {n:"Edamame", q:"1 xícara 155g", p:17, c:14, k:190},
+
+  // SOJA DERIVADOS
+  {n:"Tofu firme", q:"100g", p:12, c:4, k:145},
+  {n:"Tofu sedoso", q:"100g", p:5, c:2, k:55},
+  {n:"Tempeh", q:"100g", p:19, c:9, k:195},
+  {n:"PVT proteína soja texturizada", q:"50g seca", p:25, c:17, k:180},
+  {n:"Leite de soja", q:"1 copo 200ml", p:6, c:8, k:110},
+
+  // TUBÉRCULOS / RAÍZES
+  {n:"Batata inglesa cozida", q:"1 unid média 150g", p:3, c:30, k:130},
+  {n:"Batata frita", q:"porção 100g", p:4, c:41, k:320},
+  {n:"Batata palito (porção grande)", q:"~150g", p:6, c:60, k:480},
+  {n:"Mandioca cozida", q:"100g", p:1, c:38, k:160},
+
+  // OLEAGINOSAS / SEMENTES
+  {n:"Amendoim", q:"punhado 30g", p:8, c:6, k:175},
+  {n:"Pasta de amendoim", q:"1 c. sopa 16g", p:4, c:3, k:95},
+  {n:"Castanha-do-pará", q:"5 un", p:4, c:2, k:130},
+  {n:"Castanha de caju", q:"punhado 30g", p:5, c:9, k:175},
+  {n:"Amêndoa", q:"punhado 30g", p:6, c:6, k:175},
+  {n:"Chia", q:"1 c. sopa 12g", p:2, c:5, k:60},
+  {n:"Linhaça", q:"1 c. sopa 10g", p:2, c:3, k:55},
+
+  // LEGUMES / VERDURAS
+  {n:"Chuchu cozido", q:"1 xícara 100g", p:1, c:6, k:25},
+  {n:"Suflê de chuchu", q:"porção 200g", p:10, c:12, k:180},
+  {n:"Cenoura cozida", q:"100g", p:1, c:8, k:35},
+  {n:"Couve refogada", q:"100g", p:3, c:4, k:30},
+  {n:"Espinafre cozido", q:"100g", p:3, c:4, k:25},
+  {n:"Crepe de espinafre", q:"1 porção 200g", p:12, c:30, k:280},
+  {n:"Cogumelo shitake refogado", q:"100g", p:2, c:7, k:35},
+  {n:"Milho cozido", q:"1 espiga 100g", p:3, c:19, k:90},
+  {n:"Tomate", q:"1 unid médio", p:1, c:5, k:22},
+  {n:"Alface", q:"4 folhas", p:0.5, c:1, k:5},
+
+  // FRUTAS
+  {n:"Mamão formosa", q:"1 fatia 200g", p:1, c:20, k:80},
+  {n:"Manga", q:"1 unid 200g", p:1, c:33, k:130},
+  {n:"Uva", q:"1 cacho 100g", p:1, c:18, k:70},
+  {n:"Banana", q:"1 unid 100g", p:1, c:23, k:90},
+  {n:"Goiaba", q:"1 unid 100g", p:3, c:14, k:70},
+  {n:"Abacate", q:"100g", p:2, c:9, k:160},
+
+  // PRATOS / OUTROS
+  {n:"Hambúrguer vegetal (tipo Futuro)", q:"1 unid 100g", p:12, c:18, k:220},
+  {n:"Pizza muçarela", q:"1 fatia 100g", p:10, c:30, k:270},
+  {n:"Pizza queijos", q:"1 fatia 100g", p:9, c:28, k:250},
+  {n:"Lasanha berinjela/queijo", q:"1 porção 200g", p:14, c:22, k:280},
+  {n:"Estrogonofe de palmito", q:"1 prato 250g", p:8, c:35, k:320},
+  {n:"Atum em água (lata)", q:"1 lata 120g escor.", p:28, c:0, k:130},
 ];
+// soma agregada do dia (proteína, carb, kcal)
+function sumMacros(entries){
+  let p=0,c=0,k=0;
+  for(const e of entries||[]){ p+=+(e.p||0); c+=+(e.c||0); k+=+(e.k||0); }
+  return {p,c,k};
+}
 // Normaliza string pra busca (remove acentos, lowercase)
 function normTxt(s){ return String(s||"").toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,''); }
 function searchFoods(q){
@@ -1499,11 +1583,13 @@ function renderHoje(){
   const todayWk = WK[sug];
   const streak=getStreak();
 
-  // proteína do dia — array de entries {n, q, p}
-  if(ST.protein[t] && !Array.isArray(ST.protein[t])) ST.protein[t]=[]; // migra schema antigo
+  // macros do dia — array de entries {n, q, p, c, k}
+  if(ST.protein[t] && !Array.isArray(ST.protein[t])) ST.protein[t]=[];
   const protToday = ST.protein[t]||[];
-  const protTotal = protToday.reduce((a,b)=>a+(+b.p||0),0);
+  const macros = sumMacros(protToday);
   const protTarget = (ST.meta.proteinTarget || 150);
+  const carbTarget = (ST.meta.carbTarget || 350);
+  const calTarget  = (ST.meta.calTarget  || 2800);
 
   // sono
   const sleepToday = ST.sleep[t]||'';
@@ -1559,25 +1645,40 @@ function renderHoje(){
     </div>
   </div>`;
 
-  // PROTEÍNA — busca + lista do dia
-  const pct = Math.min(100, (protTotal/protTarget)*100);
+  // MACROS — busca + 3 barras + lista do dia
+  const pctP = Math.min(100, (macros.p/protTarget)*100);
+  const pctC = Math.min(100, (macros.c/carbTarget)*100);
+  const pctK = Math.min(100, (macros.k/calTarget)*100);
   h+=`<div class="check-card">
-    <h3><span class="ic" style="color:var(--ok)">${I.flame}</span>Proteína do dia</h3>
+    <h3><span class="ic" style="color:var(--ok)">${I.flame}</span>Macros do dia</h3>
     <div class="foodbox">
-      <input id="foodSearch" class="foodsearch" placeholder="Buscar alimento (ex: feijão, ovo, whey)" oninput="updateFoodResults()" autocomplete="off">
+      <input id="foodSearch" class="foodsearch" placeholder="Buscar alimento (ex: pão, ovo, whey, feijão)" oninput="updateFoodResults()" autocomplete="off">
       <div id="foodResults" class="foodlist"></div>
     </div>
-    <div class="ptotal" style="margin-top:14px">
-      <span class="l">Hoje · ${protToday.length} item${protToday.length===1?'':'s'}</span>
-      <span class="v">${Math.round(protTotal)}<small>/${protTarget}g</small></span>
+    <div class="macro-block" style="margin-top:14px">
+      <div class="macro-row">
+        <div class="ml">Proteína</div>
+        <div class="mv"><b>${Math.round(macros.p)}</b><small>/${protTarget}g</small></div>
+      </div>
+      <div class="pbar"><div class="pbar-fill prot" style="width:${pctP}%"></div></div>
+      <div class="macro-row">
+        <div class="ml">Carboidratos</div>
+        <div class="mv"><b>${Math.round(macros.c)}</b><small>/${carbTarget}g</small></div>
+      </div>
+      <div class="pbar"><div class="pbar-fill carb" style="width:${pctC}%"></div></div>
+      <div class="macro-row">
+        <div class="ml">Calorias</div>
+        <div class="mv"><b>${Math.round(macros.k)}</b><small>/${calTarget}kcal</small></div>
+      </div>
+      <div class="pbar"><div class="pbar-fill cal" style="width:${pctK}%"></div></div>
     </div>
-    <div class="pbar"><div class="pbar-fill" style="width:${pct}%"></div></div>`;
+    <div class="macro-foot">${protToday.length} item${protToday.length===1?'':'s'} hoje</div>`;
   if(protToday.length){
     h+=`<div class="foodlog">`;
     protToday.forEach((f,idx)=>{
       h+=`<div class="food-entry">
         <span class="fnm">${esc(f.n)} <small>${esc(f.q||'')}</small></span>
-        <span class="fp">${f.p}g</span>
+        <span class="fmacros"><b>${f.p}</b>p · ${f.c||0}c · ${f.k||0}k</span>
         <button class="fx" onclick="removeFoodEntry(${idx})">×</button>
       </div>`;
     });
@@ -1641,14 +1742,14 @@ function updateFoodResults(){
   }
   ul.innerHTML = matches.map(({f,i})=>`<div class="food-item" onclick="addFood(${i})">
     <div class="fnm">${esc(f.n)} <small>${esc(f.q)}</small></div>
-    <div class="fp">${f.p}g</div>
+    <div class="fmac"><b>${f.p}</b>p<span class="sep">·</span>${f.c||0}c<span class="sep">·</span>${f.k||0}k</div>
   </div>`).join('');
 }
 function addFood(idx){
   const t=today();
   if(!ST.protein[t] || !Array.isArray(ST.protein[t])) ST.protein[t]=[];
   const f=FOOD_DB[idx]; if(!f) return;
-  ST.protein[t].push({n:f.n, q:f.q, p:f.p});
+  ST.protein[t].push({n:f.n, q:f.q, p:f.p, c:f.c||0, k:f.k||0});
   saveK('protein');
   const inp=document.getElementById('foodSearch');
   const savedQ = inp?inp.value:"";
@@ -1656,7 +1757,7 @@ function addFood(idx){
   renderHoje();
   window.scrollTo(0, savedY);
   const inp2=document.getElementById('foodSearch');
-  if(inp2){ inp2.value=savedQ; updateFoodResults(); /* não dá focus pra não abrir teclado de novo */ }
+  if(inp2){ inp2.value=savedQ; updateFoodResults(); }
 }
 function removeFoodEntry(idx){
   const t=today();
@@ -1906,13 +2007,28 @@ function renderMais(){
     <p>Monoidratada, <b>5g/dia, todo dia</b> (inclusive descanso). Mais bem documentado pra força/volume. <b>Vegetariano responde mais</b> (estoque natural menor).</p>
   </div>
 
-  <h2 class="sec">Meta de proteína</h2>
+  <h2 class="sec">Metas diárias de macros</h2>
   <div class="check-card">
+    <h3><span class="ic" style="color:var(--ok)">${I.flame}</span>Edite suas metas</h3>
     <div class="ilog">
-      <span class="lb">Sua meta diária <small style="color:var(--faint);font-size:11px;display:block">1.8-2.2g × peso. Ex: 75kg = 135-165g</small></span>
-      <input inputmode="numeric" placeholder="${ST.meta.proteinTarget||150}" value="${ST.meta.proteinTarget||''}" oninput="ST.meta.proteinTarget=num(this.value)||150; saveK('meta');">
+      <span class="lb">Proteína <small style="color:var(--faint);font-size:11px;display:block">1.8-2.2g × peso. 75kg = 135-165g</small></span>
+      <input inputmode="numeric" placeholder="150" value="${ST.meta.proteinTarget||''}" oninput="ST.meta.proteinTarget=num(this.value)||150; saveK('meta');">
       <span class="u">g</span>
     </div>
+    <div class="ilog" style="border-top:1px solid var(--line); padding-top:12px">
+      <span class="lb">Carboidratos <small style="color:var(--faint);font-size:11px;display:block">4-5g × peso. Combustível do treino sem virar gordura. 75kg = 300-375g</small></span>
+      <input inputmode="numeric" placeholder="350" value="${ST.meta.carbTarget||''}" oninput="ST.meta.carbTarget=num(this.value)||350; saveK('meta');">
+      <span class="u">g</span>
+    </div>
+    <div class="ilog" style="border-top:1px solid var(--line); padding-top:12px">
+      <span class="lb">Calorias <small style="color:var(--faint);font-size:11px;display:block">Superávit leve pra hipertrofia (+200-400 vs manutenção). Ajuste pela balança: subir 0.2-0.4kg/sem.</small></span>
+      <input inputmode="numeric" placeholder="2800" value="${ST.meta.calTarget||''}" oninput="ST.meta.calTarget=num(this.value)||2800; saveK('meta');">
+      <span class="u">kcal</span>
+    </div>
+    <p style="font-size:11.5px; color:var(--faint); margin-top:14px; line-height:1.5">
+      Defaults pro teu perfil (vegetariano, hipertrofia, ~75kg). <b style="color:var(--ink2)">Se balança não sobe</b>, +200 kcal.
+      <b style="color:var(--ink2)">Se ganha gordura abdominal</b>, -200 kcal e mantém proteína.
+    </p>
   </div>
 
   <h2 class="sec">Backup dos teus dados</h2>
