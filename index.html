@@ -1106,23 +1106,27 @@ const MG_COLOR = {
 };
 const MG_PRIORITY = {ombro_lat:true, peito_sup:true, biceps:true, triceps:true};
 
-/* Mapeamento exercício → ID no Free Exercise DB */
+/* Mapeamento exercício → foto. Prefere imagens locais (img/*.jpg) quando existem;
+   fallback pro Free Exercise DB (yuhonas/free-exercise-db). */
+const PHOTO_LOCAL = {
+  "Elevação lateral halter":"cable-lateral-raise.jpg",
+  "Elevação lateral (halter ou polia)":"cable-lateral-raise.jpg",
+  "Elevação lateral (polia ou halter)":"cable-lateral-raise.jpg",
+  "Cadeira romana (joelho dobrado)":"roman-chair.jpg",
+  "Mesa flexora":"lying-leg-curl.jpg",
+};
 const PHOTO_ID = {
   "Supino inclinado halter 30°":"Incline_Dumbbell_Press",
   "Supino reto halter ou máquina":"Dumbbell_Bench_Press",
   "Crucifixo na polia baixa":"Low_Cable_Crossover",
-  "Elevação lateral halter":"Side_Lateral_Raise",
   "Tríceps francês / extensão acima da cabeça":"Seated_Triceps_Press",
   "Tríceps na polia (corda)":"Triceps_Pushdown_-_Rope_Attachment",
   "Puxada na polia (pegada aberta)":"Wide-Grip_Lat_Pulldown",
   "Remada sentada na polia ou máquina":"Seated_Cable_Rows",
   "Crucifixo inverso (peck deck/polia)":"Reverse_Machine_Flyes",
-  "Elevação lateral (halter ou polia)":"Side_Lateral_Raise",
   "Rosca inclinada com halter":"Incline_Dumbbell_Curl",
-  "Mesa flexora":"Lying_Leg_Curls",
   "Cadeira extensora":"Leg_Extensions",
   "Abdominal declinado com anilha":"Weighted_Crunches",
-  "Cadeira romana (joelho dobrado)":"Hanging_Leg_Raise",
   "Panturrilha":"Standing_Calf_Raises",
   "Desenvolvimento sentado com halter":"Seated_Dumbbell_Press",
   "Peck deck ou crucifixo máquina":"Butterfly",
@@ -1136,6 +1140,8 @@ const PHOTO_ID = {
 };
 const PHOTO_BASE = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/";
 function photoURL(name){
+  const local = PHOTO_LOCAL[name];
+  if(local) return `img/${local}`;
   const id = PHOTO_ID[name];
   return id ? `${PHOTO_BASE}${id}/0.jpg` : null;
 }

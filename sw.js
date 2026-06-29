@@ -3,7 +3,7 @@
    - app shell (index, manifest, ícones): cache-first com refresh em background
    - fotos do Free Exercise DB: cache-first, persistente (sobrevive a updates)
 */
-const SHELL = 'treino-shell-v1';
+const SHELL = 'treino-shell-v2';
 const PHOTOS = 'treino-photos-v1';
 
 const SHELL_FILES = [
@@ -13,6 +13,9 @@ const SHELL_FILES = [
   'icon-192.png',
   'icon-512.png',
   'apple-touch-icon.png',
+  'img/cable-lateral-raise.jpg',
+  'img/roman-chair.jpg',
+  'img/lying-leg-curl.jpg',
 ];
 
 self.addEventListener('install', e => {
