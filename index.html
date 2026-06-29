@@ -35,13 +35,21 @@
   html,body{margin:0; padding:0; color:var(--ink); overflow-x:hidden;
     font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Inter",system-ui,sans-serif;
     -webkit-font-smoothing:antialiased; font-feature-settings:"ss01","cv11";}
+  html{
+    background:#0a0c11;
+    min-height:100vh;
+    /* cobre toda a viewport, inclusive safe areas (status bar, home indicator) */
+    min-height:100dvh;
+  }
   body{
-    background:
+    background-color:#0a0c11;
+    background-image:
       radial-gradient(120% 80% at 0% 0%, rgba(91,158,255,.10), transparent 50%),
       radial-gradient(110% 70% at 100% 0%, rgba(255,107,92,.07), transparent 55%),
       linear-gradient(180deg,#0a0c11 0%,#10131a 30%,#0e1118 100%);
     background-attachment:fixed;
     min-height:100vh;
+    min-height:100dvh;
     padding-bottom:calc(96px + env(safe-area-inset-bottom));
   }
   .num{font-variant-numeric:tabular-nums; font-feature-settings:"tnum";}
@@ -73,41 +81,81 @@
   /* ============ DAY CARDS (Treinos A/B/C/D) ============ */
   .day{
     position:relative; display:flex; align-items:center; gap:16px;
-    background:var(--glass); border:1px solid var(--line-2);
+    background:linear-gradient(180deg, #1a1f2b 0%, #131720 100%);
+    border:1px solid var(--line-2);
     border-radius:var(--r-lg); padding:16px 18px 16px 16px;
     margin-bottom:12px; cursor:pointer;
     box-shadow:var(--shadow-1);
-    backdrop-filter:blur(20px) saturate(160%); -webkit-backdrop-filter:blur(20px) saturate(160%);
     transition:transform .15s var(--ease), background .2s var(--ease);
     overflow:hidden;
+    min-height:88px;
+  }
+  .day .day-bg{
+    position:absolute; top:0; right:0; bottom:0;
+    width:75%; height:100%; object-fit:cover; object-position:center right;
+    opacity:.55;
+    -webkit-mask-image:linear-gradient(90deg, transparent 0%, rgba(0,0,0,.25) 35%, rgba(0,0,0,.65) 70%, #000 100%);
+    mask-image:linear-gradient(90deg, transparent 0%, rgba(0,0,0,.25) 35%, rgba(0,0,0,.65) 70%, #000 100%);
+    pointer-events:none;
+    z-index:0;
+    filter:saturate(.7) contrast(1.05);
   }
   .day::before{
     content:""; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
-    background:linear-gradient(180deg, rgba(255,255,255,.05) 0%, transparent 40%);
+    background:linear-gradient(90deg, rgba(10,12,17,.92) 0%, rgba(10,12,17,.55) 38%, rgba(10,12,17,.10) 70%, transparent 100%);
+    z-index:1;
   }
-  .day:active{transform:scale(.985); background:var(--glass-2);}
+  .day::after{
+    content:""; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
+    background:linear-gradient(180deg, rgba(255,255,255,.04) 0%, transparent 40%);
+    z-index:2;
+  }
+  .day:active{transform:scale(.985);}
+  .day > *{position:relative; z-index:3;}
   .day .badge{
     flex:none; width:56px; height:56px; border-radius:18px;
     display:grid; place-items:center;
-    font-weight:800; font-size:24px; color:#fff; letter-spacing:-.02em;
+    font-weight:800; font-size:24px; letter-spacing:-.02em;
+    background:rgba(255,255,255,.08);
+    border:1px solid rgba(255,255,255,.16);
+    color:var(--ink);
+    backdrop-filter:blur(20px) saturate(180%);
+    -webkit-backdrop-filter:blur(20px) saturate(180%);
     box-shadow:
-      0 1px 0 rgba(255,255,255,.25) inset,
-      0 -2px 6px rgba(0,0,0,.2) inset,
-      0 8px 20px -6px rgba(0,0,0,.5);
+      0 1px 0 rgba(255,255,255,.16) inset,
+      0 -2px 6px rgba(0,0,0,.25) inset,
+      0 8px 22px -8px rgba(0,0,0,.6);
     position:relative;
+    overflow:hidden;
   }
   .day .badge::after{
     content:""; position:absolute; inset:0; border-radius:inherit;
-    background:linear-gradient(180deg, rgba(255,255,255,.18), transparent 50%);
+    background:linear-gradient(180deg, rgba(255,255,255,.18), transparent 55%);
     pointer-events:none;
   }
-  .day.push .badge{background:var(--push-grad);}
-  .day.pull .badge{background:var(--pull-grad);}
+  .day.push .badge{
+    background:linear-gradient(135deg, rgba(255,125,111,.28), rgba(229,72,56,.10));
+    border-color:rgba(255,125,111,.32);
+    color:#ffd4cc;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.20) inset,
+      0 -2px 6px rgba(0,0,0,.20) inset,
+      0 8px 22px -8px rgba(229,72,56,.45);
+  }
+  .day.pull .badge{
+    background:linear-gradient(135deg, rgba(122,178,255,.28), rgba(58,127,224,.10));
+    border-color:rgba(122,178,255,.32);
+    color:#cfe2ff;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.20) inset,
+      0 -2px 6px rgba(0,0,0,.20) inset,
+      0 8px 22px -8px rgba(58,127,224,.45);
+  }
   .day .meta{flex:1; min-width:0;}
-  .day .meta .t{font-size:17px; font-weight:700; letter-spacing:-.01em;}
-  .day .meta .f{font-size:13px; color:var(--muted); margin-top:2px; font-weight:500;}
-  .day .meta .cnt{font-size:11px; color:var(--faint); margin-top:4px; font-weight:600; letter-spacing:.02em;}
-  .day .chev{color:var(--faint); display:flex; align-items:center;}
+  .day .meta .t{font-size:17px; font-weight:700; letter-spacing:-.01em; text-shadow:0 1px 4px rgba(0,0,0,.5);}
+  .day .meta .f{font-size:13px; color:var(--ink2); margin-top:2px; font-weight:500; text-shadow:0 1px 3px rgba(0,0,0,.5);}
+  .day .meta .cnt{font-size:11px; color:var(--muted); margin-top:4px; font-weight:600; letter-spacing:.02em; text-shadow:0 1px 3px rgba(0,0,0,.5);}
+  .day .chev{color:var(--ink2); display:flex; align-items:center; text-shadow:0 1px 3px rgba(0,0,0,.5);}
 
   /* ============ BACK BAR ============ */
   .backbar{display:flex; align-items:center; gap:10px; margin:0 0 18px;}
@@ -1418,7 +1466,10 @@ function renderDays(){
   for(const d of ["A","B","C","D"]){
     const w=WK[d];
     const isNext = d===sug;
+    const heroUrl = photoURL(w.ex[0].n);
+    const bg = heroUrl ? `<img class="day-bg" src="${heroUrl}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : '';
     h+=`<div class="day ${w.type}" onclick="openWorkout('${d}')" style="${isNext?'box-shadow:0 0 0 2px rgba(91,158,255,.35), var(--shadow-1)':''}">
+      ${bg}
       <div class="badge">${d}</div>
       <div class="meta">
         <div class="t">${w.name}${isNext?' <span style="color:var(--pull);font-size:11px;font-weight:700;letter-spacing:.04em">· HOJE</span>':''}</div>
