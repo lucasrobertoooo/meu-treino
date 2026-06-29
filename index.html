@@ -699,6 +699,75 @@
   /* ============ NAV 4 abas — texto menor */
   nav button{font-size:10px;}
   nav button .ic svg{width:20px; height:20px;}
+
+  /* ============ FOOD SEARCH (proteína) ============ */
+  .foodbox{margin-top:4px;}
+  .foodsearch{
+    width:100%; background:var(--glass); border:1px solid var(--line-2);
+    color:var(--ink); border-radius:14px; padding:13px 14px;
+    font-size:15px; font-weight:500; -webkit-appearance:none;
+    font-family:inherit;
+  }
+  .foodsearch::placeholder{color:var(--faint);}
+  .foodsearch:focus{
+    outline:none; border-color:rgba(81,216,138,.45);
+    background:rgba(81,216,138,.06);
+    box-shadow:0 0 0 4px rgba(81,216,138,.08);
+  }
+  .foodlist{
+    margin-top:8px; max-height:280px; overflow-y:auto;
+    border-radius:12px;
+  }
+  .foodlist:empty{margin-top:0;}
+  .food-item{
+    display:flex; align-items:center; gap:12px;
+    padding:11px 12px; cursor:pointer; border-radius:10px;
+    transition:background .12s var(--ease);
+    border:1px solid transparent;
+  }
+  .food-item:active{background:rgba(81,216,138,.10); border-color:rgba(81,216,138,.20);}
+  .food-item .fnm{flex:1; font-size:13.5px; color:var(--ink); font-weight:600;}
+  .food-item .fnm small{display:block; font-size:11px; color:var(--faint); font-weight:500; margin-top:1px;}
+  .food-item .fp{
+    font-size:14px; font-weight:800; color:var(--ok);
+    font-variant-numeric:tabular-nums; letter-spacing:-.02em;
+    padding:6px 12px; background:rgba(81,216,138,.10);
+    border-radius:10px; border:1px solid rgba(81,216,138,.18);
+  }
+  .food-empty{
+    padding:14px; text-align:center; font-size:12.5px; color:var(--faint);
+  }
+  .foodlog{
+    margin-top:12px; border-top:1px solid var(--line); padding-top:10px;
+  }
+  .food-entry{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 0; border-top:1px solid var(--line);
+  }
+  .food-entry:first-of-type{border-top:none;}
+  .food-entry .fnm{flex:1; font-size:13px; color:var(--ink2); font-weight:500;}
+  .food-entry .fnm small{color:var(--faint); font-size:10.5px; margin-left:5px;}
+  .food-entry .fp{
+    font-size:12.5px; font-weight:800; color:var(--ok);
+    font-variant-numeric:tabular-nums; min-width:38px; text-align:right;
+  }
+  .food-entry .fx{
+    width:26px; height:26px; border-radius:50%; flex:none;
+    background:var(--glass-2); border:1px solid var(--line-2);
+    color:var(--faint); font-size:14px; font-weight:700; cursor:pointer;
+    display:grid; place-items:center; padding:0;
+  }
+  .food-entry .fx:active{background:rgba(255,107,92,.15); color:#ffbab2;}
+  .pbar{
+    margin-top:8px; height:6px; background:rgba(255,255,255,.05);
+    border-radius:3px; overflow:hidden;
+  }
+  .pbar-fill{
+    height:100%; background:linear-gradient(90deg,#5fe19588,#5fe195);
+    border-radius:3px;
+    box-shadow:0 1px 0 rgba(255,255,255,.2) inset;
+    transition:width .3s var(--ease);
+  }
 </style>
 </head>
 <body>
@@ -920,16 +989,88 @@ const SUPL_LIST = [
   ["cafe","Cafeína pré-treino","3-6 mg/kg (200-400mg) 30min antes. +5-10% performance. Opcional."],
 ];
 
-const PROTEIN_ANCHORS = [
-  ["Whey (1 scoop)", 24],
-  ["Iogurte grego/skyr (1 pote)", 15],
-  ["Ovo (1 un)", 6],
-  ["Cottage (1 pote)", 12],
-  ["Leguminosa (1 concha)", 13],
-  ["Queijo (1 fatia)", 7],
-  ["Leite (1 copo)", 8],
-  ["Tofu firme (100g)", 12],
+// Banco de alimentos vegetariano brasileiro — proteína por porção típica
+// Fontes: TACO/UNICAMP, USDA, rótulos comerciais. Valores arredondados.
+const FOOD_DB = [
+  // suplementos
+  {n:"Whey protein", q:"1 scoop 30g", p:24},
+  {n:"Caseína", q:"1 scoop 30g", p:22},
+  {n:"Barra de proteína", q:"1 unid", p:15},
+  // ovos
+  {n:"Ovo inteiro", q:"1 un", p:6},
+  {n:"Clara de ovo", q:"1 un", p:3.5},
+  {n:"Omelete 3 ovos", q:"3 ovos", p:18},
+  // lácteos
+  {n:"Iogurte grego/skyr", q:"1 pote 150g", p:15},
+  {n:"Iogurte natural comum", q:"1 copo 170g", p:6},
+  {n:"Iogurte líquido", q:"1 garrafa 170g", p:5},
+  {n:"Cottage", q:"1 pote 200g", p:22},
+  {n:"Cottage", q:"1 c. sopa 30g", p:3},
+  {n:"Ricota", q:"100g", p:11},
+  {n:"Queijo mussarela", q:"1 fatia mercado 15g", p:4},
+  {n:"Queijo mussarela", q:"100g", p:25},
+  {n:"Queijo branco/minas", q:"1 fatia 30g", p:6},
+  {n:"Queijo prato", q:"1 fatia 15g", p:4},
+  {n:"Queijo coalho", q:"1 espeto 60g", p:15},
+  {n:"Queijo parmesão ralado", q:"1 c. sopa", p:2},
+  {n:"Requeijão", q:"1 c. sopa 20g", p:2},
+  {n:"Leite integral", q:"1 copo 200ml", p:7},
+  {n:"Leite desnatado", q:"1 copo 200ml", p:7},
+  {n:"Leite", q:"1 caneca 250ml", p:8},
+  // leguminosas
+  {n:"Feijão preto cozido", q:"1 concha 80g", p:6},
+  {n:"Feijão carioca cozido", q:"1 concha 80g", p:5},
+  {n:"Feijão (concha grande)", q:"~120g", p:8},
+  {n:"Lentilha cozida", q:"1 concha 80g", p:9},
+  {n:"Grão-de-bico cozido", q:"1 concha 80g", p:7},
+  {n:"Ervilha cozida", q:"1 xícara 150g", p:8},
+  {n:"Soja cozida", q:"1 xícara 180g", p:28},
+  {n:"Edamame", q:"1 xícara", p:17},
+  // soja derivados
+  {n:"Tofu firme", q:"100g", p:12},
+  {n:"Tofu sedoso", q:"100g", p:5},
+  {n:"Tempeh", q:"100g", p:19},
+  {n:"PVT proteína soja texturizada", q:"50g seca", p:25},
+  {n:"Leite de soja", q:"1 copo 200ml", p:6},
+  // grãos
+  {n:"Quinoa cozida", q:"1 xícara 185g", p:8},
+  {n:"Arroz integral cozido", q:"1 xícara 200g", p:5},
+  {n:"Arroz branco cozido", q:"1 xícara 200g", p:4},
+  {n:"Aveia em flocos", q:"3 c. sopa 30g", p:4},
+  {n:"Aveia em flocos", q:"1 xícara 80g", p:10},
+  {n:"Pão integral", q:"1 fatia 30g", p:4},
+  {n:"Pão francês", q:"1 unid 50g", p:4},
+  {n:"Pão de forma branco", q:"1 fatia 25g", p:2},
+  {n:"Macarrão integral cozido", q:"1 prato 150g", p:8},
+  {n:"Macarrão comum cozido", q:"1 prato 150g", p:6},
+  {n:"Tapioca", q:"1 unid 60g", p:0.5},
+  // nozes/sementes
+  {n:"Amendoim", q:"punhado 30g", p:8},
+  {n:"Castanha-do-pará", q:"5 un", p:4},
+  {n:"Castanha de caju", q:"punhado 30g", p:5},
+  {n:"Amêndoa", q:"punhado 30g", p:6},
+  {n:"Pasta de amendoim", q:"1 c. sopa 16g", p:4},
+  {n:"Chia", q:"1 c. sopa 12g", p:2},
+  {n:"Linhaça", q:"1 c. sopa 10g", p:2},
+  // outros
+  {n:"Pão de queijo", q:"1 unid 25g", p:1.5},
+  {n:"Hambúrguer vegetal/Futuro", q:"1 unid 100g", p:12},
+  {n:"Granola", q:"30g", p:3},
+  {n:"Brigadeiro de whey", q:"1 unid", p:5},
+  {n:"Pizza queijo (fatia)", q:"1 fatia", p:9},
+  {n:"Pizza muçarela (fatia)", q:"1 fatia", p:10},
+  {n:"Lasanha berinjela/queijo", q:"1 porção 200g", p:14},
+  {n:"Estrogonofe de palmito", q:"1 prato", p:8},
 ];
+// Normaliza string pra busca (remove acentos, lowercase)
+function normTxt(s){ return String(s||"").toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu,''); }
+function searchFoods(q){
+  q=normTxt(q).trim(); if(!q) return [];
+  const terms=q.split(/\s+/);
+  return FOOD_DB.map((f,i)=>({f,i}))
+    .filter(({f})=>{ const t=normTxt(f.n)+' '+normTxt(f.q); return terms.every(tm=>t.includes(tm)); })
+    .slice(0,12);
+}
 
 const MEASURE_FIELDS = [
   ["peito","Peito (cm)"],
@@ -951,11 +1092,19 @@ const LS = {
   cardio:"meutreino_cardio_v1",
   meta:"meutreino_meta_v1",
 };
-const ST = {logs:{}, bw:[], sleep:{}, protein:{}, suppl:{}, photos:[], measures:[], cardio:{}, meta:{}};
+const DEFAULTS = {logs:{}, bw:[], sleep:{}, protein:{}, suppl:{}, photos:[], measures:[], cardio:{}, meta:{}};
+const ST = JSON.parse(JSON.stringify(DEFAULTS));
 for(const k of Object.keys(LS)){
   try{ const r=localStorage.getItem(LS[k]); if(r) ST[k]=JSON.parse(r); }catch(e){}
 }
-function saveK(k){ try{ localStorage.setItem(LS[k], JSON.stringify(ST[k])); }catch(e){} }
+// Migração: protein por dia. Schema antigo era {0:count, 1:count}; novo é [{n,q,p},...]
+for(const date in ST.protein){
+  if(!Array.isArray(ST.protein[date])) ST.protein[date]=[];
+}
+function saveK(k){
+  try{ localStorage.setItem(LS[k], JSON.stringify(ST[k])); return true; }
+  catch(e){ console.error('saveK fail', k, e); return false; }
+}
 function today(){ return new Date().toISOString().slice(0,10); }
 function dateAdd(iso, days){ const d=new Date(iso+'T12:00:00'); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
 function daysBetween(a,b){ const da=new Date(a+'T12:00:00'), db=new Date(b+'T12:00:00'); return Math.round((db-da)/86400000); }
@@ -981,11 +1130,10 @@ function upsertToday(id, sets){
 
 /* ============ PROGRESSÃO: e1RM, PR, SUGESTÃO, PLATEAU ============ */
 function num(v){ const n=parseFloat(String(v||"").replace(",",".")); return isFinite(n)?n:0; }
-// Brzycki 1RM: kg / (1.0278 - 0.0278*reps), capped at reps 12
+// Brzycki 1RM: kg / (1.0278 - 0.0278*reps), capped at reps 12 (acima degrada)
 function e1RM(kg, reps){
   kg=num(kg); reps=num(reps);
   if(kg<=0||reps<=0) return 0;
-  if(reps>=37) return kg;
   return kg / (1.0278 - 0.0278*Math.min(reps,12));
 }
 function bestE1RM(sets){
@@ -1006,7 +1154,9 @@ function historicalBestE1RM(id, excludeToday=true){
 function isPRSession(id, sets){
   const cur=bestE1RM(sets);
   if(cur<=0) return false;
-  return cur > historicalBestE1RM(id, true) + 0.1;
+  const prev=historicalBestE1RM(id, true);
+  if(prev<=0) return false; // primeira sessão de um exercício não conta como PR
+  return cur > prev + 0.1;
 }
 
 // Parse range "8-12" → {min:8, max:12}
@@ -1034,9 +1184,10 @@ function suggestNext(id, e){
   }
   return {kg:maxKg, reps:rng.min, why:"foca em chegar no mínimo"};
 }
-// Plateau: 3 últimas sessões sem subir e1RM
+// Plateau: 3 últimas sessões VÁLIDAS sem subir e1RM
 function detectPlateau(id){
-  const h=ST.logs[id]||[]; if(h.length<3) return false;
+  const h=(ST.logs[id]||[]).filter(s=>bestE1RM(s.sets)>0);
+  if(h.length<3) return false;
   const last3=h.slice(-3).map(s=>bestE1RM(s.sets));
   return last3[2] <= last3[0] && last3[2] <= last3[1];
 }
@@ -1052,7 +1203,7 @@ function weeklyVolume(){
     for(const sess of ST.logs[id]){
       const dd = daysBetween(sess.date, t);
       if(dd<0 || dd>=7) continue;
-      const doneCount = (sess.sets||[]).filter(s=>s&&s.done).length;
+      const doneCount = validDoneCount(sess.sets);
       if(!doneCount) continue;
       for(const [mg,w] of Object.entries(ex.mg)){
         out[mg] = (out[mg]||0) + doneCount * w;
@@ -1081,7 +1232,7 @@ function workoutDates(){
   const set=new Set();
   for(const id of Object.keys(ST.logs)){
     for(const sess of ST.logs[id]){
-      if((sess.sets||[]).some(s=>s&&s.done)) set.add(sess.date);
+      if(hasValidDone(sess.sets)) set.add(sess.date);
     }
   }
   return Array.from(set).sort();
@@ -1116,12 +1267,11 @@ function markDeloadDone(){ ST.meta.lastDeloadWeek = weeksTraining(); saveK('meta
 // Próximo treino sugerido baseado no último feito (ciclo ABCD)
 function suggestedNextDay(){
   const seq=["A","B","C","D"];
-  // pega o último dia distinto com pelo menos 1 set done
   let lastDay=null, lastDate="0000-00-00";
   for(const id of Object.keys(ST.logs)){
     const day=id.split("_")[0];
     for(const sess of ST.logs[id]){
-      if((sess.sets||[]).some(s=>s&&s.done) && sess.date>lastDate){
+      if(hasValidDone(sess.sets) && sess.date>lastDate){
         lastDate=sess.date; lastDay=day;
       }
     }
@@ -1150,8 +1300,13 @@ function render(){
   if(tab==="corpo") return renderCorpo();
   if(tab==="mais") return renderMais();
 }
-function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
-function fmtKg(v){ const n=num(v); return n? (Math.round(n*10)/10).toString().replace(/\.0$/,'') : '–'; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function fmtKg(v){ const n=num(v); return n? (Math.round(n*10)/10).toString() : '–'; }
+function fmtInt(v){ const n=parseInt(v); return isFinite(n)?String(n):'–'; }
+// Helper: set é "válido feito" se done + kg + reps preenchidos
+function isValidDone(s){ return !!(s && s.done && num(s.kg)>0 && num(s.reps)>0); }
+function validDoneCount(sets){ return (sets||[]).filter(isValidDone).length; }
+function hasValidDone(sets){ return (sets||[]).some(isValidDone); }
 
 /* ============ TREINOS — lista A/B/C/D ============ */
 function renderDays(){
@@ -1206,16 +1361,16 @@ function renderDay(d){
     const nset=parseInt(e.s)||3;
     const url=photoURL(e.n);
 
-    // último treino: mostra séries + e1RM melhor
+    // último treino: mostra séries + e1RM melhor (valores sanitizados via fmtKg/fmtInt)
     let lastTxt;
     if(last){
       const sets = last.sets.map(s=>{
-        const r = s.rir!=null && s.rir!==''?`@${s.rir}`:'';
-        return `<b>${fmtKg(s.kg)}×${s.reps||'–'}${r}</b>`;
+        const rir = (s.rir!=null && String(s.rir).trim()!=='') ? `@${fmtInt(s.rir)}` : '';
+        return `<b>${fmtKg(s.kg)}×${fmtInt(s.reps)}${rir}</b>`;
       }).join(" · ");
       const e1=bestE1RM(last.sets);
       const e1Txt = e1>0?` · e1RM <b style="color:var(--core)">${(Math.round(e1*10)/10)}kg</b>`:'';
-      lastTxt=`${I.hist} Última (${last.date.slice(5)}): ${sets}${e1Txt}`;
+      lastTxt=`${I.hist} Última (${esc(last.date.slice(5))}): ${sets}${e1Txt}`;
     } else {
       lastTxt=`${I.hist} Primeira vez — crie sua base. Comece leve e suba 1-2 séries.`;
     }
@@ -1246,7 +1401,7 @@ function renderDay(d){
       </div>`;
     }
     const yt=`https://www.youtube.com/results?search_query=`+encodeURIComponent(e.n+" execução técnica academia");
-    const restS=REST[e.t];
+    const restS=(REST[e.t] ?? 90);
     // warmup pro composto
     const warmup = e.t==='comp' && last && bestE1RM(last.sets)>0 ? (() => {
       const maxKg = Math.max(...last.sets.filter(s=>s&&num(s.kg)>0).map(s=>num(s.kg)));
@@ -1344,9 +1499,10 @@ function renderHoje(){
   const todayWk = WK[sug];
   const streak=getStreak();
 
-  // proteína do dia
-  const protToday = ST.protein[t]||{};
-  const protTotal = Object.values(protToday).reduce((a,b)=>a+(+b||0),0);
+  // proteína do dia — array de entries {n, q, p}
+  if(ST.protein[t] && !Array.isArray(ST.protein[t])) ST.protein[t]=[]; // migra schema antigo
+  const protToday = ST.protein[t]||[];
+  const protTotal = protToday.reduce((a,b)=>a+(+b.p||0),0);
   const protTarget = (ST.meta.proteinTarget || 150);
 
   // sono
@@ -1372,7 +1528,7 @@ function renderHoje(){
   </div>`;
 
   // Atalho treino do dia
-  h+=`<div class="todayworkout ${todayWk.type}" onclick="tab='treino';setTab('treino');openWorkout('${sug}');">
+  h+=`<div class="todayworkout ${todayWk.type}" onclick="setTab('treino');openWorkout('${sug}');">
     <div class="badge">${sug}</div>
     <div class="meta">
       <div class="l">${todayDoneDays?'Treino de hoje · concluído':'Treino sugerido'}</div>
@@ -1403,22 +1559,33 @@ function renderHoje(){
     </div>
   </div>`;
 
-  // PROTEÍNA
+  // PROTEÍNA — busca + lista do dia
+  const pct = Math.min(100, (protTotal/protTarget)*100);
   h+=`<div class="check-card">
-    <h3><span class="ic" style="color:var(--ok)">${I.flame}</span>Proteína do dia</h3>`;
-  PROTEIN_ANCHORS.forEach((a,i)=>{
-    const [nm,g]=a; const c=+(protToday[i]||0);
-    h+=`<div class="panchor">
-      <span class="nm">${nm} <small>${g}g</small></span>
-      <button class="qb" onclick="bumpProtein(${i},-1)">${I.minus}</button>
-      <span class="cnt">${c}</span>
-      <button class="qb" onclick="bumpProtein(${i},1)">${I.plus}</button>
-    </div>`;
-  });
-  h+=`<div class="ptotal">
-    <span class="l">Total estimado</span>
-    <span class="v">${Math.round(protTotal)}<small>/${protTarget}g</small></span>
-  </div></div>`;
+    <h3><span class="ic" style="color:var(--ok)">${I.flame}</span>Proteína do dia</h3>
+    <div class="foodbox">
+      <input id="foodSearch" class="foodsearch" placeholder="Buscar alimento (ex: feijão, ovo, whey)" oninput="updateFoodResults()" autocomplete="off">
+      <div id="foodResults" class="foodlist"></div>
+    </div>
+    <div class="ptotal" style="margin-top:14px">
+      <span class="l">Hoje · ${protToday.length} item${protToday.length===1?'':'s'}</span>
+      <span class="v">${Math.round(protTotal)}<small>/${protTarget}g</small></span>
+    </div>
+    <div class="pbar"><div class="pbar-fill" style="width:${pct}%"></div></div>`;
+  if(protToday.length){
+    h+=`<div class="foodlog">`;
+    protToday.forEach((f,idx)=>{
+      h+=`<div class="food-entry">
+        <span class="fnm">${esc(f.n)} <small>${esc(f.q||'')}</small></span>
+        <span class="fp">${f.p}g</span>
+        <button class="fx" onclick="removeFoodEntry(${idx})">×</button>
+      </div>`;
+    });
+    h+=`</div>`;
+  } else {
+    h+=`<div style="font-size:11.5px;color:var(--faint);margin-top:10px;text-align:center">Busca acima pra adicionar o 1º item</div>`;
+  }
+  h+=`</div>`;
 
   // SUPLEMENTOS
   h+=`<div class="check-card">
@@ -1463,13 +1630,39 @@ function setSleep(v){
   if(n>0) ST.sleep[t]=n; else delete ST.sleep[t];
   saveK('sleep');
 }
-function bumpProtein(idx, d){
+function updateFoodResults(){
+  const inp=document.getElementById('foodSearch'); if(!inp) return;
+  const q=inp.value;
+  const ul=document.getElementById('foodResults');
+  const matches=searchFoods(q);
+  if(!matches.length){
+    ul.innerHTML = q.trim()?'<div class="food-empty">Sem resultado pra "'+esc(q.trim())+'"</div>':'';
+    return;
+  }
+  ul.innerHTML = matches.map(({f,i})=>`<div class="food-item" onclick="addFood(${i})">
+    <div class="fnm">${esc(f.n)} <small>${esc(f.q)}</small></div>
+    <div class="fp">${f.p}g</div>
+  </div>`).join('');
+}
+function addFood(idx){
   const t=today();
-  ST.protein[t] = ST.protein[t] || {};
-  const cur = +(ST.protein[t][idx]||0);
-  const next = Math.max(0, cur+d);
-  if(next===0) delete ST.protein[t][idx]; else ST.protein[t][idx]=next;
-  if(Object.keys(ST.protein[t]).length===0) delete ST.protein[t];
+  if(!ST.protein[t] || !Array.isArray(ST.protein[t])) ST.protein[t]=[];
+  const f=FOOD_DB[idx]; if(!f) return;
+  ST.protein[t].push({n:f.n, q:f.q, p:f.p});
+  saveK('protein');
+  const inp=document.getElementById('foodSearch');
+  const savedQ = inp?inp.value:"";
+  const savedY = window.scrollY;
+  renderHoje();
+  window.scrollTo(0, savedY);
+  const inp2=document.getElementById('foodSearch');
+  if(inp2){ inp2.value=savedQ; updateFoodResults(); /* não dá focus pra não abrir teclado de novo */ }
+}
+function removeFoodEntry(idx){
+  const t=today();
+  if(!Array.isArray(ST.protein[t])) return;
+  ST.protein[t].splice(idx,1);
+  if(!ST.protein[t].length) delete ST.protein[t];
   saveK('protein');
   renderHoje();
 }
@@ -1497,7 +1690,7 @@ function renderCorpo(){
   const bws = ST.bw.slice(-30);
   const lastBW = ST.bw.length?ST.bw[ST.bw.length-1]:null;
   const firstBW = ST.bw.length?ST.bw[0]:null;
-  const deltaBW = (lastBW&&firstBW&&lastBW!==firstBW) ? (lastBW.kg-firstBW.kg) : 0;
+  const deltaBW = (ST.bw.length>1 && lastBW && firstBW) ? (lastBW.kg-firstBW.kg) : 0;
 
   let h=``;
 
@@ -1659,8 +1852,12 @@ function addPhoto(input){
       const ctx=c.getContext('2d'); ctx.drawImage(img,0,0,w,h);
       const dataUrl=c.toDataURL('image/jpeg', 0.78);
       ST.photos.push({date:today(), dataUrl});
-      try{ saveK('photos'); renderCorpo(); }
-      catch(e){ alert('Não coube. Apaga fotos antigas.'); }
+      if(!saveK('photos')){
+        ST.photos.pop(); // rollback
+        alert('Sem espaço! Apague fotos antigas (toque no ×) e tente de novo.');
+        return;
+      }
+      renderCorpo();
     };
     img.src=r.result;
   };
@@ -1699,9 +1896,11 @@ function renderMais(){
   <div class="infocard">
     <p><b style="color:#fff">Proteína 1.8-2.2g/kg/dia</b> (vegetariano precisa atenção). <b style="color:#fff">Superávit leve</b> (+200-400 kcal). Balança subindo ~0,2-0,4 kg/semana = ritmo certo. Rastreia tudo na aba <b style="color:var(--pull)">Hoje</b>.</p>
   </div>
-  <div class="infocard"><h3>Âncoras de proteína (rápido)</h3>`;
-  for(const [a,g] of PROTEIN_ANCHORS){ h+=`<div class="anchor"><span>${a}</span><b>${g}g</b></div>`; }
-  h+=`<p style="margin-top:12px; font-size:12px; color:var(--faint)">~6-8 âncoras/dia = 130-160g.</p></div>
+  <div class="infocard">
+    <h3>Banco de alimentos</h3>
+    <p>Mais de 50 itens vegetarianos brasileiros (whey, lácteos, leguminosas, soja, grãos, oleaginosas). Use o <b style="color:var(--pull)">buscador na aba Hoje</b> — digita o nome e adiciona uma porção. Ele soma e mostra contra sua meta.</p>
+    <p style="margin-top:8px; font-size:12px; color:var(--faint)">Fontes: TACO/UNICAMP, USDA, rótulos comerciais. Porções típicas. Para precisão extrema, use uma balança e meta no MyFitnessPal.</p>
+  </div>
   <div class="pcard c-green">
     <div class="hd"><div class="ic">${I.bolt}</div><h3>Creatina — melhor custo-benefício</h3></div>
     <p>Monoidratada, <b>5g/dia, todo dia</b> (inclusive descanso). Mais bem documentado pra força/volume. <b>Vegetariano responde mais</b> (estoque natural menor).</p>
@@ -1734,25 +1933,40 @@ function renderMais(){
 
 function exportData(){
   const t=document.getElementById('exp'); t.classList.remove('hidden');
-  const full={}; for(const k of Object.keys(LS)) full[k]=ST[k];
+  const full={_v:1, _at:new Date().toISOString()};
+  for(const k of Object.keys(LS)) full[k]=ST[k];
   t.value=JSON.stringify(full); t.select();
 }
 function importData(){
   const v=document.getElementById('imp').value.trim(); if(!v) return;
   try{
     const o=JSON.parse(v);
+    // Reset ST inteiro pro default antes de aplicar (evita Frankenstein)
     if(o.logs!==undefined){
-      for(const k of Object.keys(LS)) if(o[k]!==undefined){ ST[k]=o[k]; saveK(k); }
-    } else { ST.logs=o; saveK('logs'); }
+      for(const k of Object.keys(LS)){
+        ST[k] = (o[k]!==undefined) ? o[k] : JSON.parse(JSON.stringify(DEFAULTS[k]));
+        saveK(k);
+      }
+    } else {
+      // backup MUITO antigo: só logs em raiz
+      for(const k of Object.keys(LS)){
+        ST[k] = JSON.parse(JSON.stringify(DEFAULTS[k]));
+      }
+      ST.logs=o; saveK('logs');
+    }
+    // re-roda migração de protein
+    for(const date in ST.protein){
+      if(!Array.isArray(ST.protein[date])) ST.protein[date]=[];
+    }
     alert('Backup importado.'); render();
-  } catch(e){ alert('Backup inválido.'); }
+  } catch(e){ alert('Backup inválido: '+e.message); }
 }
 document.addEventListener('input',e=>{
   if(e.target.id==='imp'){ document.getElementById('impbtn').classList.remove('hidden'); }
 });
 function resetData(){
   if(confirm('Apagar TODOS os registros deste app (treinos, peso, sono, fotos)?')){
-    for(const k of Object.keys(LS)){ ST[k]= (k==='bw'||k==='photos'||k==='measures')?[]:{}; saveK(k); }
+    for(const k of Object.keys(LS)){ ST[k]=JSON.parse(JSON.stringify(DEFAULTS[k])); saveK(k); }
     render();
   }
 }
@@ -1767,6 +1981,10 @@ function paint(){
   document.getElementById('ringfill').style.strokeDashoffset=off;
 }
 function setTimer(s){
+  // Para qualquer timer anterior antes de resetar — evita race com tInt antigo
+  if(tInt){ clearInterval(tInt); tInt=null; }
+  tRun=false;
+  const ppb=document.getElementById('ppbtn'); if(ppb) ppb.textContent='Iniciar';
   tTotal=s; tLeft=s;
   document.getElementById('ringfill').setAttribute('stroke-dasharray',CIRC);
   document.querySelectorAll('.preset').forEach(b=>b.classList.toggle('active', +b.dataset.s===s));
