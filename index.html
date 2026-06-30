@@ -943,13 +943,63 @@
   .cf-hint{
     margin:0; font-size:11px; color:var(--faint); line-height:1.45; text-align:center;
   }
+
+  /* ============ TOAST + A2HS BANNER + TIMER DONE ============ */
+  .toast{
+    position:fixed; top:calc(env(safe-area-inset-top,0px) + 14px);
+    left:50%; transform:translateX(-50%);
+    background:rgba(28,28,32,.94); color:var(--ink);
+    padding:11px 18px; border-radius:14px;
+    border:1px solid var(--line-2);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    z-index:9999; max-width:90vw; text-align:center;
+    font-size:13.5px; font-weight:600; line-height:1.4;
+    box-shadow:0 8px 28px -8px rgba(0,0,0,.5);
+    transition:opacity .25s var(--ease), transform .25s var(--ease);
+  }
+  .toast.hidden{opacity:0; transform:translate(-50%,-12px); pointer-events:none; display:block !important;}
+  .toast.warn{background:rgba(229,72,56,.95); color:#fff; border-color:rgba(255,255,255,.2);}
+  .toast.ok{background:rgba(81,216,138,.95); color:#0a2614; border-color:rgba(255,255,255,.25);}
+
+  .a2hs-banner{
+    margin:12px 14px 0; padding:11px 14px;
+    background:linear-gradient(135deg, rgba(91,158,255,.16), rgba(91,158,255,.04));
+    border:1px solid rgba(91,158,255,.28);
+    border-radius:12px;
+    display:flex; gap:10px; align-items:flex-start;
+    font-size:12.5px; line-height:1.45; color:var(--ink2);
+  }
+  .a2hs-banner .a2hs-msg{flex:1;}
+  .a2hs-banner b{color:var(--ink);}
+  .a2hs-banner .a2hs-close{
+    flex:none; width:24px; height:24px; line-height:22px;
+    text-align:center; border:none; background:transparent;
+    color:var(--faint); font-size:20px; cursor:pointer; padding:0;
+  }
+
+  .overlay[data-state="done"] .tctrl .pp{
+    background:linear-gradient(135deg,#5fe195,#3cb56a) !important;
+    box-shadow:0 1px 0 rgba(255,255,255,.25) inset, 0 6px 16px -4px rgba(81,216,138,.55) !important;
+  }
+  .overlay[data-state="done"] .tval{color:var(--ok); transition:color .3s var(--ease);}
+  .overlay[data-state="done"] #ringfill{stroke:#5fe195; transition:stroke .3s var(--ease);}
 </style>
 </head>
 <body>
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
 <header>
   <h1>Treino<span class="tag">ABCD</span></h1>
   <p class="sub" id="subline">Toque num treino para começar</p>
 </header>
+
+<div id="a2hs-banner" class="a2hs-banner hidden">
+  <div class="a2hs-msg">
+    <b>📱 Pra notificações + storage seguro:</b><br>
+    Abra no Safari → toque em <b>Compartilhar</b> → <b>Adicionar à Tela de Início</b>.
+  </div>
+  <button class="a2hs-close" onclick="dismissA2HSBanner()" aria-label="Fechar">×</button>
+</div>
 
 <main id="app"></main>
 
@@ -1109,13 +1159,16 @@ const MG_PRIORITY = {ombro_lat:true, peito_sup:true, biceps:true, triceps:true};
 /* Mapeamento exercício → foto. Prefere imagens locais (img/*.jpg) quando existem;
    fallback pro Free Exercise DB (yuhonas/free-exercise-db). */
 const PHOTO_LOCAL = {
-  "Elevação lateral halter":"cable-lateral-raise.jpg",
-  "Elevação lateral (halter ou polia)":"cable-lateral-raise.jpg",
+  // Apenas as variantes que listam POLIA primeiro usam o cable image
   "Elevação lateral (polia ou halter)":"cable-lateral-raise.jpg",
   "Cadeira romana (joelho dobrado)":"roman-chair.jpg",
   "Mesa flexora":"lying-leg-curl.jpg",
 };
 const PHOTO_ID = {
+  // Variantes que listam HALTER primeiro (ou só halter) usam Free Exercise DB
+  // TODO: gerar dumbbell-lateral-raise.jpg local pra consistência visual
+  "Elevação lateral halter":"Dumbbell_Lateral_Raise",
+  "Elevação lateral (halter ou polia)":"Dumbbell_Lateral_Raise",
   "Supino inclinado halter 30°":"Incline_Dumbbell_Press",
   "Supino reto halter ou máquina":"Dumbbell_Bench_Press",
   "Crucifixo na polia baixa":"Low_Cable_Crossover",
@@ -1333,9 +1386,88 @@ for(const k of Object.keys(LS)){
 for(const date in ST.protein){
   if(!Array.isArray(ST.protein[date])) ST.protein[date]=[];
 }
+
+/* ============ TOAST (feedback transitório) ============ */
+let toastTimer=null;
+function showToast(msg, type='info', ms=2500){
+  const el=document.getElementById('toast');
+  if(!el){ try{ console.log('[toast]', msg); }catch(e){} return; }
+  el.textContent=msg;
+  el.className='toast '+(type==='warn'?'warn':(type==='ok'?'ok':''));
+  // force reflow pra animar de novo
+  void el.offsetWidth;
+  el.classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.add('hidden'), ms);
+}
+
 function saveK(k){
   try{ localStorage.setItem(LS[k], JSON.stringify(ST[k])); return true; }
-  catch(e){ console.error('saveK fail', k, e); return false; }
+  catch(e){
+    console.error('saveK fail', k, e);
+    showToast('⚠️ Sem espaço — exporte backup e libere fotos antigas', 'warn', 4500);
+    return false;
+  }
+}
+
+/* ============ A2HS BANNER ============ */
+const A2HS_DISMISS_KEY='meutreino_a2hs_dismissed_v1';
+function isStandalone(){
+  try{ return navigator.standalone===true || window.matchMedia('(display-mode: standalone)').matches; }catch(e){ return false; }
+}
+function dismissA2HSBanner(){
+  try{ localStorage.setItem(A2HS_DISMISS_KEY,'1'); }catch(e){}
+  const el=document.getElementById('a2hs-banner');
+  if(el) el.classList.add('hidden');
+}
+function maybeShowA2HSBanner(){
+  if(isStandalone()) return;
+  try{ if(localStorage.getItem(A2HS_DISMISS_KEY)==='1') return; }catch(e){}
+  const el=document.getElementById('a2hs-banner');
+  if(el) el.classList.remove('hidden');
+}
+
+/* ============ Phantom session cleanup (audit B fix) ============ */
+function cleanupPhantomSessions(){
+  const t=todayISO();
+  let cleaned=0;
+  for(const id in ST.logs){
+    if(!Array.isArray(ST.logs[id])) continue;
+    const before=ST.logs[id].length;
+    // Mantém: sessões com pelo menos 1 set válido OU sessão de hoje (em progresso)
+    ST.logs[id]=ST.logs[id].filter(sess => sess && sess.date===t || hasValidDoneSafe(sess && sess.sets));
+    cleaned += before - ST.logs[id].length;
+    if(!ST.logs[id].length) delete ST.logs[id];
+  }
+  if(cleaned>0){
+    saveK('logs');
+    console.log(`[boot] limpou ${cleaned} sessão(ões) fantasma`);
+  }
+}
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function hasValidDoneSafe(sets){
+  if(!Array.isArray(sets)) return false;
+  return sets.some(s => s && s.done && parseFloat(String(s.kg||'').replace(',','.'))>0 && parseFloat(String(s.reps||'').replace(',','.'))>0);
+}
+
+/* ============ Persistent storage + quota check ============ */
+async function requestPersistentStorage(){
+  try{
+    if(navigator.storage && navigator.storage.persist){
+      const already=await navigator.storage.persisted?.();
+      if(!already){ await navigator.storage.persist(); }
+    }
+  }catch(e){}
+}
+async function checkStorageQuota(){
+  try{
+    if(navigator.storage && navigator.storage.estimate){
+      const {usage=0, quota=0} = await navigator.storage.estimate();
+      if(quota>0 && usage/quota > 0.80){
+        showToast(`⚠️ Storage ${Math.round(usage/quota*100)}% cheio — faça backup`, 'warn', 5000);
+      }
+    }
+  }catch(e){}
 }
 function today(){ return new Date().toISOString().slice(0,10); }
 function dateAdd(iso, days){ const d=new Date(iso+'T12:00:00'); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
@@ -2445,33 +2577,61 @@ function resetData(){
   }
 }
 
-/* ============ TIMER ============ */
+/* ============ TIMER (state machine: idle | running | paused | done) ============ */
 let tTotal=90, tLeft=90, tRun=false, tInt=null, aCtx=null, wakeLock=null;
+let tState='idle', tEndAt=0, autoCloseTO=null;
 const CIRC=2*Math.PI*96;
+
+// Unlock audio context na primeira interação (essencial pro iOS)
+function unlockAudio(){
+  try{
+    if(!aCtx) aCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(aCtx.state==='suspended') aCtx.resume();
+  }catch(e){}
+}
+document.addEventListener('touchstart', unlockAudio, {passive:true});
+document.addEventListener('click', unlockAudio, {passive:true});
+
 function fmt(s){ return Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,'0'); }
 function paint(){
-  document.getElementById('tval').textContent=fmt(tLeft);
-  const off=CIRC*(1-tLeft/tTotal);
-  document.getElementById('ringfill').style.strokeDashoffset=off;
+  const tv=document.getElementById('tval'); if(tv) tv.textContent=fmt(tLeft);
+  const rf=document.getElementById('ringfill');
+  if(rf){ const off=CIRC*(1-tLeft/tTotal); rf.style.strokeDashoffset=off; }
+}
+function clearTimerStateOnly(){
+  if(tInt){ clearInterval(tInt); tInt=null; }
+  if(autoCloseTO){ clearTimeout(autoCloseTO); autoCloseTO=null; }
+  tRun=false; tEndAt=0;
 }
 function setTimer(s){
-  if(tInt){ clearInterval(tInt); tInt=null; }
-  tRun=false;
-  const ppb=document.getElementById('ppbtn'); if(ppb) ppb.textContent='Iniciar';
+  clearTimerStateOnly();
+  tState='idle';
+  const ov=document.getElementById('overlay'); if(ov) ov.removeAttribute('data-state');
+  const ppb=document.getElementById('ppbtn');
+  if(ppb){ ppb.textContent='Iniciar'; ppb.removeAttribute('data-state'); }
   tTotal=s; tLeft=s;
-  document.getElementById('ringfill').setAttribute('stroke-dasharray',CIRC);
+  const rf=document.getElementById('ringfill'); if(rf) rf.setAttribute('stroke-dasharray',CIRC);
   document.querySelectorAll('.preset').forEach(b=>b.classList.toggle('active', +b.dataset.s===s));
   paint();
 }
 function openTimer(s){
   if(typeof s==='number') setTimer(s); else setTimer(tTotal);
-  document.getElementById('overlay').classList.remove('hidden'); paint();
+  document.getElementById('overlay').classList.remove('hidden');
+  paint();
 }
 function closeTimer(){
-  stopTimer();
-  document.getElementById('overlay').classList.add('hidden');
+  clearTimerStateOnly();
+  tState='idle';
+  releaseWakeLock();
+  const ov=document.getElementById('overlay');
+  if(ov){ ov.classList.add('hidden'); ov.removeAttribute('data-state'); }
+  const ppb=document.getElementById('ppbtn');
+  if(ppb){ ppb.textContent='Iniciar'; ppb.removeAttribute('data-state'); }
 }
-function toggleTimer(){ tRun? stopTimer() : startTimer(); }
+function toggleTimer(){
+  if(tState==='done'){ closeTimer(); return; }
+  if(tRun){ pauseTimer(); } else { startTimer(); }
+}
 async function requestWakeLock(){
   try{
     if('wakeLock' in navigator){
@@ -2483,68 +2643,142 @@ async function requestWakeLock(){
 function releaseWakeLock(){
   try{ if(wakeLock){ wakeLock.release(); wakeLock=null; } }catch(e){}
 }
-// Re-adquire wake lock se o usuário sair e voltar pro app (visibility change)
+// Visibility: re-adquire wake lock + reconciliar timer ao voltar do bg
 document.addEventListener('visibilitychange', ()=>{
-  if(document.visibilityState==='visible' && tRun && !wakeLock){ requestWakeLock(); }
-});
-function startTimer(){
-  if(tRun) return; if(tLeft<=0) tLeft=tTotal; tRun=true;
-  document.getElementById('ppbtn').textContent='Pausar';
-  try{
-    aCtx=aCtx||new (window.AudioContext||window.webkitAudioContext)();
-    if(aCtx.state==='suspended') aCtx.resume();
-  }catch(e){}
-  requestWakeLock();
-  const end=Date.now()+tLeft*1000;
-  tInt=setInterval(()=>{
-    tLeft=Math.max(0,(end-Date.now())/1000);
+  if(document.visibilityState!=='visible') return;
+  // Reconcilia tempo (setInterval throttla em bg no iOS)
+  if(tState==='running' && tEndAt>0){
+    tLeft=Math.max(0,(tEndAt-Date.now())/1000);
     paint();
-    if(tLeft<=0){ stopTimer(); chime(); flashDone(); }
+    if(tLeft<=0){ timerDone(); return; }
+    if(!wakeLock) requestWakeLock();
+  }
+  // Auto-close se ficou "done" no bg por mais de 5s
+  if(tState==='done' && !autoCloseTO){
+    autoCloseTO=setTimeout(closeTimer, 1500);
+  }
+});
+
+function startTimer(){
+  if(tRun) return;
+  if(tLeft<=0) tLeft=tTotal;
+  tRun=true; tState='running';
+  unlockAudio();
+  maybeRequestNotificationPermission();
+  const ppb=document.getElementById('ppbtn'); if(ppb) ppb.textContent='Pausar';
+  requestWakeLock();
+  tEndAt=Date.now()+tLeft*1000;
+  tInt=setInterval(()=>{
+    tLeft=Math.max(0,(tEndAt-Date.now())/1000);
+    paint();
+    if(tLeft<=0){ timerDone(); }
   }, 100);
 }
-function stopTimer(){
-  tRun=false; clearInterval(tInt); tInt=null;
+function pauseTimer(){
+  if(!tRun) return;
+  tRun=false; tState='paused';
+  if(tInt){ clearInterval(tInt); tInt=null; }
+  tEndAt=0;
   const b=document.getElementById('ppbtn'); if(b) b.textContent='Iniciar';
+}
+function timerDone(){
+  clearTimerStateOnly();
+  tState='done';
   releaseWakeLock();
+  const ov=document.getElementById('overlay');
+  if(ov) ov.setAttribute('data-state','done');
+  const ppb=document.getElementById('ppbtn');
+  if(ppb){ ppb.textContent='Fechar'; ppb.setAttribute('data-state','done'); }
+  playChime();
+  notifyTimerDone();
+  flashDone();
+  autoCloseTO=setTimeout(closeTimer, 5000);
 }
-// Chime suave (acorde maior C5-E5-G5 com envelope tipo sino)
-function chime(){
-  // vibração curta primeiro (independe do áudio)
-  try{ if('vibrate' in navigator) navigator.vibrate([120, 60, 120]); }catch(e){}
-  if(!aCtx) return;
-  // C5, E5, G5 — acorde maior, suave, decai como sino
-  const notes = [523.25, 659.25, 783.99];
-  notes.forEach((freq, i)=>{
-    const startAt = aCtx.currentTime + i*0.10;
-    // Oscilador principal (seno = suave, sem harmônicos agressivos)
-    const o = aCtx.createOscillator();
-    o.type = 'sine';
-    o.frequency.value = freq;
-    // Oscilador "abafador" 1 oitava abaixo dá corpo
-    const o2 = aCtx.createOscillator();
-    o2.type = 'sine';
-    o2.frequency.value = freq/2;
-    const g = aCtx.createGain();
-    const g2 = aCtx.createGain();
-    o.connect(g); o2.connect(g2);
-    g.connect(aCtx.destination); g2.connect(aCtx.destination);
-    // envelope: ataque rápido, decay longo e suave (tipo sino)
-    g.gain.setValueAtTime(0.001, startAt);
-    g.gain.exponentialRampToValueAtTime(0.22, startAt+0.015);
-    g.gain.exponentialRampToValueAtTime(0.001, startAt+1.4);
-    g2.gain.setValueAtTime(0.001, startAt);
-    g2.gain.exponentialRampToValueAtTime(0.10, startAt+0.025);
-    g2.gain.exponentialRampToValueAtTime(0.001, startAt+1.6);
-    o.start(startAt); o.stop(startAt+1.5);
-    o2.start(startAt); o2.stop(startAt+1.7);
-  });
+
+/* ============ Audio + Notifications ============ */
+// Chime: acorde C5-E5-G5 com envelope sino. AudioContext resume agressivo.
+function playChime(){
+  try{
+    if(!aCtx) aCtx=new (window.AudioContext||window.webkitAudioContext)();
+    // resume mesmo se aparenta running (iOS às vezes mente)
+    if(aCtx.state!=='running'){ aCtx.resume(); }
+    const notes=[523.25,659.25,783.99];
+    notes.forEach((freq,i)=>{
+      const startAt=aCtx.currentTime+i*0.10;
+      const o=aCtx.createOscillator(); o.type='sine'; o.frequency.value=freq;
+      const o2=aCtx.createOscillator(); o2.type='sine'; o2.frequency.value=freq/2;
+      const g=aCtx.createGain(); const g2=aCtx.createGain();
+      o.connect(g); o2.connect(g2);
+      g.connect(aCtx.destination); g2.connect(aCtx.destination);
+      g.gain.setValueAtTime(0.001,startAt);
+      g.gain.exponentialRampToValueAtTime(0.22,startAt+0.015);
+      g.gain.exponentialRampToValueAtTime(0.001,startAt+1.4);
+      g2.gain.setValueAtTime(0.001,startAt);
+      g2.gain.exponentialRampToValueAtTime(0.10,startAt+0.025);
+      g2.gain.exponentialRampToValueAtTime(0.001,startAt+1.6);
+      o.start(startAt); o.stop(startAt+1.5);
+      o2.start(startAt); o2.stop(startAt+1.7);
+    });
+  }catch(e){ console.warn('chime fail', e); }
+  // Vibração só Android (iOS Safari ignora silenciosamente)
+  try{
+    if('vibrate' in navigator && /Android/.test(navigator.userAgent)){
+      navigator.vibrate([120,60,120]);
+    }
+  }catch(e){}
 }
-// Flash visual no overlay pra reforço quando timer chega no fim
+
+let notifPermAsked=false;
+function maybeRequestNotificationPermission(){
+  if(notifPermAsked) return;
+  if(!('Notification' in window)) return;
+  notifPermAsked=true;
+  try{
+    if(Notification.permission==='default'){
+      Notification.requestPermission().then(p=>{
+        if(p==='granted') showToast('Notificações ativas ✓','ok',2000);
+        else if(p==='denied') showToast('Notificações bloqueadas — só som dentro do app','warn',3500);
+      }).catch(()=>{});
+    }
+  }catch(e){}
+}
+
+function notifyTimerDone(){
+  if(!('Notification' in window)) return;
+  if(Notification.permission!=='granted') return;
+  const opts={
+    body:'Próxima série!',
+    icon:'icon-192.png',
+    badge:'icon-192.png',
+    tag:'meutreino-timer',
+    renotify:true,
+  };
+  // Prefere SW.showNotification (melhor sobrevivência em bg) → fallback Notification direto
+  try{
+    if(navigator.serviceWorker && navigator.serviceWorker.ready){
+      navigator.serviceWorker.ready.then(reg=>{
+        if(reg && reg.showNotification){
+          reg.showNotification('⏱️ Descanso terminado', opts).catch(()=>{
+            try{ new Notification('⏱️ Descanso terminado', opts); }catch(e){}
+          });
+          return;
+        }
+        try{ new Notification('⏱️ Descanso terminado', opts); }catch(e){}
+      }).catch(()=>{
+        try{ new Notification('⏱️ Descanso terminado', opts); }catch(e){}
+      });
+    } else {
+      new Notification('⏱️ Descanso terminado', opts);
+    }
+  }catch(e){}
+}
+
+// Flash visual no overlay quando timer chega no fim
 function flashDone(){
-  const ov = document.getElementById('overlay');
+  const ov=document.getElementById('overlay');
   if(!ov || ov.classList.contains('hidden')) return;
   ov.classList.add('flash');
-  setTimeout(()=>ov.classList.remove('flash'), 700);
+  setTimeout(()=>ov.classList.remove('flash'),700);
 }
 
 /* ============ SW REGISTER ============ */
@@ -2552,8 +2786,20 @@ if('serviceWorker' in navigator && (location.protocol==='https:' || location.hos
   navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
 
+/* ============ BOOT ============ */
+async function boot(){
+  // 1. Cleanup defensivo (phantom sessions de dias passados sem ✓)
+  cleanupPhantomSessions();
+  // 2. Storage seguro (resistente a ITP)
+  await requestPersistentStorage();
+  // 3. Aviso de quota se >80%
+  await checkStorageQuota();
+  // 4. Banner A2HS se não estiver em modo standalone
+  maybeShowA2HSBanner();
+}
 setTimer(90);
 render();
+boot();
 </script>
 </body>
 </html>

@@ -2,7 +2,13 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-06-29 (sessão de redesign completo + auditoria + macros + chime + alerta de troca + imagens geradas)
+**Última atualização:** 2026-06-30 (Day 1 feedback documentado — ver DAY1_FEEDBACK.md + PLATFORM_NOTES.md)
+
+## ⚠️ Antes de codar: ler primeiro
+- **`DAY1_FEEDBACK.md`** — 10 itens de feedback do 1º uso real (2026-06-29) + pesquisa + checklist priorizada P0/P1/P2/P3 + 5 cross-cutting audits
+- **`AUDITS.md`** — 5 cross-cutting audits executados (2026-06-30): imagens, botões, foreground-only, storage resilience, surfacing contextual. Achados novos + checklist consolidada P0-P3.
+- **`PLATFORM_NOTES.md`** — particularidades iOS Safari PWA (Audio bg, Vibration, Push, Wake Lock, ITP, etc.) + diferenças vs Android (versão futura pra namorada)
+- **`backups/backup_2026-06-30_day1.json`** — snapshot canônico do dia 1 (treino A completo)
 
 ---
 

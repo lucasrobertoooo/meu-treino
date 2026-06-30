@@ -3,7 +3,7 @@
    - app shell (index, manifest, ícones): cache-first com refresh em background
    - fotos do Free Exercise DB: cache-first, persistente (sobrevive a updates)
 */
-const SHELL = 'treino-shell-v2';
+const SHELL = 'treino-shell-v3';
 const PHOTOS = 'treino-photos-v1';
 
 const SHELL_FILES = [
