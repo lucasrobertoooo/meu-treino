@@ -1,8 +1,27 @@
 # MeuTreino · Day 1 Feedback + Action Checklist
 
-**Sessão:** 2026-06-29 (primeiro dia de uso real na academia, iPhone 16)
-**Status:** Documentação + pesquisa + checklist priorizada. Implementação em backlog.
+**Sessão original:** 2026-06-29 (primeiro dia de uso real na academia, iPhone 16)
+**Última atualização:** 2026-06-30 (status atualizado após ~10 batches de implementação)
 **Convenção:** 🍎 = particularidade iOS · 🤖 = revisar antes do port Android · 🔬 = baseado em pesquisa/metodologia
+
+---
+
+## 🎯 STATUS GERAL DOS 10 ITENS — 2026-06-30
+
+| # | Item | Status |
+|---|---|---|
+| 1 | Som/notificação tela bloqueada + minimizar timer | ✅ Push remoto via Cloudflare Worker · ✅ Minimize OK · 🚫 Dynamic Island impossível · 🚫 Vibração iOS limite duro |
+| 2 | Preservar histórico | ✅ `storage.persist()` + backup snapshot + reminder semanal · ⚠️ A2HS reinstall ainda apaga (Lucas perdeu 2x — solução: sync via Worker) |
+| 3 | Botão pós-timer | ✅ State machine + "Fechar" verde + auto-dismiss 5s |
+| 4 | Surfacing inteligente | ✅ "Foco de hoje" + PR-tracker + Volume baixo + Sono <6h alerta |
+| 5 | Imagem Elevação lateral | ✅ Free DB `Dumbbell_Lateral_Raise` · ⏸ Local aquarela (precisa $ ElevenLabs) |
+| 6 | FAB Speed Dial | ✅ 3 ações + badge pulsante + bug overlap corrigido |
+| 7 | Workout duration | ✅ Session schema + auto-start + chip header + celebração no fim |
+| 8 | Timer auto-close locked | ✅ Auto-dismiss 5s + visibilitychange reconcile + push remoto resolve confiabilidade |
+| 9 | Cardio recommender | ⏸ Deferido (você falou) |
+| 10 | Celebração ao completar | ✅ Modal PR/progressão/completion + 4 stats + trigger 100% sets OU manual stop |
+
+**Score:** 7 itens completos · 2 com limite duro iOS · 1 deferido · 0 pendente codável
 
 ---
 

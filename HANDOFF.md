@@ -1,14 +1,16 @@
-# MeuTreino · HANDOFF v2
+# MeuTreino · HANDOFF v3
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-06-30 (Day 1 feedback documentado — ver DAY1_FEEDBACK.md + PLATFORM_NOTES.md)
+**Última atualização:** 2026-06-30 (push notifications via Cloudflare Worker funcionando, ~10 batches de features shippados)
 
 ## ⚠️ Antes de codar: ler primeiro
-- **`DAY1_FEEDBACK.md`** — 10 itens de feedback do 1º uso real (2026-06-29) + pesquisa + checklist priorizada P0/P1/P2/P3 + 5 cross-cutting audits
-- **`AUDITS.md`** — 5 cross-cutting audits executados (2026-06-30): imagens, botões, foreground-only, storage resilience, surfacing contextual. Achados novos + checklist consolidada P0-P3.
-- **`PLATFORM_NOTES.md`** — particularidades iOS Safari PWA (Audio bg, Vibration, Push, Wake Lock, ITP, etc.) + diferenças vs Android (versão futura pra namorada)
-- **`backups/backup_2026-06-30_day1.json`** — snapshot canônico do dia 1 (treino A completo)
+- **`DAY1_FEEDBACK.md`** — 10 itens originais do dia 1 (2026-06-29) + status de cada (✅ feito, ⏸ pendente, 🚫 limite duro)
+- **`AUDITS.md`** — 5 cross-cutting audits (imagens, botões, foreground-only, storage, surfacing) + checklist P0-P3
+- **`PLATFORM_NOTES.md`** — particularidades iOS Safari PWA (Audio bg, Vibration, Push, Wake Lock, ITP) + diff Android
+- **`SECRETS.local.md`** — credenciais do Cloudflare Worker (gitignored — só local)
+- **`push-worker/`** — código do Cloudflare Worker (web push) + wrangler config
+- **`backups/backup_2026-06-30_day1.json`** — snapshot do dia 1 (recovery se localStorage perder)
 
 ---
 
@@ -293,12 +295,65 @@ Pra desconectar 100% do Free Exercise DB futuramente: gerar mais 20 imagens no m
 
 ---
 
+## Push notifications (Cloudflare Worker)
+
+**URL:** `https://meu-treino-push.lucasrobertoooo.workers.dev`
+**Folder código:** `~/Documents/MeuTreino/push-worker/`
+**Custo:** $0/mês (free tier)
+**Lag típico:** 0-60s no descanso (cron de 1 min no free)
+
+### Arquitetura
+
+```
+[iPhone PWA]                    [Cloudflare Worker]
+    |                                 |
+    | POST /vapid-key                 | (público, retorna VAPID public key)
+    | POST /subscribe (subscription)  | salva em KV sub:<hash>
+    | POST /schedule (fireAt)         | salva em KV pending:<fireAt>:<hash>:<id>
+    | POST /cancel (hash)             | remove pending:*:<hash>:*
+    | POST /test (hash)               | dispara push imediato (debug)
+                                      |
+[Cron tick 1/min]                     | varre pending:*, dispara web push
+                                      | → Apple Push Service
+                                      |   → iPhone (notification banner + som padrão)
+                                      | → Service Worker do app
+                                      |   → showNotification('⏱️ Descanso terminado')
+```
+
+### Por que NÃO usei `web-push` npm
+
+`web-push` (Node) usa `crypto.createECDH` que **não está implementado** no `nodejs_compat` do Cloudflare Workers (erro: `[unenv] crypto.createECDH is not implemented yet!`).
+
+Implementei VAPID JWT (ES256) + push protocol direto com **Web Crypto API** em `push-worker/src/index.js`. ~140 linhas, zero dependências em runtime.
+
+### Tickle push (sem payload)
+
+Os pushes vão **sem body** — o Service Worker do app (`sw.js`) tem fallback fixo `"⏱️ Descanso terminado · Próxima série!"`. Vantagem: pula encryption complexa (aes128gcm RFC 8188).
+
+Pra futuros pushes com texto dinâmico (PR celebration, streak risk, proteína baixa), precisará implementar payload encryption.
+
+### Comandos
+
+```bash
+cd ~/Documents/MeuTreino/push-worker
+npx wrangler tail        # logs em tempo real
+npx wrangler deploy      # re-deploy
+npx wrangler kv:key list --binding=KV    # ver KV entries
+```
+
+Setup completo passo-a-passo em `SECRETS.local.md`.
+
+---
+
 ## Próximos passos sugeridos (não implementado)
 
-- Streak baseado em "treinos por semana" (ABCD 4x = 100%) em vez de dias consecutivos
-- Incrementos por máquina BR (chapas de 5kg em polia, 2.5kg em halter)
-- Notificações push quando timer acaba (web push API, iOS 16.4+)
-- Gráficos por exercício (e1RM ao longo do tempo)
-- Sincronização entre dispositivos (iCloud Drive? backend? export auto pra Files?)
-- Gerar as 20 imagens restantes pra desconectar do Free Exercise DB
-- Modo "treino do dia" enxuto (sem chrome, só os exercícios em scroll)
+- **Sync via Worker** — usar o Worker já rodando pra também sincronizar `logs`/`bw`/`measures` entre devices E sobreviver a reinstalações do PWA (Lucas perdeu dados 2x esta sessão por causa de A2HS reinstall + clear Safari data).
+- **Payload encryption** pra pushes — habilita mensagens dinâmicas (PR celebration, streak risk, proteína baixa).
+- **Cardio recommender heurístico** (item 9 do feedback) — regras de bolso, sem IA externa.
+- **Gerar imagens locais aquarela via ElevenLabs** (~$2-4 pra 21 imagens, gpt-image-2) — precisa OK $.
+- **Revisão visual humana** Tríceps francês (A_4) + Abdominal declinado (B_7/D_8).
+- **Aba Mais → biblioteca pesquisável** dos princípios (refactor grande, defer).
+- **Streak baseado em "treinos por semana"** (ABCD 4x = 100%) em vez de dias consecutivos.
+- **Incrementos por máquina BR** (chapas de 5kg em polia, 2.5kg em halter).
+- **Gráficos por exercício** (e1RM ao longo do tempo).
+- **Modo "treino do dia" enxuto** (sem chrome, só exercícios em scroll).

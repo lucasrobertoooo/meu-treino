@@ -1,9 +1,19 @@
 # MeuTreino · Cross-cutting audits
 
-**Data:** 2026-06-30
-**Origem:** 5 audits transversais propostos no `DAY1_FEEDBACK.md` (seção "Cross-cutting audits"). Cada feedback do dia 1 expôs um padrão genérico — esse doc mapeia onde mais o padrão aparece.
-**Status:** Levantamento (encontrar, não consertar). Implementação vai pra checklist consolidada no fim.
-**Backup do dia 1:** `backups/backup_2026-06-30_day1.json` (treino A completo em 06-30 + entries de proteína de 06-29).
+**Data inicial:** 2026-06-30 (manhã)
+**Última atualização:** 2026-06-30 (noite, após implementação)
+**Origem:** 5 audits transversais propostos no `DAY1_FEEDBACK.md`. Cada feedback do dia 1 expôs um padrão genérico — esse doc mapeia onde mais o padrão aparece.
+**Backup do dia 1:** `backups/backup_2026-06-30_day1.json`
+
+## 🎯 STATUS GERAL DOS AUDITS
+
+| Audit | Achados originais | Status |
+|---|---|---|
+| A · Imagens | 1 bug + 3 suspeitas + 2 ambiguidades | ✅ Bug fix (Free DB Dumbbell_Lateral_Raise) · ⏸ 3 suspeitas pendem revisão visual · ⏸ aquarela local (precisa $) |
+| B · Botões | 5 botões com feedback sub-ótimo | ✅ Todos os 5 fixados (food undo, measures toast, exportar clipboard, + alimento label, desmarcar fecha timer) |
+| C · Foreground-only | 6 features foreground-only | ✅ Push remoto via Worker resolve descanso · ⏸ Streak/PR/proteína/deload pushes (precisa payload encryption) |
+| D · Storage resilience | 13/14 writes sem rollback + zero quota check + zero persist | ✅ persist() + quota >80% toast + saveK toast no fail · ⏸ IndexedDB migration (defer) |
+| E · Surfacing contextual | Aba Mais cemitério; Corpo "puxe pra ver"; Hoje sem dica | ✅ Card "Foco de hoje" + PR-tracker + Volume baixo + Sono <6h · ⏸ Aba Mais biblioteca pesquisável |
 
 ---
 
