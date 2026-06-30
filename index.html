@@ -3222,6 +3222,7 @@ function renderMais(){
     <div class="tools">
       <button onclick="exportData()">Exportar</button>
       <button onclick="document.getElementById('imp').classList.toggle('hidden')">Importar</button>
+      <button onclick="clearTodayData()">Apagar dados de hoje</button>
       <button onclick="resetData()">Apagar tudo</button>
     </div>
     <textarea id="exp" class="hidden" readonly></textarea>
@@ -3299,6 +3300,32 @@ function resetData(){
     for(const k of Object.keys(LS)){ ST[k]=JSON.parse(JSON.stringify(DEFAULTS[k])); saveK(k); }
     render();
   }
+}
+function clearTodayData(){
+  if(!confirm('Apagar SETS, sessão ativa e celebração de HOJE (mantém peso/sono/macros/cardio de hoje + todos os outros dias)?')) return;
+  const t=todayISO();
+  // 1. Remove sets de hoje de todos os exercícios
+  let removedLogs=0;
+  for(const id in ST.logs){
+    if(Array.isArray(ST.logs[id])){
+      const before=ST.logs[id].length;
+      ST.logs[id]=ST.logs[id].filter(s=>s.date!==t);
+      removedLogs += before - ST.logs[id].length;
+      if(!ST.logs[id].length) delete ST.logs[id];
+    }
+  }
+  saveK('logs');
+  // 2. Remove celebrações de hoje
+  if(ST.session && Array.isArray(ST.session.history)){
+    ST.session.history = ST.session.history.filter(h=>h.date!==t);
+  }
+  // 3. Limpa sessão ativa
+  if(ST.session) ST.session.active = null;
+  saveK('session');
+  // 4. Cancela push agendado se tinha algo no ar
+  cancelRemotePushes();
+  showToast(`Dia limpo — ${removedLogs} sets removidos`,'ok',2500);
+  render();
 }
 
 /* ============ TIMER (state machine: idle | running | paused | done) ============ */
