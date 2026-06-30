@@ -1004,8 +1004,9 @@
   }
 
   .fab-menu{
-    position:fixed; right:18px;
-    bottom:calc(88px + env(safe-area-inset-bottom,0px));
+    position:fixed; right:20px;
+    /* 94px FAB bottom + 56px FAB height + 14px gap = 164px above bottom */
+    bottom:calc(164px + env(safe-area-inset-bottom,0px));
     z-index:55;
     display:flex; flex-direction:column-reverse; gap:10px;
     pointer-events:none;
