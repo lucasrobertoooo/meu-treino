@@ -983,6 +983,181 @@
   }
   .overlay[data-state="done"] .tval{color:var(--ok); transition:color .3s var(--ease);}
   .overlay[data-state="done"] #ringfill{stroke:#5fe195; transition:stroke .3s var(--ease);}
+
+  /* ============ FAB Speed Dial (item 6) ============ */
+  .fab.fab-main{ z-index:60; }
+  .fab.fab-main #fabIcon{ transition:transform .25s var(--ease); }
+  .fab.fab-main.open #fabIcon{ transform:rotate(45deg); }
+  .session-badge{
+    position:absolute; top:-6px; right:-8px;
+    background:var(--ok); color:#0a2614;
+    font-size:9.5px; font-weight:800; letter-spacing:.02em;
+    padding:3px 6px; border-radius:9px;
+    border:2px solid var(--bg);
+    min-width:32px; text-align:center;
+    animation: sessPulse 2s ease-in-out infinite;
+  }
+  .session-badge.paused{ background:#f5b94e; color:#1a1408; animation:none; }
+  @keyframes sessPulse{
+    0%,100%{ box-shadow:0 0 0 0 rgba(81,216,138,.5); }
+    50%{ box-shadow:0 0 0 6px rgba(81,216,138,0); }
+  }
+
+  .fab-menu{
+    position:fixed; right:18px;
+    bottom:calc(88px + env(safe-area-inset-bottom,0px));
+    z-index:55;
+    display:flex; flex-direction:column-reverse; gap:10px;
+    pointer-events:none;
+  }
+  .fab-menu.open{ pointer-events:auto; }
+  .fab-action{
+    display:flex; align-items:center; gap:8px;
+    background:rgba(28,28,32,.94); color:var(--ink);
+    padding:9px 14px 9px 11px; border-radius:22px;
+    border:1px solid var(--line-2);
+    font-size:13px; font-weight:600;
+    backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    box-shadow:0 6px 18px -4px rgba(0,0,0,.45);
+    opacity:0; transform:translateY(10px) scale(.92);
+    transition:opacity .22s var(--ease), transform .22s var(--ease);
+    cursor:pointer; white-space:nowrap;
+  }
+  .fab-menu.open .fab-action{ opacity:1; transform:translateY(0) scale(1); }
+  .fab-menu.open .fab-action:nth-child(1){ transition-delay:.04s; }
+  .fab-menu.open .fab-action:nth-child(2){ transition-delay:.08s; }
+  .fab-menu.open .fab-action:nth-child(3){ transition-delay:.12s; }
+  .fab-action .ic{ display:inline-flex; }
+  .fab-action.start{ background:linear-gradient(135deg,#5fe195,#3cb56a); color:#0a2614; border-color:rgba(255,255,255,.18); }
+  .fab-action.stop{ background:linear-gradient(135deg,#ff7d6f,#e54838); color:#fff; border-color:rgba(255,255,255,.18); }
+
+  /* Session chip no header do treino aberto */
+  .session-chip{
+    display:inline-flex; align-items:center; gap:6px;
+    margin:8px 0 4px;
+    padding:6px 12px;
+    background:linear-gradient(135deg, rgba(81,216,138,.20), rgba(81,216,138,.08));
+    border:1px solid rgba(81,216,138,.35);
+    border-radius:18px;
+    font-variant-numeric:tabular-nums;
+    font-size:13px; font-weight:700; color:var(--ok);
+  }
+  .session-chip.paused{
+    background:linear-gradient(135deg, rgba(245,185,78,.22), rgba(245,185,78,.08));
+    border-color:rgba(245,185,78,.4);
+    color:#f5b94e;
+  }
+  .session-chip .label{font-size:11px; color:var(--muted); font-weight:500; letter-spacing:.04em; text-transform:uppercase;}
+
+  /* ============ CELEBRATION MODAL (item 10) ============ */
+  .celebration{
+    position:fixed; inset:0; z-index:200;
+    background:rgba(0,0,0,.85); backdrop-filter:blur(8px);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+    animation:celebFadeIn .3s var(--ease);
+  }
+  @keyframes celebFadeIn{ from{opacity:0;} to{opacity:1;} }
+  .celeb-card{
+    max-width:380px; width:100%;
+    background:linear-gradient(180deg, rgba(40,40,46,.98), rgba(28,28,32,.98));
+    border:1px solid var(--line-2);
+    border-radius:24px;
+    padding:28px 24px 22px;
+    box-shadow:0 24px 80px -20px rgba(0,0,0,.6);
+    text-align:center;
+    animation:celebSlideUp .4s var(--ease);
+  }
+  @keyframes celebSlideUp{
+    from{ opacity:0; transform:translateY(20px) scale(.95); }
+    to{ opacity:1; transform:translateY(0) scale(1); }
+  }
+  .celeb-title{
+    font-size:20px; font-weight:800;
+    color:var(--ink);
+    margin-bottom:18px;
+    letter-spacing:-.02em;
+  }
+  .celeb-hero{
+    padding:18px 14px;
+    border-radius:16px;
+    margin-bottom:18px;
+    font-size:16px; font-weight:700;
+    line-height:1.4;
+  }
+  .celeb-hero.pr{
+    background:linear-gradient(135deg, rgba(255,209,120,.22), rgba(224,154,44,.08));
+    border:1px solid rgba(255,209,120,.4);
+    color:#ffd178;
+  }
+  .celeb-hero.progress{
+    background:linear-gradient(135deg, rgba(81,216,138,.18), rgba(81,216,138,.06));
+    border:1px solid rgba(81,216,138,.35);
+    color:#5fe195;
+  }
+  .celeb-hero.done{
+    background:linear-gradient(135deg, rgba(91,158,255,.18), rgba(91,158,255,.04));
+    border:1px solid rgba(91,158,255,.3);
+    color:#7ab2ff;
+  }
+  .celeb-pr-line{
+    display:block; margin-top:6px;
+    font-size:13.5px; font-weight:600;
+    color:var(--ink2); opacity:.85;
+  }
+  .celeb-stats{
+    display:grid; grid-template-columns:repeat(2,1fr); gap:10px;
+    margin-bottom:22px;
+  }
+  .celeb-stat{
+    background:rgba(255,255,255,.04);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px 8px;
+  }
+  .celeb-stat .l{
+    font-size:10px; font-weight:600; color:var(--muted);
+    letter-spacing:.05em; text-transform:uppercase;
+    margin-bottom:4px;
+  }
+  .celeb-stat .v{
+    font-size:20px; font-weight:800; color:var(--ink);
+    font-variant-numeric:tabular-nums;
+  }
+  .celeb-stat .v small{ font-size:12px; color:var(--muted); font-weight:600; margin-left:2px; }
+  .celeb-ok{
+    width:100%; padding:14px;
+    background:linear-gradient(135deg,#5fe195,#3cb56a); color:#0a2614;
+    border:none; border-radius:14px;
+    font-size:15px; font-weight:800;
+    cursor:pointer;
+    box-shadow:0 1px 0 rgba(255,255,255,.25) inset, 0 8px 18px -6px rgba(81,216,138,.5);
+    transition:transform .15s var(--ease);
+  }
+  .celeb-ok:active{ transform:scale(.97); }
+
+  /* ============ PRE-WORKOUT TIP CARD (item 4) ============ */
+  .pretip{
+    margin:14px 0 4px;
+    padding:14px 16px;
+    background:linear-gradient(135deg, rgba(91,158,255,.14), rgba(91,158,255,.04));
+    border:1px solid rgba(91,158,255,.25);
+    border-radius:14px;
+  }
+  .pretip .pretip-hd{
+    display:flex; align-items:center; gap:7px;
+    font-size:11px; font-weight:700; color:#7ab2ff;
+    letter-spacing:.06em; text-transform:uppercase;
+    margin-bottom:6px;
+  }
+  .pretip .pretip-title{
+    font-size:14.5px; font-weight:700; color:var(--ink);
+    margin-bottom:5px; line-height:1.3;
+  }
+  .pretip .pretip-body{
+    font-size:12.5px; color:var(--ink2); line-height:1.5;
+  }
+  .pretip .pretip-body b{ color:#fff; }
 </style>
 </head>
 <body>
@@ -1003,9 +1178,26 @@
 
 <main id="app"></main>
 
-<button class="fab" onclick="openTimer()" aria-label="Timer de descanso">
-  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></svg>
+<div id="fabMenu" class="fab-menu">
+  <button class="fab-action stop hidden" id="fabStop" onclick="closeFabMenu(); manualEndSession();" aria-label="Parar treino">
+    <span class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg></span>
+    <span>Parar treino</span>
+  </button>
+  <button class="fab-action start" id="fabStart" onclick="onFabStartClick()" aria-label="Iniciar treino">
+    <span class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>
+    <span>Iniciar treino</span>
+  </button>
+  <button class="fab-action timer" onclick="closeFabMenu(); openTimer();" aria-label="Timer avulso">
+    <span class="ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></svg></span>
+    <span>Timer avulso</span>
+  </button>
+</div>
+<button class="fab fab-main" id="fabMain" onclick="toggleFabMenu()" aria-label="Menu de ações">
+  <span id="fabSessionBadge" class="session-badge hidden"></span>
+  <svg id="fabIcon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
 </button>
+
+<div id="celebration" class="celebration hidden" role="dialog" aria-modal="true"></div>
 
 <nav id="navbar">
   <button data-tab="treino" class="on" onclick="setTab('treino')">
@@ -1075,6 +1267,10 @@ const I = {
   pill:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>',
   drop:'<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>',
   plus:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>',
+  pause:'<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>',
+  stop:'<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>',
+  playc:'<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  xcrc:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
   minus:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>',
   cal:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>',
   dumbbell:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.4 14.4 9.6 9.6"/><path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/><path d="m21.5 21.5-1.4-1.4"/><path d="M3.9 3.9 2.5 2.5"/><path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/></svg>',
@@ -1376,8 +1572,9 @@ const LS = {
   measures:"meutreino_measures_v1",
   cardio:"meutreino_cardio_v1",
   meta:"meutreino_meta_v1",
+  session:"meutreino_session_v1",
 };
-const DEFAULTS = {logs:{}, bw:[], sleep:{}, protein:{}, suppl:{}, photos:[], measures:[], cardio:{}, meta:{}};
+const DEFAULTS = {logs:{}, bw:[], sleep:{}, protein:{}, suppl:{}, photos:[], measures:[], cardio:{}, meta:{}, session:{active:null, history:[]}};
 const ST = JSON.parse(JSON.stringify(DEFAULTS));
 for(const k of Object.keys(LS)){
   try{ const r=localStorage.getItem(LS[k]); if(r) ST[k]=JSON.parse(r); }catch(e){}
@@ -1386,6 +1583,10 @@ for(const k of Object.keys(LS)){
 for(const date in ST.protein){
   if(!Array.isArray(ST.protein[date])) ST.protein[date]=[];
 }
+// Migração defensiva: session deve ter shape {active, history}
+if(!ST.session || typeof ST.session!=='object'){ ST.session={active:null, history:[]}; }
+if(!('active' in ST.session)) ST.session.active=null;
+if(!Array.isArray(ST.session.history)) ST.session.history=[];
 
 /* ============ TOAST (feedback transitório) ============ */
 let toastTimer=null;
@@ -1425,6 +1626,265 @@ function maybeShowA2HSBanner(){
   try{ if(localStorage.getItem(A2HS_DISMISS_KEY)==='1') return; }catch(e){}
   const el=document.getElementById('a2hs-banner');
   if(el) el.classList.remove('hidden');
+}
+
+/* ============ WORKOUT SESSION (start/pause/resume/end + duration) ============ */
+function fmtDuration(ms){
+  if(!ms || ms<0) ms=0;
+  const sec=Math.floor(ms/1000);
+  const h=Math.floor(sec/3600);
+  const m=Math.floor((sec%3600)/60);
+  const s=sec%60;
+  if(h>0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+function getSessionElapsed(){
+  const s=ST.session && ST.session.active;
+  if(!s) return 0;
+  const now=Date.now();
+  const totalMs=now-s.startAt;
+  const pausedMs=(s.pausedTotal||0)+(s.pausedAt?now-s.pausedAt:0);
+  return Math.max(0, totalMs-pausedMs);
+}
+function isSessionPaused(){
+  return !!(ST.session && ST.session.active && ST.session.active.pausedAt);
+}
+function isSessionActive(){
+  return !!(ST.session && ST.session.active);
+}
+function startSession(workoutId){
+  if(ST.session.active){
+    if(!confirm(`Já tem treino ${ST.session.active.workoutId} em progresso (${fmtDuration(getSessionElapsed())}). Substituir?`)) return false;
+  }
+  ST.session.active={workoutId, startAt:Date.now(), pausedAt:null, pausedTotal:0};
+  saveK('session');
+  updateSessionDisplays();
+  updateFabMenu();
+  showToast(`Treino ${workoutId} iniciado ▶`, 'ok', 1800);
+  return true;
+}
+function pauseSession(){
+  const s=ST.session.active;
+  if(!s || s.pausedAt) return;
+  s.pausedAt=Date.now();
+  saveK('session');
+  updateSessionDisplays();
+  updateFabMenu();
+  showToast(`Treino pausado ⏸`, 'info', 1500);
+}
+function resumeSession(){
+  const s=ST.session.active;
+  if(!s || !s.pausedAt) return;
+  s.pausedTotal=(s.pausedTotal||0)+(Date.now()-s.pausedAt);
+  s.pausedAt=null;
+  saveK('session');
+  updateSessionDisplays();
+  updateFabMenu();
+  showToast(`Treino retomado ▶`, 'ok', 1500);
+}
+function endSession(silent=false){
+  const s=ST.session.active;
+  if(!s) return null;
+  const endAt=Date.now();
+  const totalMs=endAt-s.startAt;
+  const pausedMs=(s.pausedTotal||0)+(s.pausedAt?endAt-s.pausedAt:0);
+  const activeMs=Math.max(0, totalMs-pausedMs);
+  // Conta sets válidos do treino hoje
+  const t=todayISO();
+  let setsN=0, volume=0;
+  const W=WK[s.workoutId];
+  if(W){
+    W.ex.forEach((e,i)=>{
+      const id=exId(s.workoutId,i);
+      const tod=todaySession(id);
+      if(tod){
+        tod.sets.forEach(set=>{
+          if(isValidDone(set)){
+            setsN++;
+            volume += num(set.kg)*num(set.reps);
+          }
+        });
+      }
+    });
+  }
+  const record={date:t, workoutId:s.workoutId, startAt:s.startAt, endAt, durationMs:totalMs, activeMs, sets:setsN, volume:Math.round(volume)};
+  ST.session.history.push(record);
+  ST.session.active=null;
+  saveK('session');
+  updateSessionDisplays();
+  updateFabMenu();
+  if(!silent) showToast(`Treino encerrado · ${fmtDuration(activeMs)}`, 'ok', 2200);
+  return record;
+}
+function manualStartSession(){
+  // Determina qual treino: openDay (se tem treino aberto) > suggestedNextDay
+  const wkId = (typeof openDay==='string' && openDay) ? openDay : suggestedNextDay();
+  startSession(wkId);
+}
+function toggleSessionPauseResume(){
+  if(!isSessionActive()) return;
+  if(isSessionPaused()) resumeSession();
+  else pauseSession();
+}
+function manualEndSession(){
+  if(!isSessionActive()) return;
+  if(!confirm(`Encerrar treino agora? (duração: ${fmtDuration(getSessionElapsed())})`)) return;
+  endSession();
+}
+function updateSessionDisplays(){
+  // Header do treino aberto
+  const hdrEl=document.getElementById('sessionElapsed');
+  if(hdrEl){
+    const s=ST.session.active;
+    const sameWk = s && (openDay===s.workoutId);
+    if(s && sameWk){
+      hdrEl.textContent = fmtDuration(getSessionElapsed());
+      hdrEl.parentElement && hdrEl.parentElement.classList.toggle('paused', !!s.pausedAt);
+      hdrEl.parentElement && hdrEl.parentElement.classList.remove('hidden');
+    } else if(hdrEl.parentElement){
+      hdrEl.parentElement.classList.add('hidden');
+    }
+  }
+  // Badge no FAB
+  const fabBadge=document.getElementById('fabSessionBadge');
+  if(fabBadge){
+    if(isSessionActive()){
+      fabBadge.textContent = fmtDuration(getSessionElapsed());
+      fabBadge.classList.remove('hidden');
+      fabBadge.classList.toggle('paused', isSessionPaused());
+    } else {
+      fabBadge.classList.add('hidden');
+    }
+  }
+}
+// tick a cada 1s pra atualizar timer de sessão
+setInterval(()=>{
+  if(isSessionActive()) updateSessionDisplays();
+}, 1000);
+
+/* ============ FAB Speed Dial ============ */
+let fabMenuOpen=false;
+function openFabMenu(){
+  fabMenuOpen=true;
+  const m=document.getElementById('fabMenu'); if(m) m.classList.add('open');
+  const main=document.getElementById('fabMain'); if(main) main.classList.add('open');
+  updateFabMenu();
+}
+function closeFabMenu(){
+  fabMenuOpen=false;
+  const m=document.getElementById('fabMenu'); if(m) m.classList.remove('open');
+  const main=document.getElementById('fabMain'); if(main) main.classList.remove('open');
+}
+function toggleFabMenu(){ fabMenuOpen ? closeFabMenu() : openFabMenu(); }
+function updateFabMenu(){
+  const startBtn=document.getElementById('fabStart');
+  const stopBtn=document.getElementById('fabStop');
+  if(!startBtn || !stopBtn) return;
+  if(isSessionActive()){
+    stopBtn.classList.remove('hidden');
+    if(isSessionPaused()){
+      startBtn.innerHTML = `${I.playc} <span>Retomar treino</span>`;
+      startBtn.dataset.action='resume';
+    } else {
+      startBtn.innerHTML = `${I.pause} <span>Pausar treino</span>`;
+      startBtn.dataset.action='pause';
+    }
+  } else {
+    startBtn.innerHTML = `${I.playc} <span>Iniciar treino</span>`;
+    startBtn.dataset.action='start';
+    stopBtn.classList.add('hidden');
+  }
+}
+function onFabStartClick(){
+  const startBtn=document.getElementById('fabStart');
+  const act=startBtn && startBtn.dataset.action;
+  closeFabMenu();
+  if(act==='start') manualStartSession();
+  else if(act==='pause') pauseSession();
+  else if(act==='resume') resumeSession();
+}
+
+/* ============ CELEBRATION (item 10) ============ */
+function isWorkoutComplete(day){
+  const W=WK[day]; if(!W) return false;
+  return W.ex.every((_,i)=>{
+    const tod=todaySession(exId(day,i));
+    return tod && tod.sets.some(isValidDone);
+  });
+}
+function alreadyCelebratedToday(day){
+  const t=todayISO();
+  return ST.session.history.some(h=>h.date===t && h.workoutId===day);
+}
+function gatherWorkoutSummary(day){
+  const t=todayISO();
+  const W=WK[day];
+  let setsN=0, volume=0, prs=[], topProgress=null;
+  W.ex.forEach((e,i)=>{
+    const id=exId(day,i);
+    const tod=todaySession(id);
+    if(!tod) return;
+    tod.sets.forEach(set=>{
+      if(isValidDone(set)){
+        setsN++;
+        volume += num(set.kg)*num(set.reps);
+      }
+    });
+    if(isPRSession(id, tod.sets)){
+      const e1=bestE1RM(tod.sets);
+      prs.push({name:e.n, e1:Math.round(e1*10)/10, kg:Math.max(...tod.sets.filter(s=>isValidDone(s)).map(s=>num(s.kg)))});
+    }
+    // Progressão simples vs sessão anterior
+    if(!topProgress){
+      const lastS=lastSession(id);
+      if(lastS){
+        const curE=bestE1RM(tod.sets);
+        const lastE=bestE1RM(lastS.sets);
+        if(curE>lastE && lastE>0){
+          topProgress={name:e.n, delta:Math.round((curE-lastE)*10)/10};
+        }
+      }
+    }
+  });
+  return {setsN, volume:Math.round(volume), prs, topProgress};
+}
+function showCelebration(day){
+  const W=WK[day];
+  const summary=gatherWorkoutSummary(day);
+  const record=endSession(true); // silent: celebration mostra duração
+  const durMs = record ? record.activeMs : 0;
+  const streak = getStreak();
+  let hero;
+  if(summary.prs.length){
+    const top=summary.prs[0];
+    hero = `<div class="celeb-hero pr">🏆 <b>PR novo!</b><br><span class="celeb-pr-line">${esc(top.name)} · e1RM ${top.e1}kg</span></div>`;
+  } else if(summary.topProgress){
+    hero = `<div class="celeb-hero progress">↑ <b>+${summary.topProgress.delta}kg e1RM</b><br><span class="celeb-pr-line">${esc(summary.topProgress.name)}</span></div>`;
+  } else {
+    hero = `<div class="celeb-hero done">✓ <b>Treino completo</b><br><span class="celeb-pr-line">Consistência é tudo.</span></div>`;
+  }
+  const html = `
+    <div class="celeb-card">
+      <div class="celeb-title">Treino ${day} completo 💪</div>
+      ${hero}
+      <div class="celeb-stats">
+        <div class="celeb-stat"><div class="l">Duração</div><div class="v">${fmtDuration(durMs)}</div></div>
+        <div class="celeb-stat"><div class="l">Sets</div><div class="v">${summary.setsN}</div></div>
+        <div class="celeb-stat"><div class="l">Volume</div><div class="v">${summary.volume}<small>kg</small></div></div>
+        <div class="celeb-stat"><div class="l">Streak</div><div class="v">${streak}🔥</div></div>
+      </div>
+      <button class="celeb-ok" onclick="closeCelebration()">OK, voltar pra Home</button>
+    </div>`;
+  const el=document.getElementById('celebration');
+  if(!el) return;
+  el.innerHTML=html;
+  el.classList.remove('hidden');
+}
+function closeCelebration(){
+  const el=document.getElementById('celebration');
+  if(el){ el.classList.add('hidden'); el.innerHTML=''; }
+  // Volta pra Hoje
+  setTab('hoje');
 }
 
 /* ============ Phantom session cleanup (audit B fix) ============ */
@@ -1473,6 +1933,14 @@ function today(){ return new Date().toISOString().slice(0,10); }
 function dateAdd(iso, days){ const d=new Date(iso+'T12:00:00'); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
 function daysBetween(a,b){ const da=new Date(a+'T12:00:00'), db=new Date(b+'T12:00:00'); return Math.round((db-da)/86400000); }
 function exId(day,i){ return day+"_"+i; }
+function dailyPrincipleIdx(){
+  // Rotação determinística por dia do ano (mesma dica no mesmo dia entre sessões)
+  const t=new Date();
+  const start=new Date(t.getFullYear(),0,0);
+  const diff=t-start;
+  const dayOfYear=Math.floor(diff/86400000);
+  return dayOfYear % (typeof PRINC!=='undefined'?PRINC.length:12);
+}
 
 function lastSession(id){
   const h=ST.logs[id]; if(!h||!h.length) return null;
@@ -1869,7 +2337,11 @@ function renderDays(){
 function renderDay(d){
   const w=WK[d];
   sub.textContent=`${w.name} · ${w.focus}`;
-  let h=`<div class="backbar"><button class="back" onclick="backToList()">${I.arrowL}<span>Treinos</span></button></div>`;
+  const sessActive = isSessionActive() && ST.session.active.workoutId===d;
+  const sessChip = sessActive
+    ? `<div class="session-chip ${isSessionPaused()?'paused':''}"><span class="label">${isSessionPaused()?'PAUSADO':'EM TREINO'}</span><span id="sessionElapsed">${fmtDuration(getSessionElapsed())}</span></div>`
+    : `<div class="session-chip hidden"><span class="label">EM TREINO</span><span id="sessionElapsed">0:00</span></div>`;
+  let h=`<div class="backbar"><button class="back" onclick="backToList()">${I.arrowL}<span>Treinos</span></button>${sessChip}</div>`;
   w.ex.forEach((e,i)=>{
     const id=exId(d,i);
     const last=lastSession(id);
@@ -2018,7 +2490,27 @@ function toggleDone(id,k,el){
   upsertToday(id,sets); flashSaved(id);
   if(el.classList.contains('on')){
     const day=id.split('_')[0], i=+id.split('_')[1];
+    // Auto-start session na primeira marcação válida do dia (não pergunta, é o caminho natural)
+    if(!isSessionActive() && !alreadyCelebratedToday(day) && isValidDone(sets[k])){
+      ST.session.active={workoutId:day, startAt:Date.now(), pausedAt:null, pausedTotal:0};
+      saveK('session');
+      updateSessionDisplays();
+      updateFabMenu();
+    }
+    // Se sessão estava pausada, retoma sozinho ao checar set
+    if(isSessionPaused()){ resumeSession(); }
+    // Abre timer de descanso
     openTimer(REST[WK[day].ex[i].t]); startTimer();
+    // Detecta workout completo → celebra
+    if(isWorkoutComplete(day) && !alreadyCelebratedToday(day)){
+      // pequena espera pro user ver o ✓ marcar antes do modal abrir
+      setTimeout(()=>{
+        if(isWorkoutComplete(day) && !alreadyCelebratedToday(day)){
+          closeTimer();
+          showCelebration(day);
+        }
+      }, 600);
+    }
   }
 }
 
@@ -2071,6 +2563,21 @@ function renderHoje(){
     </div>
     <div class="chev" style="color:var(--ink2)">${I.chevR}</div>
   </div>`;
+
+  // Card "Antes do treino" — princípio rotativo do dia (item 4 v1)
+  if(!todayDoneDays){
+    const pIdx=dailyPrincipleIdx();
+    const p=PRINC[pIdx]; // [color, icon, title, body]
+    if(p){
+      const sleepLow = sleepToday && num(sleepToday)>0 && num(sleepToday)<6;
+      h+=`<div class="pretip">
+        <div class="pretip-hd">${I.spark}<span>Foco de hoje</span></div>
+        <div class="pretip-title">${p[2]}</div>
+        <div class="pretip-body">${p[3]}</div>
+        ${sleepLow?`<div class="pretip-body" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);color:#f5b94e"><b>⚠️ Sono ${sleepToday}h:</b> vá com 1 rep a menos hoje, prioriza forma sobre carga (Dattilo 2011).</div>`:''}
+      </div>`;
+    }
+  }
 
   // PESO
   h+=`<div class="check-card">
@@ -2222,12 +2729,33 @@ function addFood(idx){
   const inp2=document.getElementById('foodSearch');
   if(inp2){ inp2.value=savedQ; updateFoodResults(); }
 }
+let _lastRemovedFood=null;
 function removeFoodEntry(idx){
   const t=today();
   if(!Array.isArray(ST.protein[t])) return;
+  const removed=ST.protein[t][idx];
   ST.protein[t].splice(idx,1);
   if(!ST.protein[t].length) delete ST.protein[t];
   saveK('protein');
+  if(removed){
+    _lastRemovedFood={date:t, entry:removed, ts:Date.now()};
+    showToast(`Removido: ${removed.n} · toca aqui pra desfazer`, 'info', 4000);
+    // Bind clique no toast pra undo
+    const tEl=document.getElementById('toast');
+    if(tEl){
+      tEl.onclick=()=>{
+        if(_lastRemovedFood && Date.now()-_lastRemovedFood.ts<6000){
+          if(!Array.isArray(ST.protein[_lastRemovedFood.date])) ST.protein[_lastRemovedFood.date]=[];
+          ST.protein[_lastRemovedFood.date].push(_lastRemovedFood.entry);
+          saveK('protein');
+          _lastRemovedFood=null;
+          renderHoje();
+        }
+        tEl.onclick=null;
+        tEl.classList.add('hidden');
+      };
+    }
+  }
   renderHoje();
 }
 let customFoodOpen=false;
@@ -2423,11 +2951,13 @@ function saveMeasures(){
     const el=document.getElementById('m_'+k);
     if(el && el.value.trim()){ m[k]=num(el.value); any=true; }
   }
-  if(!any){ alert('Preencha pelo menos uma medida.'); return; }
+  if(!any){ showToast('Preencha pelo menos uma medida', 'warn', 2000); return; }
   ST.measures = ST.measures.filter(x=>x.date!==t);
   ST.measures.push(m);
   ST.measures.sort((a,b)=>a.date<b.date?-1:1);
-  saveK('measures');
+  if(saveK('measures')){
+    showToast('Medidas salvas ✓', 'ok', 1800);
+  }
   renderCorpo();
 }
 
@@ -2537,11 +3067,36 @@ function renderMais(){
   app.innerHTML=h;
 }
 
-function exportData(){
+async function exportData(){
   const t=document.getElementById('exp'); t.classList.remove('hidden');
   const full={_v:1, _at:new Date().toISOString()};
   for(const k of Object.keys(LS)) full[k]=ST[k];
-  t.value=JSON.stringify(full); t.select();
+  const json=JSON.stringify(full);
+  t.value=json; t.select();
+  // Tenta clipboard + share automático (iOS share sheet)
+  let copied=false;
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(json);
+      copied=true;
+    }
+  }catch(e){}
+  if(copied){
+    showToast('Backup copiado pra área de transferência ✓', 'ok', 2500);
+  }
+  // Oferece share sheet (cole no Notes, Mail, Files, etc.)
+  try{
+    if(navigator.share){
+      const filename=`meutreino-backup-${new Date().toISOString().slice(0,10)}.json`;
+      const file=new File([json], filename, {type:'application/json'});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        await navigator.share({files:[file], title:'MeuTreino Backup'});
+      } else {
+        await navigator.share({title:'MeuTreino Backup', text:json});
+      }
+    }
+  }catch(e){ /* share cancel ou unsupported, segue */ }
+  if(!copied) showToast('Backup gerado abaixo — copie pra um lugar seguro', 'info', 3000);
 }
 function importData(){
   const v=document.getElementById('imp').value.trim(); if(!v) return;

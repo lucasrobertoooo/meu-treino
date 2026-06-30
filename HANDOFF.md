@@ -16,7 +16,7 @@ PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPh
 - **URL produção:** https://lucasrobertoooo.github.io/meu-treino/
 - **Repo:** https://github.com/lucasrobertoooo/meu-treino (público, necessário pro Pages free)
 - **Stack:** Vanilla HTML/CSS/JS single-file, sem build, sem dependências externas (só Free Exercise DB pras fotos)
-- **Persistência:** localStorage (9 chaves)
+- **Persistência:** localStorage (10 chaves, `storage.persist()` requisitado no boot)
 - **PWA:** instalável no iPhone, funciona offline depois da 1ª carga
 - **Tamanho:** ~2200 linhas, 90KB, 1 arquivo
 
@@ -200,6 +200,7 @@ meutreino_photos_v1   = [{date, dataUrl(base64)}]
 meutreino_measures_v1 = [{date, peito, ombro, braco, cintura, coxa}]
 meutreino_cardio_v1   = {[date]: {steps, z2min}}
 meutreino_meta_v1     = {proteinTarget, carbTarget, calTarget, lastDeloadWeek}
+meutreino_session_v1  = {active:{workoutId,startAt,pausedAt,pausedTotal}|null, history:[{date,workoutId,startAt,endAt,durationMs,activeMs,sets,volume}]}
 ```
 
 `DEFAULTS` constante centraliza tipos pra evitar drift no `resetData()` e `importData()`.
