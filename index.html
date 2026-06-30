@@ -1728,8 +1728,19 @@ function toggleSessionPauseResume(){
 }
 function manualEndSession(){
   if(!isSessionActive()) return;
+  const wk=ST.session.active.workoutId;
   if(!confirm(`Encerrar treino agora? (duração: ${fmtDuration(getSessionElapsed())})`)) return;
-  endSession();
+  // Se o workout já tem sets feitos hoje, mostra celebração com resumo; senão só encerra
+  const W=WK[wk];
+  const hasAnySets = W && W.ex.some((_,i)=>{
+    const tod=todaySession(exId(wk,i));
+    return tod && tod.sets.some(isValidDone);
+  });
+  if(hasAnySets && !alreadyCelebratedToday(wk)){
+    showCelebration(wk);
+  } else {
+    endSession();
+  }
 }
 function updateSessionDisplays(){
   // Header do treino aberto
@@ -1806,11 +1817,16 @@ function onFabStartClick(){
 
 /* ============ CELEBRATION (item 10) ============ */
 function isWorkoutComplete(day){
+  // Auto-trigger só em 100% dos sets planejados feitos (evita false positive)
+  // Pra encerrar com volume parcial, usar FAB → Parar treino
   const W=WK[day]; if(!W) return false;
-  return W.ex.every((_,i)=>{
+  let plannedTotal=0, doneTotal=0;
+  W.ex.forEach((e,i)=>{
+    plannedTotal += parseInt(e.s)||3;
     const tod=todaySession(exId(day,i));
-    return tod && tod.sets.some(isValidDone);
+    if(tod) doneTotal += tod.sets.filter(isValidDone).length;
   });
+  return plannedTotal>0 && doneTotal>=plannedTotal;
 }
 function alreadyCelebratedToday(day){
   const t=todayISO();
@@ -2488,7 +2504,15 @@ function toggleDone(id,k,el){
   const sets=collect(id);
   if(sets[k]) sets[k].done=el.classList.contains('on');
   upsertToday(id,sets); flashSaved(id);
-  if(el.classList.contains('on')){
+  if(!el.classList.contains('on')){
+    // Desmarcou: se o timer estava rodando por causa deste set, fecha
+    const ov=document.getElementById('overlay');
+    if(ov && !ov.classList.contains('hidden') && tState==='running'){
+      closeTimer();
+    }
+    return;
+  }
+  {
     const day=id.split('_')[0], i=+id.split('_')[1];
     // Auto-start session na primeira marcação válida do dia (não pergunta, é o caminho natural)
     if(!isSessionActive() && !alreadyCelebratedToday(day) && isValidDone(sets[k])){
@@ -2577,6 +2601,25 @@ function renderHoje(){
         ${sleepLow?`<div class="pretip-body" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);color:#f5b94e"><b>⚠️ Sono ${sleepToday}h:</b> vá com 1 rep a menos hoje, prioriza forma sobre carga (Dattilo 2011).</div>`:''}
       </div>`;
     }
+  }
+
+  // Volume snapshot — só grupos prioridade abaixo de 70% da meta semanal (item E-2)
+  const wkVol=weeklyVolume();
+  const prioLow=[];
+  for(const mg in MG_PRIORITY){
+    const v=wkVol[mg]||0;
+    const tgt=MG_TARGETS[mg]||10;
+    if(v < tgt*0.70){
+      prioLow.push({mg, v:Math.round(v*10)/10, tgt, color:MG_COLOR[mg], label:MG_LABELS[mg]});
+    }
+  }
+  if(prioLow.length){
+    h+=`<div class="pretip" style="background:linear-gradient(135deg, rgba(245,185,78,.14), rgba(245,185,78,.04)); border-color:rgba(245,185,78,.3)">
+      <div class="pretip-hd" style="color:#f5b94e">${I.flame}<span>Volume baixo nas prioridades</span></div>
+      <div class="pretip-body">Esta semana você fez pouco de:
+        ${prioLow.map(p=>`<div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center"><b style="color:${p.color}">${p.label}</b><span style="color:var(--muted);font-size:12px">${p.v}/${p.tgt} sets</span></div>`).join('')}
+      </div>
+    </div>`;
   }
 
   // PESO
@@ -2764,6 +2807,13 @@ function toggleCustomFood(){
   const f=document.getElementById('customFoodForm');
   if(!f) return;
   f.classList.toggle('hidden', !customFoodOpen);
+  // Atualiza label do botão pra refletir estado
+  const btn=document.querySelector('.custom-btn');
+  if(btn){
+    btn.innerHTML = customFoodOpen
+      ? `<span class="ic">${I.xcrc}</span>Fechar formulário`
+      : `<span class="ic">${I.plus}</span>Alimento personalizado`;
+  }
   if(customFoodOpen){
     setTimeout(()=>{ const n=document.getElementById('cf_name'); if(n) n.focus(); }, 50);
   }
