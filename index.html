@@ -1212,6 +1212,104 @@
     font-size:12.5px; color:var(--ink2); line-height:1.5;
   }
   .pretip .pretip-body b{ color:#fff; }
+
+  /* ============ TREINO EM CASA (home sessions) ============ */
+  .home-card{
+    display:flex; align-items:center; gap:12px;
+    background:linear-gradient(135deg, rgba(168,230,168,.13), rgba(120,200,120,.04));
+    border:1px solid rgba(168,230,168,.30);
+    border-radius:var(--r-lg); padding:14px;
+    margin-bottom:10px; cursor:pointer;
+    box-shadow:var(--shadow-1);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .home-card:active{ transform:scale(.985); }
+  .home-card.avoid{
+    background:linear-gradient(135deg, rgba(255,107,92,.10), rgba(229,72,56,.03));
+    border-color:rgba(255,107,92,.25);
+    opacity:.78;
+  }
+  .home-card.ok{
+    background:linear-gradient(135deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+    border-color:var(--line-2);
+  }
+  .home-card .home-ic{
+    flex:none; width:44px; height:44px; border-radius:14px;
+    display:grid; place-items:center;
+    font-size:10px; font-weight:800; letter-spacing:.08em;
+    background:rgba(168,230,168,.20); color:#a8e6a8;
+  }
+  .home-card.avoid .home-ic{ background:rgba(255,107,92,.15); color:#ffbab2; }
+  .home-card.ok .home-ic{ background:rgba(255,255,255,.06); color:var(--ink2); }
+  .home-card .home-body{ flex:1; min-width:0; }
+  .home-card .home-l{
+    font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+    font-weight:700; color:#a8e6a8;
+  }
+  .home-card.avoid .home-l{ color:#ffbab2; }
+  .home-card.ok .home-l{ color:var(--faint); }
+  .home-card .home-t{ font-size:15px; font-weight:700; margin-top:2px; color:var(--ink); }
+  .home-card .home-r{ font-size:12px; color:var(--muted); margin-top:3px; line-height:1.35; }
+  .home-card .home-time{ font-size:11px; color:var(--faint); margin-top:3px; }
+  .home-card .chev{ color:var(--ink2); flex:none; }
+  .home-section-hd{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin:18px 0 8px;
+  }
+  .home-section-hd h3{ margin:0; font-size:13px; font-weight:700; letter-spacing:-.01em; color:var(--ink); }
+  .home-section-hd .more{ font-size:11.5px; color:var(--faint); cursor:pointer; }
+  .home-extra.hidden{ display:none; }
+
+  /* Tela do home day (renderHomeDay) */
+  .home-hd{
+    display:flex; align-items:center; gap:12px;
+    background:linear-gradient(135deg, rgba(168,230,168,.13), rgba(120,200,120,.04));
+    border:1px solid rgba(168,230,168,.30);
+    border-radius:var(--r-lg); padding:14px;
+    margin-bottom:12px;
+  }
+  .home-hd .home-badge{
+    flex:none; width:52px; height:52px; border-radius:16px;
+    display:grid; place-items:center;
+    font-size:11px; font-weight:800; letter-spacing:.08em; color:#a8e6a8;
+    background:rgba(168,230,168,.20);
+  }
+  .home-hd .home-meta{ flex:1; }
+  .home-hd .home-l{ font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; font-weight:700; color:#a8e6a8; }
+  .home-hd .home-t{ font-size:17px; font-weight:700; margin-top:2px; }
+  .home-hd .home-f{ font-size:12.5px; color:var(--muted); margin-top:2px; }
+  .home-desc{
+    background:var(--glass); border:1px solid var(--line-2);
+    border-radius:var(--r-lg); padding:12px 14px;
+    margin-bottom:12px; font-size:12.5px; color:var(--ink2); line-height:1.5;
+  }
+  .home-desc b{ color:#fff; }
+  .home-skip{
+    background:linear-gradient(135deg, rgba(91,158,255,.13), rgba(58,127,224,.04));
+    border:1px solid rgba(91,158,255,.30);
+    border-radius:var(--r-lg); padding:12px 14px;
+    margin-bottom:14px;
+  }
+  .home-skip-hd{
+    display:flex; align-items:center; gap:6px;
+    font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+    color:#7ab2ff; margin-bottom:6px;
+  }
+  .home-skip-body{ font-size:13px; color:var(--ink); }
+  .home-skip-body b{ color:#7ab2ff; }
+  .home-skip-list{ margin:6px 0 4px; padding:0; list-style:none; }
+  .home-skip-list li{ font-size:12.5px; color:var(--ink2); padding:2px 0; }
+  .home-skip-foot{ font-size:11px; color:var(--faint); margin-top:6px; line-height:1.4; font-style:italic; }
+
+  /* Banner "feito ontem em casa" no renderDay */
+  .home-done-banner{
+    background:linear-gradient(135deg, rgba(168,230,168,.18), rgba(120,200,120,.05));
+    border:1px solid rgba(168,230,168,.35);
+    border-radius:10px; padding:8px 12px;
+    margin-top:8px;
+    font-size:12px; color:#bce8bc; line-height:1.4;
+  }
+  .home-done-banner b{ color:#fff; }
 </style>
 </head>
 <body>
@@ -1224,7 +1322,7 @@
 
 <div id="a2hs-banner" class="a2hs-banner hidden">
   <div class="a2hs-msg">
-    <b>📱 Pra notificações + storage seguro:</b><br>
+    <b>Pra notificações + storage seguro:</b><br>
     Abra no Safari → toque em <b>Compartilhar</b> → <b>Adicionar à Tela de Início</b>.
   </div>
   <button class="a2hs-close" onclick="dismissA2HSBanner()" aria-label="Fechar">×</button>
@@ -1636,8 +1734,9 @@ const LS = {
   cardio:"meutreino_cardio_v1",
   meta:"meutreino_meta_v1",
   session:"meutreino_session_v1",
+  freelog:"meutreino_freelog_v1",
 };
-const DEFAULTS = {logs:{}, bw:[], sleep:{}, protein:{}, suppl:{}, photos:[], measures:[], cardio:{}, meta:{}, session:{active:null, history:[]}};
+const DEFAULTS = {logs:{}, bw:[], sleep:{}, protein:{}, suppl:{}, photos:[], measures:[], cardio:{}, meta:{}, session:{active:null, history:[]}, freelog:{}};
 const ST = JSON.parse(JSON.stringify(DEFAULTS));
 for(const k of Object.keys(LS)){
   try{ const r=localStorage.getItem(LS[k]); if(r) ST[k]=JSON.parse(r); }catch(e){}
@@ -1650,6 +1749,8 @@ for(const date in ST.protein){
 if(!ST.session || typeof ST.session!=='object'){ ST.session={active:null, history:[]}; }
 if(!('active' in ST.session)) ST.session.active=null;
 if(!Array.isArray(ST.session.history)) ST.session.history=[];
+// Migração defensiva: freelog deve ser objeto {sessionId: [{date, sets}]}
+if(!ST.freelog || typeof ST.freelog!=='object' || Array.isArray(ST.freelog)) ST.freelog={};
 
 /* ============ TOAST (feedback transitório) ============ */
 let toastTimer=null;
@@ -1669,7 +1770,7 @@ function saveK(k){
   try{ localStorage.setItem(LS[k], JSON.stringify(ST[k])); return true; }
   catch(e){
     console.error('saveK fail', k, e);
-    showToast('⚠️ Sem espaço — exporte backup e libere fotos antigas', 'warn', 4500);
+    showToast('Sem espaço — exporte backup e libere fotos antigas', 'warn', 4500);
     return false;
   }
 }
@@ -1723,7 +1824,7 @@ function startSession(workoutId){
   saveK('session');
   updateSessionDisplays();
   updateFabMenu();
-  showToast(`Treino ${workoutId} iniciado ▶`, 'ok', 1800);
+  showToast(`Treino ${workoutId} iniciado`, 'ok', 1800);
   return true;
 }
 function pauseSession(){
@@ -1733,7 +1834,7 @@ function pauseSession(){
   saveK('session');
   updateSessionDisplays();
   updateFabMenu();
-  showToast(`Treino pausado ⏸`, 'info', 1500);
+  showToast(`Treino pausado`, 'info', 1500);
 }
 function resumeSession(){
   const s=ST.session.active;
@@ -1743,7 +1844,7 @@ function resumeSession(){
   saveK('session');
   updateSessionDisplays();
   updateFabMenu();
-  showToast(`Treino retomado ▶`, 'ok', 1500);
+  showToast(`Treino retomado`, 'ok', 1500);
 }
 function endSession(silent=false){
   const s=ST.session.active;
@@ -1950,7 +2051,7 @@ function showCelebration(day){
         <div class="celeb-stat"><div class="l">Duração</div><div class="v">${fmtDuration(durMs)}</div></div>
         <div class="celeb-stat"><div class="l">Sets</div><div class="v">${summary.setsN}</div></div>
         <div class="celeb-stat"><div class="l">Volume</div><div class="v">${summary.volume}<small>kg</small></div></div>
-        <div class="celeb-stat"><div class="l">Streak</div><div class="v">${streak}🔥</div></div>
+        <div class="celeb-stat"><div class="l"><span style="display:inline-flex;vertical-align:-3px;margin-right:3px">${I.flame}</span>Streak</div><div class="v">${streak}<small> dias</small></div></div>
       </div>
       <button class="celeb-ok" onclick="closeCelebration()">OK, voltar pra Home</button>
     </div>`;
@@ -2003,7 +2104,7 @@ async function checkStorageQuota(){
     if(navigator.storage && navigator.storage.estimate){
       const {usage=0, quota=0} = await navigator.storage.estimate();
       if(quota>0 && usage/quota > 0.80){
-        showToast(`⚠️ Storage ${Math.round(usage/quota*100)}% cheio — faça backup`, 'warn', 5000);
+        showToast(`Storage ${Math.round(usage/quota*100)}% cheio — faça backup`, 'warn', 5000);
       }
     }
   }catch(e){}
@@ -2014,12 +2115,12 @@ function checkBackupReminder(){
   const last=ST.meta && ST.meta.lastBackupAt;
   if(!last){
     // Nunca fez backup — só nag se já tem dados acumulados
-    showToast(`💾 Faça o 1º backup (Mais → Exportar)`, 'info', 4500);
+    showToast(`Faça o 1º backup (Mais → Exportar)`, 'info', 4500);
     return;
   }
   const days=Math.floor((Date.now()-last)/86400000);
   if(days>=7){
-    showToast(`💾 Último backup há ${days} dias — exporta novo`, 'warn', 4500);
+    showToast(`Último backup há ${days} dias — exporta novo`, 'warn', 4500);
   }
 }
 function today(){ return new Date().toISOString().slice(0,10); }
@@ -2062,6 +2163,90 @@ function upsertToday(id, sets){
   const ex=ST.logs[id].find(s=>s.date===t);
   if(ex) ex.sets=sets; else ST.logs[id].push({date:t, sets});
   saveK('logs');
+}
+
+/* ============ FREELOG: sessões de casa (paralelo a logs) ============
+   Schema: ST.freelog[sessionId+"_"+exIdx] = [{date, sets:[{kg,reps,rir,done}]}]
+   Não polui suggestedNextDay nem suggestNext — funções de progressão só leem ST.logs.
+*/
+function freeExId(sessionId, i){ return sessionId+"_"+i; }
+function lastFreeSession(id){
+  const h=ST.freelog[id]; if(!h||!h.length) return null;
+  const t=today();
+  for(let k=h.length-1;k>=0;k--){ if(h[k].date!==t) return h[k]; }
+  return null;
+}
+function todayFreeSession(id){
+  const h=ST.freelog[id]; if(!h) return null;
+  const t=today(); return h.find(s=>s.date===t)||null;
+}
+function upsertFreeToday(id, sets){
+  if(!ST.freelog[id]) ST.freelog[id]=[];
+  const t=today();
+  const ex=ST.freelog[id].find(s=>s.date===t);
+  if(ex) ex.sets=sets; else ST.freelog[id].push({date:t, sets});
+  saveK('freelog');
+}
+// Datas em que qualquer sessão livre teve set válido (kg pode ser 0 pra calistenia)
+function freeWorkoutDates(){
+  const set=new Set();
+  for(const id of Object.keys(ST.freelog)){
+    for(const sess of (ST.freelog[id]||[])){
+      if((sess.sets||[]).some(s=>s&&s.done&&num(s.reps)>0)) set.add(sess.date);
+    }
+  }
+  return Array.from(set).sort();
+}
+// Última sessão livre (de qualquer template) na data dada
+function freeSessionsOnDate(date){
+  const out=[];
+  for(const id of Object.keys(ST.freelog)){
+    const sess=(ST.freelog[id]||[]).find(s=>s.date===date);
+    if(sess && (sess.sets||[]).some(s=>s&&s.done&&num(s.reps)>0)){
+      // id é "templateId_exIdx" — extrai templateId
+      const templateId=id.split("_").slice(0,-1).join("_");
+      out.push({templateId, exIdx:+id.split("_").slice(-1)[0], sess});
+    }
+  }
+  return out;
+}
+// Templates únicos completados na data
+function homeTemplatesCompletedOn(date){
+  const sessions=freeSessionsOnDate(date);
+  return Array.from(new Set(sessions.map(s=>s.templateId)));
+}
+/* Ranqueia HOME_SESSIONS pelo próximo dia ABCD agendado.
+   Retorna array ordenado [{id, tmpl, score, tier, reason}] onde tier ∈ "best"|"ok"|"avoid".
+   tier "best" = complementa explicitamente; "avoid" = compete com foco; "ok" = neutro.
+*/
+function pickHomeSessions(nextDay){
+  const out=[];
+  for(const [id,tmpl] of Object.entries(HOME_SESSIONS)){
+    let score=0; let tier="ok"; let reason="";
+    if(tmpl.bestBefore && tmpl.bestBefore.includes(nextDay)){
+      score+=30; tier="best"; reason=`Complementa o treino ${nextDay} de amanhã`;
+    }
+    if(tmpl.avoidBefore && tmpl.avoidBefore.includes(nextDay)){
+      score-=50; tier="avoid"; reason=`Sobrepõe com o foco do treino ${nextDay} de amanhã`;
+    }
+    // Bonus se canSkipNextDay tem entrada pro próximo dia (mais palpável pro usuário)
+    const skip=tmpl.canSkipNextDay && tmpl.canSkipNextDay[nextDay];
+    if(skip && skip.length){
+      score+=20;
+      if(tier!=="avoid"){
+        reason=reason || `Faz e pode pular ${skip.length} exercício${skip.length>1?'s':''} amanhã`;
+      }
+    }
+    // Bonus se mg principal foca em prioridade (ombro_lat, peito_sup, biceps, triceps)
+    for(const mg of Object.keys(tmpl.ex[0]?.mg||{})){
+      if(MG_PRIORITY[mg]) score+=10;
+    }
+    // Core sempre tem +5 (sub-treinado em ABCD Push/Pull)
+    if(id==="core_completo") score+=15;
+    out.push({id, tmpl, score, tier, reason});
+  }
+  out.sort((a,b)=>b.score-a.score);
+  return out;
 }
 
 /* ============ PROGRESSÃO: e1RM, PR, SUGESTÃO, PLATEAU ============ */
@@ -2279,11 +2464,112 @@ const EXERCISE_ALTERNATIVES = {
   ],
 };
 
+/* ============ TREINOS EM CASA (sessões livres, sem equipamento) ============
+   Filosofia: não competem com a rotação ABCD nem com a sugestão de progressão.
+   Ficam em ST.freelog, separado de ST.logs. weeklyVolume soma volume de core/etc.
+   Cada template tem:
+     - bestBefore: dias ABCD onde a sessão complementa o próximo treino (verde)
+     - avoidBefore: dias onde compete diretamente com o foco (vermelho)
+     - canSkipNextDay: se o usuário fizer essa sessão hoje, pode pular esses
+       exercícios do programa amanhã sem prejuízo (mapa por nome de exercício)
+*/
+const HOME_SESSIONS = {
+  core_completo:{
+    name:"Core Completo",
+    focus:"Abdômen · lombar · oblíquos",
+    desc:"Cobre o que cadeira romana + abdominal declinado cobrem na academia. Reto abdominal recupera rápido, aguenta alta frequência (McGill 2007, Behm 2010).",
+    duration:20,
+    bestBefore:[],          // sempre vale como extra (core é sub-treinado em ABCD)
+    avoidBefore:[],
+    canSkipNextDay:{
+      B:["Abdominal declinado com anilha","Cadeira romana (joelho dobrado)"],
+      D:["Abdominal declinado com anilha","Cadeira romana (joelho dobrado)"],
+    },
+    ex:[
+      {n:"Hollow hold", s:3, r:"30s", t:"core", mg:{core:1}, cue:"Lombar colada no chão, braços e pernas estendidos pra cima. <em>Mantém a pelve em retroversão.</em> Se 30s for fácil, sobe pra 45s."},
+      {n:"Dead bug", s:3, r:"10/lado", t:"core", mg:{core:1}, cue:"Anti-extensão. Estende braço oposto à perna, controla a descida. Lombar não sai do chão em nenhum momento."},
+      {n:"Reverse crunch", s:3, r:"15", t:"core", mg:{core:1}, cue:"Substitui cadeira romana. <em>Enrola a pelve</em> (retroversão), joelhos sobem em direção ao peito. Desce devagar."},
+      {n:"Side plank com elevação de quadril", s:3, r:"12/lado", t:"core", mg:{core:1}, cue:"Oblíquos. Desce o quadril até quase encostar, sobe firme. Afina visualmente a cintura."},
+      {n:"Bird dog", s:3, r:"8/lado", t:"core", mg:{core:1}, cue:"McGill Big Three. Anti-rotação. Estende braço D + perna E ao mesmo tempo. Sem balanço."},
+    ],
+  },
+  panturrilha_cardio:{
+    name:"Panturrilha + Cardio Z2",
+    focus:"Panturrilha · sistema cardiovascular leve",
+    desc:"Polichinelos baixos (sem barulho) + panturrilha em escada. Z2 = active recovery (Dupuy 2018), facilita recuperação dos grupos pesados.",
+    duration:25,
+    bestBefore:["A","C"],   // A e C não têm panturrilha nem cardio
+    avoidBefore:[],
+    canSkipNextDay:{
+      B:["Panturrilha"],
+      D:["Panturrilha"],
+    },
+    ex:[
+      {n:"Panturrilha em pé na escada", s:4, r:"15-20", t:"iso", mg:{panturrilha:1}, cue:"Calcanhar fora do degrau, desce máximo. <em>Pausa 1s embaixo</em> (alongado cresce mais). Pode segurar 1 garrafa de água em cada mão pra lastrar."},
+      {n:"Polichinelo baixo (low impact)", s:6, r:"40s", t:"core", mg:{panturrilha:0.3}, cue:"Sem pular alto (vizinho). Braços abrem/fecham + pernas alternadas. Z2 = consegue conversar."},
+      {n:"Marcha estacionária com joelho alto", s:4, r:"45s", t:"core", mg:{core:0.5}, cue:"Joelho na altura do quadril, ritmo constante. Mantém core ativo."},
+      {n:"Burpee leve (sem flexão, sem pulo)", s:3, r:"10", t:"core", mg:{core:0.5, panturrilha:0.3}, cue:"Agacha → joga pés trás → volta → levanta. Só se sentir disposição."},
+    ],
+  },
+  posterior_mobilidade:{
+    name:"Posterior + Mobilidade",
+    focus:"Glúteo · isquiotibial · quadril",
+    desc:"Glúteo ponte + single-leg deadlift sem peso + alongamentos. Substitui mesa flexora leve do programa.",
+    duration:20,
+    bestBefore:["A","C"],   // A e C não tocam perna
+    avoidBefore:["B","D"],  // B e D já têm mesa flexora leve
+    canSkipNextDay:{
+      B:["Mesa flexora"],
+      D:["Mesa flexora"],
+    },
+    ex:[
+      {n:"Ponte glútea (single leg)", s:3, r:"12/lado", t:"iso", mg:{posterior:0.7}, cue:"Pé apoiado no chão, outra perna estendida. Sobe pelo glúteo, <em>aperta no topo 1s</em>. Lombar não estende excessivamente."},
+      {n:"Single-leg deadlift sem peso", s:3, r:"10/lado", t:"iso", mg:{posterior:1}, cue:"Hip hinge unilateral. Estica braços pra frente como contrapeso. Sente o isquio puxar. Posição alongada (Wolf 2023)."},
+      {n:"Good morning sem carga", s:3, r:"15", t:"iso", mg:{posterior:0.7}, cue:"Mãos atrás da cabeça, hip hinge. Para quando sentir alongamento — não força. Lombar neutra."},
+      {n:"Alongamento isquio em pé", s:3, r:"30s/lado", t:"core", mg:{posterior:0.3}, cue:"Pé num degrau baixo, joelho estendido, inclina tronco pra frente. Respira fundo."},
+      {n:"Mobilidade de quadril (90/90)", s:3, r:"45s", t:"core", mg:{}, cue:"Sentado, perna da frente 90° lateral, perna trás 90° pra trás. Alterna lados. Abre o quadril."},
+    ],
+  },
+  peito_triceps:{
+    name:"Calistenia Peito + Tríceps",
+    focus:"Peito superior · tríceps · ombro anterior",
+    desc:"Pike + decline + diamond push-ups. Substituto bodyweight pros compostos. Bom em dias antes de B/D (pull) — não usar antes de A/C.",
+    duration:20,
+    bestBefore:["B","D"],   // B e D não tocam peito
+    avoidBefore:["A","C"],  // A e C já são push pesado
+    canSkipNextDay:{},      // não substitui exercício do programa
+    ex:[
+      {n:"Pike push-up", s:3, r:"6-12", t:"comp", mg:{ombro_ant:1, triceps:0.7, ombro_lat:0.3}, cue:"Pés elevados (sofá), quadril alto, mãos no chão. Desce a cabeça em direção ao chão. <em>Substituto de desenvolvimento.</em>"},
+      {n:"Decline push-up", s:3, r:"8-15", t:"comp", mg:{peito_sup:1, ombro_ant:0.5, triceps:0.5}, cue:"Pés no sofá, mãos no chão. Único bodyweight que prioriza peito superior. Excêntrica 3s."},
+      {n:"Diamond push-up", s:3, r:"6-12", t:"comp", mg:{triceps:1, peito_med:0.5}, cue:"Mãos juntas (polegares + indicadores formam diamante). Pega cabeça medial do tríceps. Se muito difícil, faz com joelhos."},
+      {n:"Tríceps mergulho no sofá", s:3, r:"10-15", t:"iso", mg:{triceps:1, ombro_ant:0.3}, cue:"Mãos na borda do sofá, pernas estendidas no chão. Desce até cotovelos 90°. Sobe pelo tríceps."},
+      {n:"Flexão diamante negativa lenta", s:2, r:"5", t:"iso", mg:{triceps:0.7, peito_med:0.3}, cue:"Só excêntrica: desce em 5s, sobe como puder (joelho). Foco no dano muscular."},
+    ],
+  },
+  ombro_postura:{
+    name:"Ombro Lateral + Postura",
+    focus:"Deltoide lateral · posterior · postura",
+    desc:"Elevação lateral isométrica (mochila) + face pull elástico. <b>Atenção: compete com A e C</b> (que já priorizam ombro). Bom antes de B/D.",
+    duration:15,
+    bestBefore:["B","D"],   // não tem desenvolvimento pesado nesses dias
+    avoidBefore:["A","C"],  // foco principal já é ombro
+    canSkipNextDay:{},      // não substitui — é EXTRA pra prioridade #1
+    ex:[
+      {n:"Elevação lateral isométrica (mochila/livros)", s:3, r:"30s", t:"iso", mg:{ombro_lat:1}, cue:"Segura peso (mochila com livros, garrafas). Braços a 90° na lateral, mantém 30s. Fadiga lateral real. Volume extra pra <em>prioridade #1</em>."},
+      {n:"Face pull com elástico (ou toalha)", s:3, r:"15", t:"iso", mg:{ombro_post:1}, cue:"Elástico preso numa maçaneta, puxa pra perto da testa, cotovelos altos. Deltoide posterior + postura. Sem elástico: toalha esticada entre as mãos."},
+      {n:"YTW prone (deitado de bruços)", s:3, r:"8 cada letra", t:"iso", mg:{ombro_post:0.7}, cue:"Deitado bruços, braços formam Y (cima), T (lateral), W (cotovelos dobrados). Levanta do chão e segura 1s cada rep."},
+      {n:"Wall slide", s:3, r:"10", t:"iso", mg:{ombro_post:0.3}, cue:"Costas, lombar e braços encostados na parede. Desliza braços pra cima sem tirar contato. Mobilidade de ombro + postura."},
+      {n:"Elevação frontal com mochila", s:2, r:"12", t:"iso", mg:{ombro_ant:0.7}, cue:"Opcional. Pega a mochila com as duas mãos, sobe na frente até a altura do ombro. Controla a descida."},
+    ],
+  },
+};
+
 /* ============ VOLUME SEMANAL (últimos 7 dias) ============ */
 function weeklyVolume(){
   const out={};
   for(const mg of Object.keys(MG_LABELS)) out[mg]=0;
   const t=today();
+  // 1) Programa ABCD (logs)
   for(const id of Object.keys(ST.logs)){
     const [day,idx]=id.split("_");
     const ex=WK[day]?.ex[+idx]; if(!ex||!ex.mg) continue;
@@ -2291,6 +2577,24 @@ function weeklyVolume(){
       const dd = daysBetween(sess.date, t);
       if(dd<0 || dd>=7) continue;
       const doneCount = validDoneCount(sess.sets);
+      if(!doneCount) continue;
+      for(const [mg,w] of Object.entries(ex.mg)){
+        out[mg] = (out[mg]||0) + doneCount * w;
+      }
+    }
+  }
+  // 2) Sessões em casa (freelog) — calistenia conta sets done mesmo sem kg
+  for(const id of Object.keys(ST.freelog)){
+    const parts=id.split("_");
+    const exIdx=+parts.slice(-1)[0];
+    const templateId=parts.slice(0,-1).join("_");
+    const tmpl=HOME_SESSIONS[templateId];
+    const ex=tmpl?.ex[exIdx]; if(!ex||!ex.mg) continue;
+    for(const sess of (ST.freelog[id]||[])){
+      const dd = daysBetween(sess.date, t);
+      if(dd<0 || dd>=7) continue;
+      // Set válido na casa: done + reps>0 (kg pode ser 0 pra calistenia)
+      const doneCount = (sess.sets||[]).filter(s=>s&&s.done&&num(s.reps)>0).length;
       if(!doneCount) continue;
       for(const [mg,w] of Object.entries(ex.mg)){
         out[mg] = (out[mg]||0) + doneCount * w;
@@ -2324,11 +2628,17 @@ function workoutDates(){
   }
   return Array.from(set).sort();
 }
-function getStreak(){ // dias com pelo menos 1 set done, contando trás pra frente (admite dias de descanso até 2)
-  const dates=new Set(workoutDates());
+// Datas com QUALQUER atividade (programa OU sessão livre). Não zera streak em dia de casa.
+function activityDates(){
+  const set=new Set(workoutDates());
+  for(const d of freeWorkoutDates()) set.add(d);
+  return Array.from(set).sort();
+}
+function getStreak(){ // dias consecutivos com QUALQUER atividade (ABCD ou casa). Tolera só hoje em branco.
+  const dates=new Set(activityDates());
   if(!dates.size) return 0;
   let streak=0, t=today();
-  // se hoje não treinou, começa de ontem
+  // se hoje não tem atividade, começa de ontem
   if(!dates.has(t)) t = dateAdd(t,-1);
   while(dates.has(t)){ streak++; t = dateAdd(t,-1); }
   return streak;
@@ -2337,12 +2647,43 @@ function weeksTraining(){
   const ds=workoutDates(); if(!ds.length) return 0;
   return Math.floor(daysBetween(ds[0], today())/7)+1;
 }
-function workoutsThisWeek(){
+function workoutsThisWeek(){ // só ABCD conta pra meta 4/4 — pra não inflar com sessões de casa
   const t=today(); let n=0;
   for(const d of workoutDates()){
     if(daysBetween(d,t)<7) n++;
   }
   return n;
+}
+// Streak semanal (Hevy model): semanas consecutivas com ≥3 treinos ABCD (3 dá pra falhar 1 e ainda contar).
+// Janela semanal = últimos 7 dias até cada referência. Conta pra trás em saltos de 7.
+function weekStreak(){
+  const ds=workoutDates(); if(!ds.length) return 0;
+  // base: fim de hoje
+  let cursor=today();
+  let streak=0;
+  // Tolera semana atual com <3 se ainda não terminou (mantém streak até a semana acabar)
+  const set=new Set(ds);
+  const countWeekEnding=(endDate)=>{
+    let n=0;
+    for(let k=0;k<7;k++){
+      if(set.has(dateAdd(endDate, -k))) n++;
+    }
+    return n;
+  };
+  // Se semana corrente tem <3 mas tem ≥1, conta a semana ANTERIOR como base
+  const curN=countWeekEnding(cursor);
+  if(curN>=3){
+    streak=1; cursor=dateAdd(cursor,-7);
+  } else if(curN>=1){
+    // semana corrente em andamento: olha pra anterior
+    cursor=dateAdd(cursor,-7);
+  } else {
+    return 0;
+  }
+  while(countWeekEnding(cursor)>=3){
+    streak++; cursor=dateAdd(cursor,-7);
+  }
+  return streak;
 }
 function needsDeload(){
   // a cada 5 semanas treinadas sem pausa
@@ -2369,20 +2710,24 @@ function suggestedNextDay(){
 }
 
 /* ============ NAV ============ */
-let tab="treino", openDay=null;
+let tab="treino", openDay=null, openHomeDay=null;
 function setTab(t){
-  tab=t; openDay=null;
+  tab=t; openDay=null; openHomeDay=null;
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   render(); window.scrollTo(0,0);
 }
-function openWorkout(d){ openDay=d; render(); window.scrollTo(0,0); }
-function backToList(){ openDay=null; render(); window.scrollTo(0,0); }
+function openWorkout(d){ openDay=d; openHomeDay=null; render(); window.scrollTo(0,0); }
+function openHome(id){ openHomeDay=id; openDay=null; tab="treino"; document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.tab==="treino")); render(); window.scrollTo(0,0); }
+function backToList(){ openDay=null; openHomeDay=null; render(); window.scrollTo(0,0); }
 
 /* ============ RENDER ============ */
 const app=document.getElementById('app');
 const sub=document.getElementById('subline');
 function render(){
-  if(tab==="treino") return openDay? renderDay(openDay) : renderDays();
+  if(tab==="treino"){
+    if(openHomeDay) return renderHomeDay(openHomeDay);
+    return openDay? renderDay(openDay) : renderDays();
+  }
   if(tab==="hoje") return renderHoje();
   if(tab==="corpo") return renderCorpo();
   if(tab==="mais") return renderMais();
@@ -2399,7 +2744,7 @@ function hasValidDone(sets){ return (sets||[]).some(isValidDone); }
 function renderDays(){
   sub.textContent="Toque num treino para começar";
   const sug=suggestedNextDay();
-  const streak=getStreak();
+  const weekN=weekStreak();
   const wkN=workoutsThisWeek();
   const deload=needsDeload();
   let h=``;
@@ -2414,7 +2759,7 @@ function renderDays(){
     </div>`;
   }
   h+=`<div class="stats">
-    <div class="stat streak"><div class="l">🔥 Streak</div><div class="v">${streak}<small> dia${streak===1?'':'s'}</small></div><div class="s">${streak>0?'segue assim':'começa hoje'}</div></div>
+    <div class="stat streak"><div class="l"><span style="display:inline-flex;vertical-align:-3px;margin-right:4px">${I.flame}</span>Semanas seguidas</div><div class="v">${weekN}<small> sem</small></div><div class="s">${weekN>0?'≥3 treinos/sem':'comece esta semana'}</div></div>
     <div class="stat"><div class="l">Esta semana</div><div class="v">${wkN}<small>/4</small></div><div class="s">treinos completados</div></div>
   </div>`;
   h+=`<h2 class="sec">Próximo · ${WK[sug].name}</h2>`;
@@ -2492,6 +2837,18 @@ function renderDay(d){
       platBlock2 = `<div class="plateau">${I.flame} 3 sessões sem progresso · tenta deload essa semana (volume -50% ou kg -20%) antes de trocar exercício</div>`;
     }
 
+    // Banner "feito ontem em casa" — se sessão livre de ontem cobre esse exercício
+    const yesterday = dateAdd(today(), -1);
+    const yesterdayTemplates = homeTemplatesCompletedOn(yesterday);
+    let skipBanner = '';
+    for(const tid of yesterdayTemplates){
+      const skipList = HOME_SESSIONS[tid]?.canSkipNextDay?.[d] || [];
+      if(skipList.includes(e.n)){
+        skipBanner = `<div class="home-done-banner"><span style="display:inline-flex;vertical-align:-2px;margin-right:5px;color:#a8e6a8">${I.check2}</span><b>${esc(HOME_SESSIONS[tid].name)} feito ontem em casa</b> · esse músculo já foi trabalhado — pode pular se preferir (ou fazer leve)</div>`;
+        break;
+      }
+    }
+
     // PR badge (sessão de hoje)
     const todayPR = tod && isPRSession(id, tod.sets);
     const prBadge = todayPR ? `<div class="pr-badge">${I.trophy.replace('width="18" height="18"','width="11" height="11"')} PR!</div>` : '';
@@ -2515,7 +2872,7 @@ function renderDay(d){
       const maxKg = Math.max(...last.sets.filter(s=>s&&num(s.kg)>0).map(s=>num(s.kg)));
       const w1=Math.round((maxKg*0.5)/2.5)*2.5;
       const w2=Math.round((maxKg*0.75)/2.5)*2.5;
-      return `<div class="cue" style="margin-top:8px;font-size:12.5px;color:var(--muted)">⚡ <b style="color:#fff">Aquecimento:</b> ${w1}kg × 8 · ${w2}kg × 5 (antes de começar)</div>`;
+      return `<div class="cue" style="margin-top:8px;font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px"><span style="display:inline-flex;color:#ffd178">${I.bolt}</span><span><b style="color:#fff">Aquecimento:</b> ${w1}kg × 8 · ${w2}kg × 5 (antes de começar)</span></div>`;
     })() : '';
     const photoBlock = url
       ? `<div class="photo">
@@ -2547,6 +2904,7 @@ function renderDay(d){
         </div>
         ${e.cue!=="—"?`<div class="cue">${e.cue}</div>`:""}
         ${warmup}
+        ${skipBanner}
         ${sugBlock}
         ${platBlock2}
         <div class="exbtns">
@@ -2626,6 +2984,134 @@ function toggleDone(id,k,el){
   }
 }
 
+/* ============ TREINO EM CASA — sessão livre (paralela ao ABCD) ============ */
+function renderHomeDay(templateId){
+  const tmpl=HOME_SESSIONS[templateId];
+  if(!tmpl){ openHomeDay=null; return renderDays(); }
+  sub.textContent=`Em casa · ${tmpl.name}`;
+  const nextDay=suggestedNextDay();
+  const skip=(tmpl.canSkipNextDay && tmpl.canSkipNextDay[nextDay]) || [];
+
+  let h=`<div class="backbar"><button class="back" onclick="backToList()">${I.arrowL}<span>Treinos</span></button></div>`;
+  h+=`<div class="home-hd">
+    <div class="home-badge">CASA</div>
+    <div class="home-meta">
+      <div class="home-l">Sessão em casa · ${tmpl.duration} min</div>
+      <div class="home-t">${esc(tmpl.name)}</div>
+      <div class="home-f">${esc(tmpl.focus)}</div>
+    </div>
+  </div>`;
+  h+=`<div class="home-desc">${tmpl.desc}</div>`;
+  if(skip.length){
+    h+=`<div class="home-skip">
+      <div class="home-skip-hd">${I.spark}<span>Se completar essa sessão hoje</span></div>
+      <div class="home-skip-body">No próximo treino <b>${nextDay}</b> de amanhã, pode pular:</div>
+      <ul class="home-skip-list">${skip.map(s=>`<li>• ${esc(s)}</li>`).join('')}</ul>
+      <div class="home-skip-foot">(Esses músculos já vão estar trabalhados. Mas se quiser fazer mesmo assim, sem problema — volume extra.)</div>
+    </div>`;
+  }
+
+  tmpl.ex.forEach((e,i)=>{
+    const id=freeExId(templateId,i);
+    const tod=todayFreeSession(id);
+    const last=lastFreeSession(id);
+    const nset=parseInt(e.s)||3;
+    const pillT = e.t==="comp"?"composto":(e.t==="core"?"core":"isolador");
+    const pillC = e.t==="comp"?"comp":(e.t==="core"?"core":"iso");
+    const restS=(REST[e.t] ?? 75);
+
+    let lastTxt='';
+    if(last){
+      const sets=last.sets.map(s=>{
+        const kg=num(s.kg)>0?`${fmtKg(s.kg)}×`:'';
+        const rir=(s.rir!=null && String(s.rir).trim()!=='')?`@${fmtInt(s.rir)}`:'';
+        return `<b>${kg}${fmtInt(s.reps)||'–'}${rir}</b>`;
+      }).join(" · ");
+      lastTxt=`${I.hist} Última (${esc(last.date.slice(5))}): ${sets}`;
+    } else {
+      lastTxt=`${I.hist} Primeira vez — começa do que aguentar.`;
+    }
+
+    let rows="";
+    for(let k=0;k<nset;k++){
+      const tv=tod&&tod.sets[k]?tod.sets[k]:{};
+      const lv=last&&last.sets[k]?last.sets[k]:{};
+      rows+=`<div class="setrow r4">
+        <div class="sn">${k+1}</div>
+        <input class="num" inputmode="decimal" placeholder="${lv.kg||'–'}" value="${tv.kg||''}" data-id="${id}" data-k="${k}" data-f="kg" oninput="onHomeLog(this)">
+        <input class="num" inputmode="numeric" placeholder="${lv.reps||'reps'}" value="${tv.reps||''}" data-id="${id}" data-k="${k}" data-f="reps" oninput="onHomeLog(this)">
+        <input class="num rir" inputmode="numeric" placeholder="${lv.rir!=null&&lv.rir!==''?lv.rir:'RIR'}" value="${tv.rir!=null?tv.rir:''}" data-id="${id}" data-k="${k}" data-f="rir" oninput="onHomeLog(this)" maxlength="1">
+        <div class="chk ${tv.done?'on':''}" onclick="toggleHomeDone('${id}',${k},this)">${I.check}</div>
+      </div>`;
+    }
+
+    h+=`<div class="ex">
+      <div class="photo noimg">
+        <div class="ph-fallback">Em casa</div>
+        <div class="ovr">
+          <div class="name">${esc(e.n)}</div>
+          <div class="pill ${pillC}">${pillT}</div>
+        </div>
+      </div>
+      <div class="body">
+        <div class="target">
+          <span class="met"><b>${e.s}</b> séries</span>
+          <span class="dot"></span>
+          <span class="met"><b>${e.r}</b> ${/[a-z]/i.test(String(e.r))?'':'reps'}</span>
+          <span class="dot"></span>
+          <span class="met"><b>${Math.floor(restS/60)}:${String(restS%60).padStart(2,'0')}</b> descanso</span>
+        </div>
+        ${e.cue!=="—"?`<div class="cue">${e.cue}</div>`:""}
+        <div class="exbtns">
+          <button class="xb rest" onclick="openTimer(${restS})">${I.timer}<span>Descanso ${Math.floor(restS/60)}:${String(restS%60).padStart(2,'0')}</span></button>
+        </div>
+      </div>
+      <div class="log">
+        <div class="last">${lastTxt}</div>
+        <div class="colhead r4"><span></span><span>kg</span><span>reps</span><span>RIR</span><span></span></div>
+        ${rows}
+        <div class="loghint"><span>kg opcional pra calistenia. Marca ✓ quando terminar a série.</span><span class="saved" id="sv_${id}">${I.check2} salvo</span></div>
+      </div>
+    </div>`;
+  });
+
+  app.innerHTML=h;
+}
+function collectHome(id){
+  const inputs=document.querySelectorAll(`input[data-id="${id}"]`);
+  const map={};
+  inputs.forEach(inp=>{
+    const k=inp.dataset.k;
+    map[k]=map[k]||{};
+    map[k][inp.dataset.f]= inp.value.trim();
+  });
+  const tod=todayFreeSession(id);
+  const sets=Object.keys(map).sort((a,b)=>a-b).map(k=>{
+    const prev=tod&&tod.sets[k]?tod.sets[k]:{};
+    return {kg:map[k].kg||"", reps:map[k].reps||"", rir:map[k].rir!==undefined?map[k].rir:(prev.rir||""), done:prev.done||false};
+  });
+  return sets;
+}
+function onHomeLog(inp){ const id=inp.dataset.id; upsertFreeToday(id, collectHome(id)); flashSaved(id); }
+function toggleHomeDone(id,k,el){
+  el.classList.toggle('on');
+  const sets=collectHome(id);
+  if(sets[k]) sets[k].done=el.classList.contains('on');
+  upsertFreeToday(id,sets); flashSaved(id);
+  if(!el.classList.contains('on')){
+    const ov=document.getElementById('overlay');
+    if(ov && !ov.classList.contains('hidden') && tState==='running'){ closeTimer(); }
+    return;
+  }
+  // Identifica tipo do exercício pra descanso correto
+  const parts=id.split("_");
+  const exIdx=+parts.slice(-1)[0];
+  const templateId=parts.slice(0,-1).join("_");
+  const tmpl=HOME_SESSIONS[templateId];
+  const ex=tmpl?.ex[exIdx];
+  if(ex){ openTimer(REST[ex.t] ?? 75); startTimer(); }
+}
+
 /* ============ HOJE — checklist diária ============ */
 function renderHoje(){
   sub.textContent="Tudo que precisa hoje, num lugar só";
@@ -2634,6 +3120,7 @@ function renderHoje(){
   const todayDoneDays = new Set(workoutDates()).has(t);
   const todayWk = WK[sug];
   const streak=getStreak();
+  const weekN=weekStreak();
 
   // macros do dia — array de entries {n, q, p, c, k}
   if(ST.protein[t] && !Array.isArray(ST.protein[t])) ST.protein[t]=[];
@@ -2662,7 +3149,7 @@ function renderHoje(){
 
   let h=`<div class="day-header">
     <div class="greet">${dayNames[date.getDay()]}</div>
-    <div class="date">${date.getDate()} ${monthNames[date.getMonth()]} · ${streak}🔥</div>
+    <div class="date">${date.getDate()} ${monthNames[date.getMonth()]} · ${weekN>0?weekN+' sem seguidas':streak+' dias seguidos'}</div>
   </div>`;
 
   // Atalho treino do dia
@@ -2676,6 +3163,48 @@ function renderHoje(){
     <div class="chev" style="color:var(--ink2)">${I.chevR}</div>
   </div>`;
 
+  // Sessões em casa — recomendadas pra hoje (não competem com ABCD)
+  // Mostra a 1ª recomendada em destaque + "Ver mais opções" pras outras
+  const homeRanked = pickHomeSessions(sug);
+  const topHome = homeRanked[0];
+  const restHome = homeRanked.slice(1);
+  if(topHome){
+    const tierLabel = topHome.tier==="best" ? "Recomendado pra hoje" : (topHome.tier==="avoid" ? "Evite hoje" : "Opção pra hoje");
+    const reasonLine = topHome.reason || (topHome.tier==="avoid" ? "Foco já está no programa de amanhã" : "Active recovery · contribui pro volume semanal");
+    h+=`<div class="home-card ${topHome.tier}" onclick="openHome('${topHome.id}')">
+      <div class="home-ic">CASA</div>
+      <div class="home-body">
+        <div class="home-l">${tierLabel}</div>
+        <div class="home-t">${esc(topHome.tmpl.name)}</div>
+        <div class="home-r">${reasonLine}</div>
+        <div class="home-time">${topHome.tmpl.duration}min · ${esc(topHome.tmpl.focus)}</div>
+      </div>
+      <div class="chev">${I.chevR}</div>
+    </div>`;
+    if(restHome.length){
+      h+=`<div class="home-section-hd">
+        <h3>Outras opções em casa</h3>
+        <span class="more" onclick="document.getElementById('homeExtra').classList.toggle('hidden');this.textContent=document.getElementById('homeExtra').classList.contains('hidden')?'Mostrar (${restHome.length})':'Esconder';">Mostrar (${restHome.length})</span>
+      </div>`;
+      h+=`<div id="homeExtra" class="home-extra hidden">`;
+      for(const o of restHome){
+        const lbl = o.tier==="best" ? "Recomendado" : (o.tier==="avoid" ? "Evite hoje" : "Opção");
+        const rsn = o.reason || (o.tier==="avoid" ? `Compete com o treino ${sug} de amanhã` : "Active recovery · volume extra");
+        h+=`<div class="home-card ${o.tier}" onclick="openHome('${o.id}')">
+          <div class="home-ic">CASA</div>
+          <div class="home-body">
+            <div class="home-l">${lbl}</div>
+            <div class="home-t">${esc(o.tmpl.name)}</div>
+            <div class="home-r">${rsn}</div>
+            <div class="home-time">${o.tmpl.duration}min · ${esc(o.tmpl.focus)}</div>
+          </div>
+          <div class="chev">${I.chevR}</div>
+        </div>`;
+      }
+      h+=`</div>`;
+    }
+  }
+
   // Card "Antes do treino" — princípio rotativo do dia (item 4 v1)
   if(!todayDoneDays){
     const pIdx=dailyPrincipleIdx();
@@ -2686,14 +3215,14 @@ function renderHoje(){
       const prList = prTrackerForWorkout(sug);
       const prBlock = prList.length ? `
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08)">
-          <div style="font-size:10.5px;font-weight:700;color:#ffd178;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">🎯 PRs deste treino</div>
+          <div style="font-size:10.5px;font-weight:700;color:#ffd178;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px"><span style="display:inline-flex">${I.trophy.replace('width="18" height="18"','width="12" height="12"')}</span>PRs deste treino</div>
           ${prList.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;margin-top:5px;gap:8px"><span style="color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span><b style="color:var(--core);font-variant-numeric:tabular-nums;flex:none">${p.e1}kg e1RM</b></div>`).join('')}
         </div>` : '';
       h+=`<div class="pretip">
         <div class="pretip-hd">${I.spark}<span>Foco de hoje</span></div>
         <div class="pretip-title">${p[2]}</div>
         <div class="pretip-body">${p[3]}</div>
-        ${sleepLow?`<div class="pretip-body" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);color:#f5b94e"><b>⚠️ Sono ${sleepToday}h:</b> vá com 1 rep a menos hoje, prioriza forma sobre carga (Dattilo 2011).</div>`:''}
+        ${sleepLow?`<div class="pretip-body" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);color:#f5b94e;display:flex;align-items:flex-start;gap:6px"><span style="display:inline-flex;flex:none;margin-top:1px">${I.moon}</span><span><b>Sono ${sleepToday}h:</b> vá com 1 rep a menos hoje, prioriza forma sobre carga (Dattilo 2011).</span></div>`:''}
         ${prBlock}
       </div>`;
     }
@@ -3647,17 +4176,17 @@ function notifyTimerDone(){
     if(navigator.serviceWorker && navigator.serviceWorker.ready){
       navigator.serviceWorker.ready.then(reg=>{
         if(reg && reg.showNotification){
-          reg.showNotification('⏱️ Descanso terminado', opts).catch(()=>{
-            try{ new Notification('⏱️ Descanso terminado', opts); }catch(e){}
+          reg.showNotification('Descanso terminado', opts).catch(()=>{
+            try{ new Notification('Descanso terminado', opts); }catch(e){}
           });
           return;
         }
-        try{ new Notification('⏱️ Descanso terminado', opts); }catch(e){}
+        try{ new Notification('Descanso terminado', opts); }catch(e){}
       }).catch(()=>{
-        try{ new Notification('⏱️ Descanso terminado', opts); }catch(e){}
+        try{ new Notification('Descanso terminado', opts); }catch(e){}
       });
     } else {
-      new Notification('⏱️ Descanso terminado', opts);
+      new Notification('Descanso terminado', opts);
     }
   }catch(e){}
 }

@@ -3,7 +3,7 @@
    - app shell (index, manifest, ícones): cache-first com refresh em background
    - fotos do Free Exercise DB: cache-first, persistente (sobrevive a updates)
 */
-const SHELL = 'treino-shell-v10';
+const SHELL = 'treino-shell-v11';
 const PHOTOS = 'treino-photos-v1';
 
 const SHELL_FILES = [
@@ -34,14 +34,14 @@ self.addEventListener('activate', e => {
 
 // Push event — recebe notificação remota do Worker
 self.addEventListener('push', e => {
-  let data = { title: '⏱️ Descanso terminado', body: 'Próxima série!' };
+  let data = { title: 'Descanso terminado', body: 'Próxima série!' };
   try {
     if (e.data) data = e.data.json();
   } catch (err) {
     try { data.body = e.data.text(); } catch (err2) {}
   }
   e.waitUntil(
-    self.registration.showNotification(data.title || '⏱️ Descanso terminado', {
+    self.registration.showNotification(data.title || 'Descanso terminado', {
       body: data.body || 'Próxima série!',
       icon: 'icon-192.png',
       badge: 'icon-192.png',
