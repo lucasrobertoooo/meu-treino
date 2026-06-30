@@ -41,16 +41,26 @@ async function hashEndpoint(endpoint) {
 }
 
 // ============ VAPID JWT (ES256) ============
+function cleanSecret(s) {
+  // Remove qualquer whitespace, newline, control chars que possa ter vindo no paste do secret
+  return (s || '').replace(/\s+/g, '').trim();
+}
+
 async function importVapidPrivateKey(privateKeyB64url, publicKeyB64url) {
-  // VAPID public key: 65 bytes (0x04 || X(32) || Y(32))
-  const pub = b64urlDecode(publicKeyB64url);
+  const privClean = cleanSecret(privateKeyB64url);
+  const pubClean = cleanSecret(publicKeyB64url);
+  const pub = b64urlDecode(pubClean);
   if (pub.length !== 65 || pub[0] !== 0x04) {
-    throw new Error(`Invalid VAPID public key: len=${pub.length}, byte0=${pub[0]}`);
+    throw new Error(`Invalid VAPID public key: len=${pub.length}, byte0=0x${pub[0]?.toString(16)}`);
+  }
+  const priv = b64urlDecode(privClean);
+  if (priv.length !== 32) {
+    throw new Error(`Invalid VAPID private key: len=${priv.length} (esperado 32)`);
   }
   const jwk = {
     kty: 'EC',
     crv: 'P-256',
-    d: privateKeyB64url,
+    d: privClean,
     x: b64urlEncode(pub.slice(1, 33)),
     y: b64urlEncode(pub.slice(33, 65)),
     ext: true,
@@ -65,9 +75,9 @@ async function importVapidPrivateKey(privateKeyB64url, publicKeyB64url) {
 }
 
 async function makeVapidJWT(env, audience) {
-  const headerJson = JSON.stringify({ typ: 'JWT', alg: 'ES256' });
+  const headerJson = JSON.stringify({ alg: 'ES256', typ: 'JWT' });
   const exp = Math.floor(Date.now() / 1000) + 12 * 3600; // 12h
-  const claimsJson = JSON.stringify({ aud: audience, exp, sub: env.VAPID_SUBJECT });
+  const claimsJson = JSON.stringify({ aud: audience, exp, sub: cleanSecret(env.VAPID_SUBJECT) });
   const enc = new TextEncoder();
   const headerB64 = b64urlEncode(enc.encode(headerJson));
   const claimsB64 = b64urlEncode(enc.encode(claimsJson));
@@ -78,28 +88,47 @@ async function makeVapidJWT(env, audience) {
     key,
     enc.encode(signingInput)
   );
-  return `${signingInput}.${b64urlEncode(new Uint8Array(sig))}`;
+  const sigBytes = new Uint8Array(sig);
+  return { jwt: `${signingInput}.${b64urlEncode(sigBytes)}`, sigLen: sigBytes.length, claims: claimsJson };
 }
 
 // ============ Send push ============
 // Tickle-only push (sem payload). O Service Worker do app trata título/body fixo.
 async function sendPushOne(env, subscription) {
   const audience = new URL(subscription.endpoint).origin;
-  const jwt = await makeVapidJWT(env, audience);
+  const { jwt, sigLen, claims } = await makeVapidJWT(env, audience);
+  const pubKey = cleanSecret(env.VAPID_PUBLIC_KEY);
+
+  console.log('Push attempt:', JSON.stringify({
+    endpoint_origin: audience,
+    endpoint_path: new URL(subscription.endpoint).pathname.slice(0, 40) + '...',
+    sub_claim: cleanSecret(env.VAPID_SUBJECT),
+    sig_len: sigLen,        // P-256 deve dar 64
+    pub_key_len: pubKey.length, // base64url esperado: 87
+    claims,
+  }));
+
   const res = await fetch(subscription.endpoint, {
     method: 'POST',
     headers: {
-      'Authorization': `vapid t=${jwt}, k=${env.VAPID_PUBLIC_KEY}`,
+      'Authorization': `vapid t=${jwt}, k=${pubKey}`,
       'TTL': '60',
       'Urgency': 'high',
     },
   });
+
   if (!res.ok) {
     const body = await res.text().catch(() => '');
+    console.log('Push REJECTED:', JSON.stringify({
+      status: res.status,
+      body: body.slice(0, 500),
+      response_headers: Object.fromEntries(res.headers.entries()),
+    }));
     const err = new Error(`Push ${res.status}: ${body.slice(0, 200)}`);
     err.status = res.status;
     throw err;
   }
+  console.log('Push OK:', res.status);
   return res;
 }
 
