@@ -1136,6 +1136,59 @@
   }
   .celeb-ok:active{ transform:scale(.97); }
 
+  /* ============ TIMER MINIMIZE BTN + MINI TIMER (item 1 partial) ============ */
+  .minimize-btn{
+    position:absolute; top:calc(env(safe-area-inset-top,0px) + 18px); right:18px;
+    width:38px; height:38px;
+    background:var(--glass-2);
+    border:1px solid var(--line-2);
+    color:var(--ink); border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; z-index:5;
+    transition:transform .15s var(--ease), background .15s;
+  }
+  .minimize-btn:active{ transform:scale(.92); background:var(--glass-3); }
+
+  .mini-timer{
+    position:fixed;
+    top:calc(env(safe-area-inset-top,0px) + 76px);
+    left:50%; transform:translateX(-50%);
+    z-index:80;
+    display:flex; align-items:center; gap:10px;
+    background:linear-gradient(135deg, rgba(255,107,92,.96), rgba(229,72,56,.96));
+    color:#fff;
+    padding:9px 8px 9px 14px;
+    border-radius:24px;
+    font-variant-numeric:tabular-nums;
+    font-weight:800; font-size:15.5px;
+    box-shadow:0 8px 22px -6px rgba(229,72,56,.55);
+    cursor:pointer;
+    transition:transform .18s var(--ease);
+    border:1px solid rgba(255,255,255,.18);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .mini-timer:active{ transform:translateX(-50%) scale(.96); }
+  .mini-timer .mt-ic{ display:inline-flex; opacity:.9; }
+  .mini-timer .mt-val{ letter-spacing:-.01em; }
+  .mini-timer .mt-x{
+    background:rgba(255,255,255,.22); border:none;
+    color:#fff; width:24px; height:24px;
+    border-radius:12px;
+    font-size:14px; font-weight:700; line-height:1;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .mini-timer[data-state="done"]{
+    background:linear-gradient(135deg, #5fe195, #3cb56a);
+    box-shadow:0 8px 22px -6px rgba(81,216,138,.55);
+    color:#0a2614;
+    animation:miniDonePulse 1.4s ease-in-out infinite;
+  }
+  .mini-timer[data-state="done"] .mt-x{ background:rgba(0,0,0,.18); color:#0a2614; }
+  @keyframes miniDonePulse{
+    0%,100%{ box-shadow:0 8px 22px -6px rgba(81,216,138,.55); }
+    50%{ box-shadow:0 8px 22px -6px rgba(81,216,138,.9), 0 0 0 4px rgba(81,216,138,.2); }
+  }
+
   /* ============ PRE-WORKOUT TIP CARD (item 4) ============ */
   .pretip{
     margin:14px 0 4px;
@@ -1219,6 +1272,9 @@
 </nav>
 
 <div class="overlay hidden" id="overlay">
+  <button class="minimize-btn" onclick="minimizeTimer()" aria-label="Minimizar timer" title="Minimizar">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
+  </button>
   <div class="timer">
     <div class="ring">
       <svg width="220" height="220">
@@ -1244,6 +1300,12 @@
       <button class="pp" id="ppbtn" onclick="toggleTimer()">Iniciar</button>
     </div>
   </div>
+</div>
+
+<div id="miniTimer" class="mini-timer hidden" onclick="expandTimer()" role="button" aria-label="Expandir timer">
+  <span class="mt-ic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/></svg></span>
+  <span id="miniTimerVal" class="mt-val">0:00</span>
+  <button class="mt-x" onclick="event.stopPropagation(); closeTimer();" aria-label="Fechar timer">×</button>
 </div>
 
 <script>
@@ -1945,6 +2007,20 @@ async function checkStorageQuota(){
     }
   }catch(e){}
 }
+function checkBackupReminder(){
+  // Lembrete semanal de backup (C-1): nag se passou >7d desde o último export
+  if(!ST.logs || !Object.keys(ST.logs).length) return; // sem dados, não nag
+  const last=ST.meta && ST.meta.lastBackupAt;
+  if(!last){
+    // Nunca fez backup — só nag se já tem dados acumulados
+    showToast(`💾 Faça o 1º backup (Mais → Exportar)`, 'info', 4500);
+    return;
+  }
+  const days=Math.floor((Date.now()-last)/86400000);
+  if(days>=7){
+    showToast(`💾 Último backup há ${days} dias — exporta novo`, 'warn', 4500);
+  }
+}
 function today(){ return new Date().toISOString().slice(0,10); }
 function dateAdd(iso, days){ const d=new Date(iso+'T12:00:00'); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
 function daysBetween(a,b){ const da=new Date(a+'T12:00:00'), db=new Date(b+'T12:00:00'); return Math.round((db-da)/86400000); }
@@ -1956,6 +2032,17 @@ function dailyPrincipleIdx(){
   const diff=t-start;
   const dayOfYear=Math.floor(diff/86400000);
   return dayOfYear % (typeof PRINC!=='undefined'?PRINC.length:12);
+}
+function prTrackerForWorkout(day){
+  if(!WK[day]) return [];
+  const out=[];
+  WK[day].ex.forEach((e,i)=>{
+    const id=exId(day,i);
+    const best=historicalBestE1RM(id, true);
+    if(best>0){ out.push({name:e.n, e1:Math.round(best*10)/10}); }
+  });
+  out.sort((a,b)=>b.e1-a.e1);
+  return out.slice(0,3);
 }
 
 function lastSession(id){
@@ -2594,11 +2681,19 @@ function renderHoje(){
     const p=PRINC[pIdx]; // [color, icon, title, body]
     if(p){
       const sleepLow = sleepToday && num(sleepToday)>0 && num(sleepToday)<6;
+      // PR-tracker mini (E-1): top 3 e1RMs do treino sugerido
+      const prList = prTrackerForWorkout(sug);
+      const prBlock = prList.length ? `
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08)">
+          <div style="font-size:10.5px;font-weight:700;color:#ffd178;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">🎯 PRs deste treino</div>
+          ${prList.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;margin-top:5px;gap:8px"><span style="color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span><b style="color:var(--core);font-variant-numeric:tabular-nums;flex:none">${p.e1}kg e1RM</b></div>`).join('')}
+        </div>` : '';
       h+=`<div class="pretip">
         <div class="pretip-hd">${I.spark}<span>Foco de hoje</span></div>
         <div class="pretip-title">${p[2]}</div>
         <div class="pretip-body">${p[3]}</div>
         ${sleepLow?`<div class="pretip-body" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.08);color:#f5b94e"><b>⚠️ Sono ${sleepToday}h:</b> vá com 1 rep a menos hoje, prioriza forma sobre carga (Dattilo 2011).</div>`:''}
+        ${prBlock}
       </div>`;
     }
   }
@@ -3123,6 +3218,10 @@ async function exportData(){
   for(const k of Object.keys(LS)) full[k]=ST[k];
   const json=JSON.stringify(full);
   t.value=json; t.select();
+  // Marca data do backup pra evitar nag até 7d
+  if(!ST.meta) ST.meta={};
+  ST.meta.lastBackupAt=Date.now();
+  saveK('meta');
   // Tenta clipboard + share automático (iOS share sheet)
   let copied=false;
   try{
@@ -3184,8 +3283,41 @@ function resetData(){
 
 /* ============ TIMER (state machine: idle | running | paused | done) ============ */
 let tTotal=90, tLeft=90, tRun=false, tInt=null, aCtx=null, wakeLock=null;
-let tState='idle', tEndAt=0, autoCloseTO=null;
+let tState='idle', tEndAt=0, autoCloseTO=null, tMinimized=false;
 const CIRC=2*Math.PI*96;
+
+function minimizeTimer(){
+  // Só faz sentido se há timer rodando ou em done
+  if(tState==='idle') return;
+  tMinimized=true;
+  const ov=document.getElementById('overlay');
+  if(ov) ov.classList.add('hidden');
+  const mt=document.getElementById('miniTimer');
+  if(mt){
+    mt.classList.remove('hidden');
+    mt.setAttribute('data-state', tState==='done' ? 'done' : 'running');
+  }
+  updateMiniTimer();
+}
+function expandTimer(){
+  tMinimized=false;
+  const mt=document.getElementById('miniTimer');
+  if(mt){ mt.classList.add('hidden'); mt.removeAttribute('data-state'); }
+  const ov=document.getElementById('overlay');
+  if(ov) ov.classList.remove('hidden');
+  paint();
+}
+function updateMiniTimer(){
+  if(!tMinimized) return;
+  const v=document.getElementById('miniTimerVal');
+  if(v){
+    v.textContent = tState==='done' ? '✓ pronto' : fmt(tLeft);
+  }
+  const mt=document.getElementById('miniTimer');
+  if(mt){
+    mt.setAttribute('data-state', tState==='done' ? 'done' : 'running');
+  }
+}
 
 // Unlock audio context na primeira interação (essencial pro iOS)
 function unlockAudio(){
@@ -3202,6 +3334,7 @@ function paint(){
   const tv=document.getElementById('tval'); if(tv) tv.textContent=fmt(tLeft);
   const rf=document.getElementById('ringfill');
   if(rf){ const off=CIRC*(1-tLeft/tTotal); rf.style.strokeDashoffset=off; }
+  if(tMinimized) updateMiniTimer();
 }
 function clearTimerStateOnly(){
   if(tInt){ clearInterval(tInt); tInt=null; }
@@ -3227,9 +3360,12 @@ function openTimer(s){
 function closeTimer(){
   clearTimerStateOnly();
   tState='idle';
+  tMinimized=false;
   releaseWakeLock();
   const ov=document.getElementById('overlay');
   if(ov){ ov.classList.add('hidden'); ov.removeAttribute('data-state'); }
+  const mt=document.getElementById('miniTimer');
+  if(mt){ mt.classList.add('hidden'); mt.removeAttribute('data-state'); }
   const ppb=document.getElementById('ppbtn');
   if(ppb){ ppb.textContent='Iniciar'; ppb.removeAttribute('data-state'); }
 }
@@ -3290,6 +3426,8 @@ function timerDone(){
   clearTimerStateOnly();
   tState='done';
   releaseWakeLock();
+  // Se estava minimizado, expande pro user ver o estado done — feedback óbvio
+  if(tMinimized){ expandTimer(); }
   const ov=document.getElementById('overlay');
   if(ov) ov.setAttribute('data-state','done');
   const ppb=document.getElementById('ppbtn');
@@ -3401,6 +3539,8 @@ async function boot(){
   await checkStorageQuota();
   // 4. Banner A2HS se não estiver em modo standalone
   maybeShowA2HSBanner();
+  // 5. Backup reminder semanal (delay 1.5s pra não competir com outros toasts no boot)
+  setTimeout(checkBackupReminder, 1500);
 }
 setTimer(90);
 render();
