@@ -1,1 +1,4 @@
 .DS_Store
+SECRETS.local.md
+*.secrets.md
+
