@@ -1,0 +1,16 @@
+{
+  "name": "meu-treino-push",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "secrets": "echo 'Use: wrangler secret put VAPID_SUBJECT (etc)'"
+  },
+  "devDependencies": {
+    "wrangler": "^3.78.0"
+  },
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}

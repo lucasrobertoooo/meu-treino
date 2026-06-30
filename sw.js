@@ -3,7 +3,7 @@
    - app shell (index, manifest, ícones): cache-first com refresh em background
    - fotos do Free Exercise DB: cache-first, persistente (sobrevive a updates)
 */
-const SHELL = 'treino-shell-v8';
+const SHELL = 'treino-shell-v9';
 const PHOTOS = 'treino-photos-v1';
 
 const SHELL_FILES = [
@@ -30,6 +30,37 @@ self.addEventListener('activate', e => {
       keys.filter(k => k !== SHELL && k !== PHOTOS).map(k => caches.delete(k))
     )).then(() => self.clients.claim())
   );
+});
+
+// Push event — recebe notificação remota do Worker
+self.addEventListener('push', e => {
+  let data = { title: '⏱️ Descanso terminado', body: 'Próxima série!' };
+  try {
+    if (e.data) data = e.data.json();
+  } catch (err) {
+    try { data.body = e.data.text(); } catch (err2) {}
+  }
+  e.waitUntil(
+    self.registration.showNotification(data.title || '⏱️ Descanso terminado', {
+      body: data.body || 'Próxima série!',
+      icon: 'icon-192.png',
+      badge: 'icon-192.png',
+      tag: 'meutreino-push',
+      renotify: true,
+    })
+  );
+});
+
+// Notification click — abre/foca o app
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of all) {
+      if (c.url.includes('meu-treino') && 'focus' in c) return c.focus();
+    }
+    if (self.clients.openWindow) return self.clients.openWindow('./');
+  })());
 });
 
 self.addEventListener('fetch', e => {

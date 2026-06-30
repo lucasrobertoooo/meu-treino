@@ -1,0 +1,20 @@
+# Copie este arquivo pra `wrangler.toml` e preencha o `id` do KV.
+# Os secrets (VAPID + SHARED_TOKEN) ficam fora do arquivo, configurados via `wrangler secret put`.
+
+name = "meu-treino-push"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[[kv_namespaces]]
+binding = "KV"
+id = "PREENCHER_DEPOIS_DO_wrangler_kv_namespace_create"
+
+[triggers]
+crons = ["* * * * *"]   # a cada 1 minuto
+
+# Secrets esperados (set via `wrangler secret put NOME`):
+#   VAPID_SUBJECT       — ex: "mailto:markops@ampifire.com"
+#   VAPID_PUBLIC_KEY    — saída de `npx web-push generate-vapid-keys`
+#   VAPID_PRIVATE_KEY   — saída de `npx web-push generate-vapid-keys`
+#   SHARED_TOKEN        — `openssl rand -hex 32`
