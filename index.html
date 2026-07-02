@@ -2945,6 +2945,29 @@ function flashSaved(id){
   svTimer=setTimeout(()=>el.classList.remove('show'),1200);
 }
 function onLog(inp){ const id=inp.dataset.id; upsertToday(id, collect(id)); flashSaved(id); }
+
+/* ============ Helpers: última posição planejada + Shortcut deep-link ============ */
+function isLastPlannedPosition(day, exIdx, setIdx){
+  const W = WK[day]; if(!W) return false;
+  if(exIdx !== W.ex.length - 1) return false;
+  const nset = parseInt(W.ex[exIdx].s) || 3;
+  return setIdx === nset - 1;
+}
+function isLastHomePosition(templateId, exIdx, setIdx){
+  const tmpl = HOME_SESSIONS[templateId]; if(!tmpl) return false;
+  if(exIdx !== tmpl.ex.length - 1) return false;
+  const nset = parseInt(tmpl.ex[exIdx].s) || 3;
+  return setIdx === nset - 1;
+}
+function maybeInvokeShortcutTimer(seconds){
+  if(!ST.meta || !ST.meta.shortcutTimerEnabled) return;
+  const name = String(ST.meta.shortcutName||'').trim();
+  if(!name) return;
+  const s = Math.max(1, Math.round(seconds));
+  const url = `shortcuts://run-shortcut?name=${encodeURIComponent(name)}&input=text&text=${s}`;
+  try{ location.href = url; }catch(e){}
+}
+
 function toggleDone(id,k,el){
   el.classList.toggle('on');
   const sets=collect(id);
@@ -2969,9 +2992,13 @@ function toggleDone(id,k,el){
     }
     // Se sessão estava pausada, retoma sozinho ao checar set
     if(isSessionPaused()){ resumeSession(); }
-    // Abre timer de descanso
-    openTimer(REST[WK[day].ex[i].t]); startTimer();
-    // Detecta workout completo → celebra
+    const isLast = isLastPlannedPosition(day, i, k);
+    const autoFinish = !(ST.meta && ST.meta.autoCompleteOnLastCheck===false); // default true
+    // Descanso: pula se for última posição planejada (final do treino)
+    if(!isLast){
+      openTimer(REST[WK[day].ex[i].t]); startTimer();
+    }
+    // Detecta workout 100% completo → celebra direto (sem perguntar)
     if(isWorkoutComplete(day) && !alreadyCelebratedToday(day)){
       // pequena espera pro user ver o ✓ marcar antes do modal abrir
       setTimeout(()=>{
@@ -2980,6 +3007,14 @@ function toggleDone(id,k,el){
           showCelebration(day);
         }
       }, 600);
+    } else if(isLast && autoFinish && !alreadyCelebratedToday(day)){
+      // Última posição marcada mas com sets pulados no meio → pergunta
+      setTimeout(()=>{
+        if(alreadyCelebratedToday(day)) return;
+        if(confirm('Último set marcado. Concluir treino agora?')){
+          showCelebration(day);
+        }
+      }, 500);
     }
   }
 }
@@ -3109,7 +3144,10 @@ function toggleHomeDone(id,k,el){
   const templateId=parts.slice(0,-1).join("_");
   const tmpl=HOME_SESSIONS[templateId];
   const ex=tmpl?.ex[exIdx];
-  if(ex){ openTimer(REST[ex.t] ?? 75); startTimer(); }
+  if(!ex) return;
+  // Pula descanso na última posição planejada (final da sessão em casa)
+  if(isLastHomePosition(templateId, exIdx, k)) return;
+  openTimer(REST[ex.t] ?? 75); startTimer();
 }
 
 /* ============ HOJE — checklist diária ============ */
@@ -3726,6 +3764,37 @@ function renderMais(){
     </p>
   </div>
 
+  <h2 class="sec">Comportamento do treino</h2>
+  <div class="check-card">
+    <h3><span class="ic">${I.check2}</span>Fim de treino</h3>
+    <div class="check-row">
+      <div class="nm">Concluir treino ao marcar último item<small>Ao marcar o último set do último exercício, pergunta se quer concluir. Se não, você usa o botão Parar do menu flutuante.</small></div>
+      <div class="toggle ${!(ST.meta&&ST.meta.autoCompleteOnLastCheck===false)?'on':''}" onclick="toggleAutoComplete()"></div>
+    </div>
+  </div>
+
+  <h2 class="sec">Timer nativo do iPhone (via Atalhos)</h2>
+  <div class="check-card">
+    <h3><span class="ic">${I.timer}</span>Disparar Timer nativo no descanso</h3>
+    <p style="font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:10px">
+      Ao iniciar um descanso, o app abre o Atalhos e dispara um Timer nativo do iOS com o tempo certo. O alarme toca com tela bloqueada, sem depender de push. <b style="color:var(--ink2)">Setup 1x</b>: crie um Atalho no iPhone (Atalhos → +) que recebe um número e chama "Iniciar Timer" com esse número em segundos. Anote o nome exato do Atalho e cole abaixo.
+    </p>
+    <div class="check-row">
+      <div class="nm">Ativar Timer via Atalhos<small>Abre o Atalhos rapidinho pra disparar o Timer nativo. Web Push do Worker continua rodando como reserva.</small></div>
+      <div class="toggle ${(ST.meta&&ST.meta.shortcutTimerEnabled)?'on':''}" onclick="toggleShortcutTimer()"></div>
+    </div>
+    <div class="ilog" style="border-top:1px solid var(--line);padding-top:12px">
+      <span class="lb">Nome do Atalho</span>
+      <input inputmode="text" placeholder="MeuTreinoTimer" value="${esc((ST.meta&&ST.meta.shortcutName)||'')}" oninput="setShortcutName(this.value)" style="width:150px;text-align:left;font-weight:600">
+    </div>
+    <div class="tools" style="margin-top:12px;gap:8px;flex-wrap:wrap">
+      <button onclick="testShortcutTimer()">Testar (30s)</button>
+    </div>
+    <p style="font-size:11px;color:var(--faint);margin-top:8px;line-height:1.4">
+      <b style="color:var(--ink2)">Como criar o Atalho:</b> Atalhos → + → "Adicionar Ação" → busca "Iniciar Timer" → toca no campo "Duração" e usa "Selecionar Variável" → "Entrada de Atalho" → topo do Atalho, define "Receber [Números] de Qualquer lugar". Renomeia pra <b>MeuTreinoTimer</b> (ou o que preferir).
+    </p>
+  </div>
+
   <h2 class="sec">Push notifications (Cloudflare Worker)</h2>
   <div class="check-card">
     <h3><span class="ic">${I.bolt}</span>Push remoto pra timer</h3>
@@ -3987,6 +4056,8 @@ function startTimer(){
   const ppb=document.getElementById('ppbtn'); if(ppb) ppb.textContent='Pausar';
   requestWakeLock();
   tEndAt=Date.now()+tLeft*1000;
+  // Timer nativo iOS via Atalhos (se configurado): roda em bg com tela bloqueada
+  maybeInvokeShortcutTimer(tLeft);
   // Agenda push remoto (via Worker) — funciona com app fechado/tela bloqueada
   scheduleRemotePush(tEndAt);
   tInt=setInterval(()=>{
@@ -4144,6 +4215,38 @@ function setWorkerToken(v){
   if(!ST.meta) ST.meta={};
   ST.meta.workerToken=String(v||'').trim();
   saveK('meta');
+}
+function toggleShortcutTimer(){
+  if(!ST.meta) ST.meta={};
+  ST.meta.shortcutTimerEnabled = !ST.meta.shortcutTimerEnabled;
+  if(ST.meta.shortcutTimerEnabled && !ST.meta.shortcutName){
+    ST.meta.shortcutName = 'MeuTreinoTimer';
+  }
+  saveK('meta');
+  renderMais();
+  showToast(ST.meta.shortcutTimerEnabled ? 'Timer via Atalhos ligado' : 'Timer via Atalhos desligado', 'ok', 1800);
+}
+function setShortcutName(v){
+  if(!ST.meta) ST.meta={};
+  ST.meta.shortcutName = String(v||'').trim();
+  saveK('meta');
+}
+function testShortcutTimer(){
+  if(!ST.meta || !ST.meta.shortcutName){
+    showToast('Configure o nome do Atalho primeiro', 'warn', 2500); return;
+  }
+  const name = ST.meta.shortcutName;
+  const url = `shortcuts://run-shortcut?name=${encodeURIComponent(name)}&input=text&text=30`;
+  try{ location.href = url; }
+  catch(e){ showToast('Falha ao abrir Atalhos: '+e.message,'warn',3000); }
+}
+function toggleAutoComplete(){
+  if(!ST.meta) ST.meta={};
+  // undefined = ligado (default); false = desligado
+  ST.meta.autoCompleteOnLastCheck = (ST.meta.autoCompleteOnLastCheck===false) ? true : false;
+  saveK('meta');
+  renderMais();
+  showToast(ST.meta.autoCompleteOnLastCheck===false ? 'Auto-concluir desligado' : 'Auto-concluir ligado', 'ok', 1800);
 }
 
 let notifPermAsked=false;

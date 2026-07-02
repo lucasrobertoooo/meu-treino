@@ -2,15 +2,21 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-06-30 (push notifications via Cloudflare Worker funcionando, ~10 batches de features shippados)
+**Última atualização:** 2026-06-30 (HOME_SESSIONS shippado + weekStreak + cleanup completo de emojis)
 
-## ⚠️ Antes de codar: ler primeiro
-- **`DAY1_FEEDBACK.md`** — 10 itens originais do dia 1 (2026-06-29) + status de cada (✅ feito, ⏸ pendente, 🚫 limite duro)
+## Antes de codar: ler primeiro
+- **`HOME_SESSIONS.md`** — 5 sessões em casa, pickHomeSessions, storage freelog, weekStreak, banner skip (feature 2026-06-30)
+- **`DAY1_FEEDBACK.md`** — 10 itens originais do dia 1 (2026-06-29) + status de cada
 - **`AUDITS.md`** — 5 cross-cutting audits (imagens, botões, foreground-only, storage, surfacing) + checklist P0-P3
 - **`PLATFORM_NOTES.md`** — particularidades iOS Safari PWA (Audio bg, Vibration, Push, Wake Lock, ITP) + diff Android
 - **`SECRETS.local.md`** — credenciais do Cloudflare Worker (gitignored — só local)
 - **`push-worker/`** — código do Cloudflare Worker (web push) + wrangler config
 - **`backups/backup_2026-06-30_day1.json`** — snapshot do dia 1 (recovery se localStorage perder)
+
+## Regras de produto/UI
+- **Sem emojis em nada visível** (UI, toasts, push, banners, commits). Usar SVGs do objeto `I` (flame, bolt, trophy, moon, check2, spark, etc.) ou texto puro. Memória canônica: `~/.claude-moco/projects/-Users-zana/memory/feedback_no_emojis.md`.
+- **Don't fix what isn't broken** (Helms/Israetel) — funções centrais (suggestedNextDay, suggestNext, weeklyVolume, weekStreak, EXERCISE_ALTERNATIVES) só com motivo forte.
+- **Storage isolado pra features paralelas** — sessões em casa NÃO mexem em `ST.logs` nem em funções de progressão. Ficam em `ST.freelog` separado. Padrão a seguir pra qualquer extensão futura.
 
 ---
 
@@ -20,7 +26,7 @@ PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPh
 - **Stack:** Vanilla HTML/CSS/JS single-file, sem build, sem dependências externas (só Free Exercise DB pras fotos)
 - **Persistência:** localStorage (10 chaves, `storage.persist()` requisitado no boot)
 - **PWA:** instalável no iPhone, funciona offline depois da 1ª carga
-- **Tamanho:** ~2200 linhas, 90KB, 1 arquivo
+- **Tamanho:** ~4200 linhas, ~200KB, 1 arquivo
 
 ---
 
@@ -203,6 +209,7 @@ meutreino_measures_v1 = [{date, peito, ombro, braco, cintura, coxa}]
 meutreino_cardio_v1   = {[date]: {steps, z2min}}
 meutreino_meta_v1     = {proteinTarget, carbTarget, calTarget, lastDeloadWeek}
 meutreino_session_v1  = {active:{workoutId,startAt,pausedAt,pausedTotal}|null, history:[{date,workoutId,startAt,endAt,durationMs,activeMs,sets,volume}]}
+meutreino_freelog_v1  = {"<templateId>_<exIdx>": [{date,sets:[{kg,reps,rir,done}]}]}   (sessões de casa — HOME_SESSIONS.md)
 ```
 
 `DEFAULTS` constante centraliza tipos pra evitar drift no `resetData()` e `importData()`.
@@ -347,13 +354,19 @@ Setup completo passo-a-passo em `SECRETS.local.md`.
 
 ## Próximos passos sugeridos (não implementado)
 
-- **Sync via Worker** — usar o Worker já rodando pra também sincronizar `logs`/`bw`/`measures` entre devices E sobreviver a reinstalações do PWA (Lucas perdeu dados 2x esta sessão por causa de A2HS reinstall + clear Safari data).
+### Feitos em 2026-06-30 (sessão home sessions)
+- ~~Streak baseado em treinos por semana~~ → `weekStreak()` modelo Hevy, ≥3 treinos/sem
+- ~~Sessões livres em casa~~ → 5 HOME_SESSIONS + recomendador + storage isolado (ver `HOME_SESSIONS.md`)
+- ~~Cleanup de emojis~~ → todos substituídos por SVG do objeto `I` ou texto puro
+
+### Pendentes
+- **Sync via Worker** — usar o Worker já rodando pra também sincronizar `logs`/`bw`/`measures`/`freelog` entre devices E sobreviver a reinstalações do PWA (Lucas perdeu dados 2x).
 - **Payload encryption** pra pushes — habilita mensagens dinâmicas (PR celebration, streak risk, proteína baixa).
 - **Cardio recommender heurístico** (item 9 do feedback) — regras de bolso, sem IA externa.
 - **Gerar imagens locais aquarela via ElevenLabs** (~$2-4 pra 21 imagens, gpt-image-2) — precisa OK $.
 - **Revisão visual humana** Tríceps francês (A_4) + Abdominal declinado (B_7/D_8).
 - **Aba Mais → biblioteca pesquisável** dos princípios (refactor grande, defer).
-- **Streak baseado em "treinos por semana"** (ABCD 4x = 100%) em vez de dias consecutivos.
 - **Incrementos por máquina BR** (chapas de 5kg em polia, 2.5kg em halter).
 - **Gráficos por exercício** (e1RM ao longo do tempo).
 - **Modo "treino do dia" enxuto** (sem chrome, só exercícios em scroll).
+- **HOME_SESSIONS v2**: sub-templates editáveis, histórico timeline, recomendação por MEV semanal (ver `HOME_SESSIONS.md` §Próximos passos).
