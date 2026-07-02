@@ -3097,6 +3097,10 @@ function toggleDone(id,k,el){
     const autoFinish = !(ST.meta && ST.meta.autoCompleteOnLastCheck===false); // default true
     // Descanso: pula se for última posição planejada (final do treino)
     if(!isLast){
+      // IMPORTANTE: dispara Shortcut ANTES de abrir overlay/audio/etc — iOS PWA
+      // exige deep-link como primeira ação do gesto de usuário. Qualquer coisa
+      // no meio (openTimer, unlockAudio, requestWakeLock) queima o gesto.
+      maybeInvokeShortcutTimer(REST[WK[day].ex[i].t]);
       openTimer(REST[WK[day].ex[i].t]); startTimer();
     }
     // Detecta workout 100% completo → celebra direto (sem perguntar)
@@ -3248,6 +3252,8 @@ function toggleHomeDone(id,k,el){
   if(!ex) return;
   // Pula descanso na última posição planejada (final da sessão em casa)
   if(isLastHomePosition(templateId, exIdx, k)) return;
+  // Shortcut ANTES do openTimer (ver comentário em toggleDone)
+  maybeInvokeShortcutTimer(REST[ex.t] ?? 75);
   openTimer(REST[ex.t] ?? 75); startTimer();
 }
 
@@ -4157,8 +4163,9 @@ function startTimer(){
   const ppb=document.getElementById('ppbtn'); if(ppb) ppb.textContent='Pausar';
   requestWakeLock();
   tEndAt=Date.now()+tLeft*1000;
-  // Timer nativo iOS via Atalhos (se configurado): roda em bg com tela bloqueada
-  maybeInvokeShortcutTimer(tLeft);
+  // Nota: maybeInvokeShortcutTimer é disparado ANTES de openTimer/startTimer,
+  // direto de toggleDone/toggleHomeDone, pra preservar o user gesture no iOS.
+  // Chamar aqui não funciona em PWA standalone — o gesto já foi queimado.
   // Agenda push remoto (via Worker) — funciona com app fechado/tela bloqueada
   scheduleRemotePush(tEndAt);
   tInt=setInterval(()=>{
