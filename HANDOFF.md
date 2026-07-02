@@ -2,9 +2,10 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-06-30 (HOME_SESSIONS shippado + weekStreak + cleanup completo de emojis)
+**Última atualização:** 2026-07-01 (Timer nativo via Atalhos + skip descanso último set + auto-conclui treino)
 
 ## Antes de codar: ler primeiro
+- **§ Timer nativo iOS (Atalhos)** neste doc — arquitetura + setup + limitação do swap
 - **`HOME_SESSIONS.md`** — 5 sessões em casa, pickHomeSessions, storage freelog, weekStreak, banner skip (feature 2026-06-30)
 - **`DAY1_FEEDBACK.md`** — 10 itens originais do dia 1 (2026-06-29) + status de cada
 - **`AUDITS.md`** — 5 cross-cutting audits (imagens, botões, foreground-only, storage, surfacing) + checklist P0-P3
@@ -352,7 +353,70 @@ Setup completo passo-a-passo em `SECRETS.local.md`.
 
 ---
 
+## Timer nativo iOS (Atalhos)
+
+**Adicionado 2026-07-01.** Solução paralela ao Web Push pra confiabilidade do fim de descanso com tela bloqueada.
+
+### Por que
+Web Push do Cloudflare Worker funciona, mas às vezes só é renderizado quando o app tá em foreground (SW morre em bg no iOS, subscription volta stale, etc). O Timer nativo do Relógio do iOS **sempre** dispara o alarme com tela bloqueada — é o comportamento que a academia precisa.
+
+### Como funciona
+1. Lucas cria 1x no Atalhos um shortcut chamado `MeuTreinoTimer` que:
+   - Recebe "Entrada de Atalho" (texto)
+   - Ação única: "Iniciar Timer" com **segundos** = Entrada de Atalho
+2. Toggle em Mais → "Ativar Timer via Atalhos" liga `ST.meta.shortcutTimerEnabled`
+3. Cada `startTimer()` faz `location.href = 'shortcuts://run-shortcut?name=MeuTreinoTimer&input=text&text=<segundos>'`
+4. iOS abre Atalhos brevemente → dispara ação → Timer nativo roda no Relógio (Live Activity/Ilha Dinâmica) → alarme toca no fim mesmo com tela bloqueada
+
+Storage:
+```
+ST.meta.shortcutTimerEnabled  // bool, opt-in
+ST.meta.shortcutName          // string, default "MeuTreinoTimer"
+```
+
+### Limitação dura (2026-07-01, confirmado com Lucas)
+**iOS traz o Atalhos pra foreground por ~500ms** ao executar qualquer `shortcuts://` URL scheme. Não tem como rodar invisível a partir de PWA. Alternativas testadas mentalmente e piores:
+- `x-callback-url` com `x-success=https://.../meu-treino/` volta pro **Safari**, não pro PWA instalado
+- Adicionar "Abrir URL" no fim do Atalho: mesmo problema (volta pro Safari, não PWA)
+- Só Web Push: volta o problema original (chega só quando abre o app)
+
+Lucas aceita o swap pq o Timer nativo compensa. Web Push continua rodando em paralelo como reserva (não desativado).
+
+### Onde mexer
+- `maybeInvokeShortcutTimer(seconds)` em `index.html` — dispara o deep-link
+- Chamado dentro de `startTimer()` antes de `scheduleRemotePush`
+- UI + setters em `renderMais()` seção "Timer nativo do iPhone (via Atalhos)"
+
+---
+
+## Última posição planejada (skip descanso + auto-conclui)
+
+**Adicionado 2026-07-01.** Melhora UX do fim do treino.
+
+### O que mudou
+- **Skip descanso último set:** ao marcar o último set do último exercício (ABCD ou Home Session), o timer de descanso não abre. Antes abria e era irrelevante.
+- **Auto-concluir treino:** setting `ST.meta.autoCompleteOnLastCheck` (default true, opt-out em Mais). Se última posição marcada mas ainda restam sets pulados no meio (não é `isWorkoutComplete`), aparece `confirm()` perguntando se conclui. Sim → `showCelebration()` + `endSession()`. Não → treino segue aberto.
+- Se 100% dos sets planejados foram feitos, o fluxo antigo continua (celebra direto sem perguntar).
+
+### Helpers novos
+```js
+isLastPlannedPosition(day, exIdx, setIdx)    // ABCD
+isLastHomePosition(templateId, exIdx, setIdx)  // Home Sessions
+```
+
+### Onde mexer
+- `toggleDone` (~L2971) — gate no `openTimer/startTimer` + branch novo de `confirm()`
+- `toggleHomeDone` (~L3117) — gate no `openTimer/startTimer` (Home não tem celebração)
+- UI + setters em `renderMais()` seção "Comportamento do treino"
+
+---
+
 ## Próximos passos sugeridos (não implementado)
+
+### Feitos em 2026-07-01
+- ~~Timer nativo iOS via Atalhos~~ → toggle em Mais, deep-link em `startTimer()`, setup 1x do Shortcut
+- ~~Último set do último exercício sem descanso~~ → gate em `toggleDone`/`toggleHomeDone`
+- ~~Auto-concluir treino ao marcar último item~~ → `confirm()` + setting default on em Mais
 
 ### Feitos em 2026-06-30 (sessão home sessions)
 - ~~Streak baseado em treinos por semana~~ → `weekStreak()` modelo Hevy, ≥3 treinos/sem
