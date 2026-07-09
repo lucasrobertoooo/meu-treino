@@ -2,9 +2,12 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-07-01 (Timer nativo via Atalhos + skip descanso último set + auto-conclui treino)
+**Última atualização:** 2026-07-08.02 (Histórico de treinos exposto — mini-histórico no treino aberto + seção na aba Corpo (data/duração/sets/volume, do `session.history` que já existia). Inteligência de dia corrigida: já-treinou-hoje não marca mais o próximo como "HOJE". SHELL v15)
+
+**Antes: 2026-07-08.01** — Edição de exercícios pelo app: nome/descrição/nota por exercício, override isolado em `ST.exmeta` ancorado por `id` estável (git nunca sobrescreve).
 
 ## Antes de codar: ler primeiro
+- **§ Sessão 2026-07-02** neste doc — rename das laterais, fix da foto quebrada, refactor de PHOTO_ID/ALTERNATIVES, fix timer nativo em PWA standalone, APP_VERSION, e pendências de fotos
 - **§ Timer nativo iOS (Atalhos)** neste doc — arquitetura + setup + limitação do swap
 - **`HOME_SESSIONS.md`** — 5 sessões em casa, pickHomeSessions, storage freelog, weekStreak, banner skip (feature 2026-06-30)
 - **`DAY1_FEEDBACK.md`** — 10 itens originais do dia 1 (2026-06-29) + status de cada
@@ -127,9 +130,10 @@ Cada exercício mostra:
 | C — Push 2 | Ênfase Ombro | Desenvolvimento sentado halter |
 | D — Pull 2 | Costas, bíceps, perna, core (ângulos diferentes) | Puxada neutra |
 
-Estrutura no objeto `WK` em index.html (~linha 870). Cada exercício:
+Estrutura no objeto `WK` em index.html. Cada exercício:
 ```js
 {
+  id: "a_1",                               // ID ESTÁVEL — âncora dos overrides (ver § Edição de exercícios)
   n: "Supino inclinado halter 30°",
   s: 4,                                    // séries
   r: "6-10",                               // faixa de reps
@@ -138,6 +142,7 @@ Estrutura no objeto `WK` em index.html (~linha 870). Cada exercício:
   cue: "Principal do peito superior. Desce bem alongado..."
 }
 ```
+**Todo exercício (WK e HOME_SESSIONS) tem um `id` único e imutável** (`a_1..a_6`, `b_1..`, `core_completo_1..`, etc). É a chave dos overrides do usuário. **Nunca reusar um id pra outro exercício.** Ao adicionar exercício novo, dar um id fresco (ex: `a_7`); reordenar/renomear no código é seguro pois o id viaja junto no objeto.
 
 ---
 
@@ -211,6 +216,7 @@ meutreino_cardio_v1   = {[date]: {steps, z2min}}
 meutreino_meta_v1     = {proteinTarget, carbTarget, calTarget, lastDeloadWeek}
 meutreino_session_v1  = {active:{workoutId,startAt,pausedAt,pausedTotal}|null, history:[{date,workoutId,startAt,endAt,durationMs,activeMs,sets,volume}]}
 meutreino_freelog_v1  = {"<templateId>_<exIdx>": [{date,sets:[{kg,reps,rir,done}]}]}   (sessões de casa — HOME_SESSIONS.md)
+meutreino_exmeta_v1   = {"<id>": {n?, cue?, note?}}                   (overrides de exercício editados pelo usuário — ver § Edição de exercícios)
 ```
 
 `DEFAULTS` constante centraliza tipos pra evitar drift no `resetData()` e `importData()`.
@@ -411,7 +417,144 @@ isLastHomePosition(templateId, exIdx, setIdx)  // Home Sessions
 
 ---
 
+## Sessão 2026-07-02 (rename laterais + fix fotos + fix timer PWA)
+
+**Contexto que disparou:** Lucas notou que "elevação lateral" aparecia em 3 dias com nomes idênticos, não dava pra distinguir se era bilateral/unilateral. Também trouxe dúvida científica: tríceps 2× no ciclo é ok?
+
+### Respostas científicas dadas
+- **Elevação lateral:** na verdade estava em **4 dias**, todas bilaterais idênticas (halter ou polia). Volume 14 séries/sem = zona ótima (MEV 8, MAV 12-20, MRV 25-30). Deltoide lateral tem fibras tipo I dominantes → recupera em 24h, tolera frequência 4-6×/sem (Nippard, Helms).
+- **Tríceps:** direto em A (6 séries) + C (5 séries) = ~11 diretas + ~6 secundárias = **~17 equivalentes/sem** (zona ótima). Rotação ABCD sempre coloca B/D entre A e C → ≥48h recuperação. 2×/sem é sweet spot (Schoenfeld 2016 meta-análise).
+
+### Rename das elevações laterais (WK)
+Cada dia agora tem variação real com cue completo:
+- **A (Push 1):** `Elevação lateral com halter em pé (bilateral)` — 4×12-20, base clássica encurtado
+- **B (Pull 1):** `Elevação lateral na polia unilateral em pé` — 3×12-20 por lado, cabo passa na frente do corpo
+- **C (Push 2):** `Elevação lateral com halter no banco inclinado 75°` — 4×12-20, curva de força diferente
+- **D (Pull 2):** `Elevação lateral polia unilateral cabo atrás do corpo (alongado)` — 3×12-20 por lado, Wolf 2023
+
+**Cue de log unilateral:** "registre 3 sets — cada set = 1 execução por lado (mesma carga)". Isso mantém `weeklyVolume` sem alteração (convenção Nippard: 1 set logado = 1 execução por lado).
+
+### Fotos — bugs achados e corrigidos
+1. **`Dumbbell_Lateral_Raise` estava 404** no repo yuhonas há tempos — a foto das laterais em A/B/D nunca carregou. Trocado por `Side_Lateral_Raise` (verificado 200).
+2. Bumpado PHOTO_ID pra **~65 entradas** cobrindo TODOS os inativos (`EXERCISE_ALTERNATIVES`), pra quando `shouldSwapExercise` sugerir substituição já vir com foto.
+3. Removido `PHOTO_LOCAL["Elevação lateral (polia ou halter)"]` (chave antiga). Arquivo `img/cable-lateral-raise.jpg` ficou órfão — não deletar (custa 0, pode ser reusado; se quiser limpar futuro sem perder trabalho).
+
+### IDs novos das laterais no Free Exercise DB
+- A → `Side_Lateral_Raise` (dumbbell bilateral em pé)
+- B → `Standing_Low-Pulley_Deltoid_Raise` (cable unilateral em pé)
+- C → `Dumbbell_Incline_Shoulder_Raise` (dumbbell incline)
+- D → `Standing_Low-Pulley_Deltoid_Raise` (reusa — não tem foto específica cross-body)
+
+### Verificação visual (4 agentes Explore em paralelo)
+Delegados 4 batches (~22 pares cada) — cada agente lê `/tmp/meutreino-verify/imgs/*.jpg` e compara com nome PT-BR.
+Resultado bruto em `/tmp/meutreino-verify/RESULTADOS.md`.
+
+**3 mismatches legítimos pendentes de correção:**
+1. `Triceps_Pushdown_-_Rope_Attachment` mapeado pra alt "Tríceps polia barra reta" — foto é da corda. Trocar nome pra "Tríceps polia corda" (dedup) ou achar ID de barra reta.
+2. `Hanging_Leg_Raise` mapeado pra "Elevação de pernas suspenso (joelho dobrado)" — foto tem perna estendida. Renomear cue.
+3. `Low_Cable_Crossover` → "Crucifixo na polia baixa" — agente disse foto é cable front raise (VERIFICAR — pode ser alucinação, memória diz Explore agentes alucinam ~40%).
+
+**5 achados suspeitos de alucinação** (não corrigidos, reverificar depois):
+- `Incline_Dumbbell_Curl` → "Rosca inclinada com halter"
+- `Concentration_Curls` → "Rosca concentrada"
+- `Cable_Rope_Overhead_Triceps_Extension` → "Extensão na polia overhead"
+- `Hack_Squat` → "Hack machine leve"
+- `Weighted_Sissy_Squat` → "Sissy squat"
+
+### Fix do Timer nativo (iOS PWA standalone)
+Timer via Atalhos parou de funcionar no PWA instalado (mas rodava no Safari). Diagnóstico multi-rodada:
+
+**Causas identificadas:**
+1. **`location.href = 'shortcuts://...'` é silenciosamente bloqueado** em PWA standalone. Só funciona em Safari puro. `try{}catch{}` engolia sem log.
+2. **User gesture só sobrevive à primeira ação** — no `startTimer` original, `unlockAudio() → maybeRequestNotificationPermission() → requestWakeLock() → openTimer(overlay)` queimavam o gesto antes de chegar no `location.href`.
+3. **Toggle vs config são gates separados** — `testShortcutTimer` só checava `shortcutName`, então funcionava; `maybeInvokeShortcutTimer` checava `shortcutTimerEnabled` também. Lucas configurou nome mas não ligou o toggle — teste passava, fluxo automático não.
+
+**Fixes aplicados (em `index.html`):**
+- Novo `invokeExternalScheme(url)` (~L3045) — usa `<a target="_blank">` sintético clicado em vez de `location.href`
+- `maybeInvokeShortcutTimer` movido pra **antes** de `openTimer` no `toggleDone` (~L3128) e `toggleHomeDone` (~L3281) pra preservar gesto
+- Adicionado botão azul grande **dentro do overlay do timer** — `<a href="shortcuts://...">` estático no DOM (linha 1380 no HTML, `updateShortcutLink` em ~L4137). Aparece sempre que `shortcutName` estiver setado, **independe do toggle**. Fallback 100% confiável em PWA.
+- `testShortcutTimer` (~L4324) agora usa `invokeExternalScheme` + toast de feedback visual
+
+**Regras futuras pra deep-links em PWA** (memória salva em `feedback_ios_pwa_deeplink.md`):
+- Deep-link tem que ser primeira ação do handler
+- Fallback estático (`<a>` real) sempre que possível
+- Gate do fallback só depende de config essencial, nunca do toggle
+- Testar em Safari **e** em PWA standalone (comportamento diverge)
+
+### APP_VERSION visível
+Novo `const APP_VERSION = '2026-07-02.05'` no topo do JS. Aparece no rodapé da aba Mais em texto monospace pequeno. **Usar pra distinguir "não deployou" de "deployou mas bugado"** — evita bater a cabeça com cache do PWA sem saber.
+
+Bumpado SW `SHELL` pra `treino-shell-v13` na mesma sessão.
+
+### Como forçar refresh completo no iPhone (documentar)
+Sequência agressiva pra invalidar 100% do cache PWA:
+1. Push do commit
+2. **Ajustes → Safari → Avançado → Dados de sites → apaga `github.io`**
+3. Remove o app "Treino" da tela de início
+4. Safari → URL → refresh
+5. Adicionar à Tela de Início
+
+Sem essa sequência, `sw.js` antigo pode manter parte do cache mesmo com novo SHELL version.
+
+---
+
+## Edição de exercícios pelo app (2026-07-08)
+
+**O que resolve:** Lucas queria ajustar nome, descrição e adicionar nota pessoal nos exercícios sem editar `index.html` + commitar toda vez — e sem medo de perder as edições numa atualização futura do app.
+
+### Como funciona (e por que git nunca sobrescreve)
+- Edições ficam em `ST.exmeta` (localStorage, chave `meutreino_exmeta_v1`). **Git versiona arquivos; localStorage mora só no iPhone.** Deploy novo do `index.html` não toca no localStorage → edições sobrevivem a qualquer atualização. Mesmo princípio de "storage isolado" das sessões de casa.
+- **Ancoragem por `id` estável, não por posição.** Cada exercício no `WK`/`HOME_SESSIONS` tem um `id` imutável. O override é keyado por esse id, então reordenar ou renomear exercícios no código **não** faz a edição migrar pro exercício errado. (Antes, se fosse por `exId` posicional `A_0`, um reorder no código grudaria o override no vizinho.)
+- Merge no render: `exName(e)`, `exCue(e)`, `exNote(e)` retornam o override do usuário se existir, senão o padrão do código. A **foto** continua sendo buscada pela chave original (`e.n`) — renomear não quebra imagem.
+- **Não congela o padrão:** se o usuário salvar um campo igual ao valor padrão do código, o override daquele campo não é gravado — assim o exercício continua acompanhando futuras melhorias do texto vindas de update do app. `resetExEdit()` (botão "Restaurar padrão") apaga o override e volta 100% ao código.
+- Entra no **backup export/import** automaticamente (é só mais uma chave em `LS`) — importante porque localStorage some se reinstalar o PWA.
+
+### UI
+- Botão **"Editar"** (lápis) no card de cada exercício, tanto no treino ABCD (`renderDay`) quanto nas sessões de casa (`renderHomeDay`).
+- Abre modal (`#exEdit`) com 3 campos: Nome, Descrição/técnica, Minha nota.
+- Nota do usuário aparece no card num bloco dourado distinto (`.exnote`), separado do cue científico.
+
+### Onde mexer
+- Helpers: `exOverride/exName/exCue/exNote/saveExMeta/resetExMeta/exById` (logo após `exId`).
+- Modal: `openExEdit/closeExEdit/saveExEdit/resetExEdit` + markup `#exEdit` + CSS `.exedit-*` / `.exnote`.
+- Segurança: nome/nota sempre via `esc()`; cue do usuário via `esc()` (perde `<em>`, aceitável), cue padrão renderiza rich como antes.
+
+### Detalhe de manutenção
+Os `id` foram injetados uma vez via script (`tools/inject_ids.js`, guardado pra referência), escopados por dia/template: `a_1..a_6`, `b_1..b_10`, `c_1..c_6`, `d_1..d_11`, `core_completo_1..`, etc. **Ao adicionar exercício novo no código, dar um id fresco e nunca reciclar um antigo.**
+
+---
+
+## Histórico de treinos + inteligência de dia (2026-07-08.02)
+
+**Contexto que disparou:** Lucas notou (1) que não dava pra ver quanto durou um treino em semanas anteriores vs hoje, e (2) que ao concluir o C, o D já ficava com tag "HOJE" como se tivesse que fazer os dois.
+
+### O dado de histórico já existia — só não era exibido
+`ST.session.history` (chave `meutreino_session_v1`) sempre gravou `{date, workoutId, activeMs, sets, volume, ...}` a cada treino ABCD concluído. Só aparecia por 2s no card de comemoração. Agora é exposto em dois lugares (helpers em `sessionsForDay`, `fmtDurMin`):
+- **Mini-histórico no treino aberto** (`renderDay`, topo): últimas 4 vezes daquele treino — data · duração · sets · volume. Comparação no contexto.
+- **Seção "Histórico de treinos" na aba Corpo** (`renderCorpo`): últimas 12 sessões cronológicas, todas as letras, com duração destacada.
+- Sessões de casa NÃO entram (usam `freelog`, sem duração) — histórico de duração é só ABCD.
+
+### Correção da "inteligência de dia"
+`suggestedNextDay()` (inalterada) retorna o próximo do ciclo ABCD — mas ignora o calendário. O bug era de **rótulo**: o próximo era chamado de "HOJE" mesmo já tendo treinado. Helpers novos: `todayTrainedDays()` (dias ABCD com sets válidos hoje) e `todaySessionRecord()` (último concluído hoje, com duração).
+- **`renderDays`:** se já treinou hoje, o treino feito ganha tag verde "✓ HOJE · Xmin" e o próximo do ciclo vira "· PRÓXIMO" (neutro). Se não treinou, o sugerido é "· HOJE" (azul).
+- **`renderHoje`:** se já treinou, o card de destaque mostra o treino **feito** ("concluído · Xmin", classe `.done` verde) e abaixo um card discreto `.nextworkout` "Próximo treino · X". Se não treinou, destaca o sugerido como antes. O card "Antes do treino" (princípio+PRs) só aparece quando ainda não treinou.
+
+### Onde mexer
+- Helpers: `fmtDurMin/sessionsForDay/todayTrainedDays/todaySessionRecord` (logo após `suggestedNextDay`).
+- CSS: `.daytag.*`, `.wkhist/.wkh-*`, `.nextworkout`, `.todayworkout.done`, `.histcard/.hrow/.hbadge/.hdur`.
+
+### Verificação
+Sem navegador (preview do MCP fica preso no disclaimer de rede do macOS). Validado por: sintaxe (`new Function`), testes de lógica com `localStorage` semeado, e **assertions no HTML real** produzido por `renderDays/renderHoje/renderDay/renderCorpo` nos 2 cenários (treinou hoje / não treinou). Todos passaram.
+
+---
+
 ## Próximos passos sugeridos (não implementado)
+
+### Pendências da sessão 2026-07-02
+- Aplicar os 3 mismatches legítimos de foto (ver seção acima)
+- Reverificar os 5 suspeitos de alucinação (baixar imagem, olhar direto, decidir)
+- Se validar tudo: gerar `img/*.jpg` locais das laterais no estilo aquarela pra consistência visual (`Side_Lateral_Raise`, `Standing_Low-Pulley_Deltoid_Raise`, `Dumbbell_Incline_Shoulder_Raise`)
+- Deletar `img/cable-lateral-raise.jpg` órfão (opcional)
 
 ### Feitos em 2026-07-01
 - ~~Timer nativo iOS via Atalhos~~ → toggle em Mais, deep-link em `startTimer()`, setup 1x do Shortcut

@@ -239,7 +239,17 @@
   }
   .cue em{color:#fff; font-style:normal; font-weight:600;}
 
-  .exbtns{display:flex; gap:8px; margin-top:14px;}
+  /* nota pessoal do usuário (override) — visual distinto do cue científico */
+  .exnote{
+    display:flex; gap:8px; align-items:flex-start;
+    font-size:13px; color:var(--core); line-height:1.5; margin-top:8px;
+    padding:11px 13px; border-radius:14px;
+    background:rgba(245,185,78,.08); border:1px solid rgba(245,185,78,.22);
+    white-space:pre-wrap; word-break:break-word;
+  }
+  .exnote svg{flex:none; margin-top:2px; opacity:.85;}
+
+  .exbtns{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px;}
   .xb{
     flex:1; display:inline-flex; align-items:center; justify-content:center; gap:7px;
     text-decoration:none;
@@ -253,6 +263,51 @@
   .xb:active{background:var(--glass-3);}
   .xb.rest{color:var(--core);}
   .xb svg{flex:none;}
+
+  /* ============ MODAL EDITAR EXERCÍCIO ============ */
+  .exedit-back{
+    position:fixed; inset:0; z-index:120;
+    background:rgba(4,6,10,.68); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    display:flex; align-items:flex-end; justify-content:center;
+    padding:0; animation:exfade .18s var(--ease);
+  }
+  @keyframes exfade{from{opacity:0}to{opacity:1}}
+  .exedit-card{
+    width:100%; max-width:560px; max-height:92vh; overflow-y:auto;
+    background:var(--bg2); border:1px solid var(--line-2);
+    border-radius:22px 22px 0 0; padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+    box-shadow:0 -12px 40px rgba(0,0,0,.5); animation:exslide .22s var(--ease);
+  }
+  @keyframes exslide{from{transform:translateY(24px)}to{transform:translateY(0)}}
+  .exedit-hd{
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:16px; font-weight:700; color:var(--ink); margin-bottom:16px;
+  }
+  .exedit-x{
+    background:none; border:none; color:var(--muted); font-size:26px; line-height:1;
+    cursor:pointer; padding:0 4px;
+  }
+  .exedit-l{display:block; font-size:12px; font-weight:600; color:var(--muted); margin:14px 0 6px; letter-spacing:.01em;}
+  .exedit-l:first-of-type{margin-top:0;}
+  .exedit-in{
+    width:100%; box-sizing:border-box; background:rgba(255,255,255,.04);
+    border:1px solid var(--line-2); border-radius:12px; padding:12px 13px;
+    color:var(--ink); font-size:15px; font-family:inherit; line-height:1.45;
+  }
+  .exedit-in:focus{outline:none; border-color:var(--core); background:rgba(255,255,255,.06);}
+  .exedit-ta{resize:vertical; min-height:52px;}
+  .exedit-hint{font-size:11.5px; color:var(--faint); margin:12px 2px 0; line-height:1.5;}
+  .exedit-ctrl{display:flex; gap:8px; margin-top:18px;}
+  .exedit-btn{
+    border:1px solid var(--line-2); border-radius:13px; padding:12px 10px;
+    font-size:14px; font-weight:600; cursor:pointer; font-family:inherit;
+    background:var(--glass-2); color:var(--ink);
+  }
+  .exedit-btn.ghost{flex:0 0 auto; color:var(--muted); background:none;}
+  .exedit-btn.cancel{flex:1;}
+  .exedit-btn.save{flex:1.4; background:var(--core-grad); color:#231a05; border-color:transparent;}
+  .exedit-btn:active{opacity:.82;}
+  .exedit-btn.ghost.hidden{display:none;}
 
   /* ============ LOGGING ============ */
   .log{
@@ -606,6 +661,53 @@
   .todayworkout .meta .l{font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); font-weight:700;}
   .todayworkout .meta .t{font-size:17px; font-weight:700; margin-top:2px;}
   .todayworkout .meta .f{font-size:12.5px; color:var(--muted); margin-top:2px;}
+  /* já treinou hoje: card ganha tom verde de "feito" */
+  .todayworkout.done{background:linear-gradient(135deg, rgba(81,216,138,.16), rgba(81,216,138,.04)); border-color:rgba(81,216,138,.32);}
+  .todayworkout.done .meta .l{color:var(--ok);}
+  /* próximo treino (discreto) abaixo do card de hoje */
+  .nextworkout{
+    display:flex; align-items:center; gap:12px;
+    background:rgba(255,255,255,.03); border:1px solid var(--line);
+    border-radius:16px; padding:11px 14px; margin:-4px 0 14px; cursor:pointer;
+  }
+  .nextworkout .nb{
+    flex:none; width:30px; height:30px; border-radius:9px; background:var(--glass-2);
+    display:grid; place-items:center; font-weight:800; font-size:14px; color:var(--ink2);
+  }
+  .nextworkout .nm{flex:1; font-size:13px; color:var(--muted);}
+  .nextworkout .nm b{color:var(--ink2); font-weight:700;}
+  .nextworkout .chev{color:var(--faint); display:flex;}
+
+  /* tags nos cards da lista de treinos */
+  .daytag{font-size:11px; font-weight:700; letter-spacing:.04em;}
+  .daytag.today{color:var(--pull);}
+  .daytag.next{color:var(--muted);}
+  .daytag.done{color:var(--ok); display:inline-flex; align-items:center; gap:3px; vertical-align:1px;}
+  .daytag.done svg{width:12px; height:12px;}
+
+  /* mini-histórico no topo do treino aberto */
+  .wkhist{
+    background:rgba(255,255,255,.03); border:1px solid var(--line);
+    border-radius:16px; padding:12px 14px; margin-bottom:14px;
+  }
+  .wkh-h{font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); display:flex; align-items:center; gap:6px; margin-bottom:8px;}
+  .wkh-h svg{width:12px; height:12px; opacity:.8;}
+  .wkh-row{display:flex; align-items:baseline; gap:10px; font-size:13px; padding:3px 0; border-top:1px solid var(--line);}
+  .wkh-row:first-of-type{border-top:none;}
+  .wkh-d{flex:none; width:52px; color:var(--muted); font-variant-numeric:tabular-nums;}
+  .wkh-v{flex:none; width:64px; color:var(--core); font-weight:700; font-variant-numeric:tabular-nums;}
+  .wkh-s{flex:1; color:var(--faint); font-size:12px;}
+
+  /* histórico completo na aba Corpo */
+  .histcard{background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-lg); padding:6px 14px; margin-bottom:14px; backdrop-filter:blur(16px);}
+  .hrow{display:flex; align-items:center; gap:12px; padding:11px 0; border-top:1px solid var(--line);}
+  .hrow:first-child{border-top:none;}
+  .hbadge{flex:none; width:36px; height:36px; border-radius:11px; display:grid; place-items:center; font-weight:800; font-size:15px; color:#fff; background:var(--glass-2);}
+  .hbadge.push{background:var(--push-grad);} .hbadge.pull{background:var(--pull-grad);}
+  .hmeta{flex:1; min-width:0;}
+  .hnm{font-size:14px; font-weight:600; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .hsub{font-size:12px; color:var(--muted); margin-top:1px; font-variant-numeric:tabular-nums;}
+  .hdur{flex:none; font-size:15px; font-weight:700; color:var(--core); font-variant-numeric:tabular-nums;}
 
   /* ============ CHECKLIST / DAILY ============ */
   .check-card{
@@ -1428,9 +1530,30 @@
   <button class="mt-x" onclick="event.stopPropagation(); closeTimer();" aria-label="Fechar timer">×</button>
 </div>
 
+<div id="exEdit" class="exedit-back hidden" role="dialog" aria-modal="true" aria-labelledby="exEditTitle" onclick="if(event.target===this)closeExEdit()">
+  <div class="exedit-card">
+    <div class="exedit-hd">
+      <span id="exEditTitle">Editar exercício</span>
+      <button class="exedit-x" onclick="closeExEdit()" aria-label="Fechar">×</button>
+    </div>
+    <label class="exedit-l" for="exEditName">Nome</label>
+    <input id="exEditName" class="exedit-in" type="text" maxlength="120" placeholder="">
+    <label class="exedit-l" for="exEditCue">Descrição / técnica</label>
+    <textarea id="exEditCue" class="exedit-in exedit-ta" rows="4" maxlength="1000" placeholder=""></textarea>
+    <label class="exedit-l" for="exEditNote">Minha nota</label>
+    <textarea id="exEditNote" class="exedit-in exedit-ta" rows="3" maxlength="600" placeholder="Ex: máquina 3 do fundo, pino no 4, ombro dói se abrir demais..."></textarea>
+    <div class="exedit-hint" id="exEditHint"></div>
+    <div class="exedit-ctrl">
+      <button class="exedit-btn ghost" id="exEditReset" onclick="resetExEdit()">Restaurar padrão</button>
+      <button class="exedit-btn cancel" onclick="closeExEdit()">Cancelar</button>
+      <button class="exedit-btn save" onclick="saveExEdit()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-07-02.04';
+const APP_VERSION = '2026-07-08.02';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -1463,50 +1586,51 @@ const I = {
   user:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
   more:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>',
   check2:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  pencil:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
 };
 
 /* ============ DADOS ============ */
 const WK = {
   A:{name:"Push 1", focus:"Ênfase Peito", type:"push", ex:[
-    {n:"Supino inclinado halter 30°", s:4, r:"6-10", t:"comp", mg:{peito_sup:1, triceps:0.5, ombro_ant:0.5}, cue:"Principal do peito superior. Desce bem alongado; pensa em <em>espremer o peito</em> e juntar os cotovelos, não em empurrar o peso. Excêntrica 3s."},
-    {n:"Supino reto halter ou máquina", s:3, r:"8-12", t:"comp", mg:{peito_med:1, triceps:0.5, ombro_ant:0.5}, cue:"Peito médio/inferior. Mesmo foco: sente o peito puxar."},
-    {n:"Crucifixo na polia baixa", s:3, r:"12-15", t:"iso", mg:{peito_sup:1, peito_med:0.5}, cue:"De baixo p/ cima. Punhos se encontram <em>acima da linha do peito</em>. Estica bem embaixo. Drop set na última."},
-    {n:"Elevação lateral com halter em pé (bilateral)", s:4, r:"12-20", t:"iso", mg:{ombro_lat:1}, cue:"Base clássica. <em>Bilateral em pé</em>: um halter em cada mão, ao lado do corpo. Sobe pelos cotovelos até altura do ombro, com o polegar levemente pra baixo (rotação neutra). Excêntrica controlada. Parciais no fim da última série. <em>Prioridade #1 — largura.</em>"},
-    {n:"Tríceps francês / extensão acima da cabeça", s:3, r:"10-15", t:"iso", mg:{triceps:1}, cue:"Cabeça longa: braço alongado atrás da cabeça. Posição alongada = mais crescimento."},
-    {n:"Tríceps na polia (corda)", s:3, r:"12-15", t:"iso", mg:{triceps:1}, cue:"Drop set na última série."},
+    {id:"a_1", n:"Supino inclinado halter 30°", s:4, r:"6-10", t:"comp", mg:{peito_sup:1, triceps:0.5, ombro_ant:0.5}, cue:"Principal do peito superior. Desce bem alongado; pensa em <em>espremer o peito</em> e juntar os cotovelos, não em empurrar o peso. Excêntrica 3s."},
+    {id:"a_2", n:"Supino reto halter ou máquina", s:3, r:"8-12", t:"comp", mg:{peito_med:1, triceps:0.5, ombro_ant:0.5}, cue:"Peito médio/inferior. Mesmo foco: sente o peito puxar."},
+    {id:"a_3", n:"Crucifixo na polia baixa", s:3, r:"12-15", t:"iso", mg:{peito_sup:1, peito_med:0.5}, cue:"De baixo p/ cima. Punhos se encontram <em>acima da linha do peito</em>. Estica bem embaixo. Drop set na última."},
+    {id:"a_4", n:"Elevação lateral com halter em pé (bilateral)", s:4, r:"12-20", t:"iso", mg:{ombro_lat:1}, cue:"Base clássica. <em>Bilateral em pé</em>: um halter em cada mão, ao lado do corpo. Sobe pelos cotovelos até altura do ombro, com o polegar levemente pra baixo (rotação neutra). Excêntrica controlada. Parciais no fim da última série. <em>Prioridade #1 — largura.</em>"},
+    {id:"a_5", n:"Tríceps francês / extensão acima da cabeça", s:3, r:"10-15", t:"iso", mg:{triceps:1}, cue:"Cabeça longa: braço alongado atrás da cabeça. Posição alongada = mais crescimento."},
+    {id:"a_6", n:"Tríceps na polia (corda)", s:3, r:"12-15", t:"iso", mg:{triceps:1}, cue:"Drop set na última série."},
   ]},
   B:{name:"Pull 1", focus:"Costas · bíceps · perna · core", type:"pull", ex:[
-    {n:"Puxada na polia (pegada aberta)", s:4, r:"8-12", t:"comp", mg:{costas:1, biceps:0.5}, cue:"Largura das costas. <em>Puxa com o cotovelo</em>, não com a mão."},
-    {n:"Remada sentada na polia ou máquina", s:3, r:"8-12", t:"comp", mg:{costas:1, biceps:0.5}, cue:"Espessura. Aperta as escápulas no fim."},
-    {n:"Crucifixo inverso (peck deck/polia)", s:3, r:"15-20", t:"iso", mg:{ombro_post:1}, cue:"Deltoide posterior = ombro 3D + postura melhor."},
-    {n:"Elevação lateral na polia unilateral em pé", s:3, r:"12-20 por lado", t:"iso", mg:{ombro_lat:1}, cue:"<em>Unilateral.</em> Polia baixa; cabo preso ao punho do braço que trabalha, passando <em>na frente do corpo</em>. Braço começa alongado cruzando a barriga. Sobe pelo cotovelo até altura do ombro. Faz as 3 séries de um lado, depois do outro. <em>Log: registre 3 sets — cada set = 1 execução por lado</em> (mesma carga)."},
-    {n:"Rosca inclinada com halter", s:3, r:"8-12", t:"iso", mg:{biceps:1}, cue:"Bíceps alongado (posição estendida = +crescimento). <em>Foca em sentir o bíceps.</em> Parciais no fim."},
-    {n:"Mesa flexora", s:3, r:"10-15", t:"iso", mg:{posterior:1}, cue:"Posterior de coxa. Sem náusea."},
-    {n:"Cadeira extensora", s:3, r:"12-15", t:"iso", mg:{quadriceps:1}, cue:"Quadríceps. Carga controlada."},
-    {n:"Abdominal declinado com anilha", s:3, r:"10-15", t:"core", mg:{core:1}, cue:"Carregado. Anilha abraçada no peito; <em>enrola o tronco</em>. Sem dor na mão. Progride trocando a anilha."},
-    {n:"Cadeira romana (joelho dobrado)", s:3, r:"10-15", t:"core", mg:{core:1}, cue:"Parte baixa. <em>Enrola a pelve p/ cima</em> (retroversão), não só levanta a perna. Desce devagar."},
-    {n:"Panturrilha", s:3, r:"12-20", t:"iso", mg:{panturrilha:1}, cue:"Depois do core, antes do cardio."},
+    {id:"b_1", n:"Puxada na polia (pegada aberta)", s:4, r:"8-12", t:"comp", mg:{costas:1, biceps:0.5}, cue:"Largura das costas. <em>Puxa com o cotovelo</em>, não com a mão."},
+    {id:"b_2", n:"Remada sentada na polia ou máquina", s:3, r:"8-12", t:"comp", mg:{costas:1, biceps:0.5}, cue:"Espessura. Aperta as escápulas no fim."},
+    {id:"b_3", n:"Crucifixo inverso (peck deck/polia)", s:3, r:"15-20", t:"iso", mg:{ombro_post:1}, cue:"Deltoide posterior = ombro 3D + postura melhor."},
+    {id:"b_4", n:"Elevação lateral na polia unilateral em pé", s:3, r:"12-20 por lado", t:"iso", mg:{ombro_lat:1}, cue:"<em>Unilateral.</em> Polia baixa; cabo preso ao punho do braço que trabalha, passando <em>na frente do corpo</em>. Braço começa alongado cruzando a barriga. Sobe pelo cotovelo até altura do ombro. Faz as 3 séries de um lado, depois do outro. <em>Log: registre 3 sets — cada set = 1 execução por lado</em> (mesma carga)."},
+    {id:"b_5", n:"Rosca inclinada com halter", s:3, r:"8-12", t:"iso", mg:{biceps:1}, cue:"Bíceps alongado (posição estendida = +crescimento). <em>Foca em sentir o bíceps.</em> Parciais no fim."},
+    {id:"b_6", n:"Mesa flexora", s:3, r:"10-15", t:"iso", mg:{posterior:1}, cue:"Posterior de coxa. Sem náusea."},
+    {id:"b_7", n:"Cadeira extensora", s:3, r:"12-15", t:"iso", mg:{quadriceps:1}, cue:"Quadríceps. Carga controlada."},
+    {id:"b_8", n:"Abdominal declinado com anilha", s:3, r:"10-15", t:"core", mg:{core:1}, cue:"Carregado. Anilha abraçada no peito; <em>enrola o tronco</em>. Sem dor na mão. Progride trocando a anilha."},
+    {id:"b_9", n:"Cadeira romana (joelho dobrado)", s:3, r:"10-15", t:"core", mg:{core:1}, cue:"Parte baixa. <em>Enrola a pelve p/ cima</em> (retroversão), não só levanta a perna. Desce devagar."},
+    {id:"b_10", n:"Panturrilha", s:3, r:"12-20", t:"iso", mg:{panturrilha:1}, cue:"Depois do core, antes do cardio."},
   ]},
   C:{name:"Push 2", focus:"Ênfase Ombro", type:"push", ex:[
-    {n:"Desenvolvimento sentado com halter", s:4, r:"6-10", t:"comp", mg:{ombro_ant:1, ombro_lat:0.5, triceps:0.5}, cue:"Ombro completo (anterior + lateral)."},
-    {n:"Elevação lateral com halter no banco inclinado 75°", s:4, r:"12-20", t:"iso", mg:{ombro_lat:1}, cue:"<em>Bilateral inclinado.</em> Banco a ~75°, tronco apoiado no encosto. Halteres começam colados na lateral do banco (posição alongada), sobem pelos cotovelos até altura do ombro. Ângulo diferente do em pé: dificulta no meio do movimento, alivia no topo. Excêntrica 3s. <em>Prioridade da largura.</em>"},
-    {n:"Supino inclinado halter 30°", s:3, r:"8-12", t:"comp", mg:{peito_sup:1, triceps:0.5, ombro_ant:0.5}, cue:"2ª dose de peito superior. Espreme o peito."},
-    {n:"Peck deck ou crucifixo máquina", s:3, r:"10-15", t:"iso", mg:{peito_med:1, peito_sup:0.5}, cue:"Contração e alongamento do peito. Pausa 1s no alongamento."},
-    {n:"Extensão de tríceps acima da cabeça", s:3, r:"10-15", t:"iso", mg:{triceps:1}, cue:"Cabeça longa. Posição alongada."},
-    {n:"Tríceps na polia", s:2, r:"12-15", t:"iso", mg:{triceps:1}, cue:"—"},
+    {id:"c_1", n:"Desenvolvimento sentado com halter", s:4, r:"6-10", t:"comp", mg:{ombro_ant:1, ombro_lat:0.5, triceps:0.5}, cue:"Ombro completo (anterior + lateral)."},
+    {id:"c_2", n:"Elevação lateral com halter no banco inclinado 75°", s:4, r:"12-20", t:"iso", mg:{ombro_lat:1}, cue:"<em>Bilateral inclinado.</em> Banco a ~75°, tronco apoiado no encosto. Halteres começam colados na lateral do banco (posição alongada), sobem pelos cotovelos até altura do ombro. Ângulo diferente do em pé: dificulta no meio do movimento, alivia no topo. Excêntrica 3s. <em>Prioridade da largura.</em>"},
+    {id:"c_3", n:"Supino inclinado halter 30°", s:3, r:"8-12", t:"comp", mg:{peito_sup:1, triceps:0.5, ombro_ant:0.5}, cue:"2ª dose de peito superior. Espreme o peito."},
+    {id:"c_4", n:"Peck deck ou crucifixo máquina", s:3, r:"10-15", t:"iso", mg:{peito_med:1, peito_sup:0.5}, cue:"Contração e alongamento do peito. Pausa 1s no alongamento."},
+    {id:"c_5", n:"Extensão de tríceps acima da cabeça", s:3, r:"10-15", t:"iso", mg:{triceps:1}, cue:"Cabeça longa. Posição alongada."},
+    {id:"c_6", n:"Tríceps na polia", s:2, r:"12-15", t:"iso", mg:{triceps:1}, cue:"—"},
   ]},
   D:{name:"Pull 2", focus:"Costas · bíceps · perna · core", type:"pull", ex:[
-    {n:"Puxada na polia (pegada neutra/fechada)", s:4, r:"8-12", t:"comp", mg:{costas:1, biceps:0.5}, cue:"Ângulo diferente do treino B."},
-    {n:"Remada na polia ou máquina", s:3, r:"8-12", t:"comp", mg:{costas:1, biceps:0.5}, cue:"Espessura."},
-    {n:"Crucifixo inverso", s:3, r:"15-20", t:"iso", mg:{ombro_post:1}, cue:"Deltoide posterior."},
-    {n:"Elevação lateral polia unilateral cabo atrás do corpo (alongado)", s:3, r:"12-20 por lado", t:"iso", mg:{ombro_lat:1}, cue:"<em>Unilateral, cabo atrás.</em> Polia baixa do <em>mesmo lado</em> do braço que trabalha; cabo passa <em>por trás do corpo</em>. Braço começa cruzado atrás na diagonal (posição bem alongada — Wolf 2023: cresce mais). Sobe pelo cotovelo até altura do ombro. <em>Log: registre 3 sets — cada set = 1 execução por lado</em> (mesma carga)."},
-    {n:"Rosca direta na polia ou halter", s:3, r:"10-15", t:"iso", mg:{biceps:1}, cue:"Sente o bíceps. Drop set na última."},
-    {n:"Rosca martelo", s:2, r:"10-12", t:"iso", mg:{biceps:1}, cue:"Braquial = engrossa e alarga o braço."},
-    {n:"Mesa flexora", s:2, r:"12-15", t:"iso", mg:{posterior:1}, cue:"Perna leve."},
-    {n:"Cadeira extensora", s:2, r:"12-15", t:"iso", mg:{quadriceps:1}, cue:"Perna leve."},
-    {n:"Abdominal declinado com anilha", s:3, r:"10-15", t:"core", mg:{core:1}, cue:"Carregado. Anilha abraçada; enrola o tronco. Progride trocando a anilha."},
-    {n:"Cadeira romana (joelho dobrado)", s:3, r:"10-15", t:"core", mg:{core:1}, cue:"Parte baixa. Retroversão de pelve, joelho dobrado. Controla a descida."},
-    {n:"Panturrilha", s:3, r:"12-20", t:"iso", mg:{panturrilha:1}, cue:"Depois do core, antes do cardio."},
+    {id:"d_1", n:"Puxada na polia (pegada neutra/fechada)", s:4, r:"8-12", t:"comp", mg:{costas:1, biceps:0.5}, cue:"Ângulo diferente do treino B."},
+    {id:"d_2", n:"Remada na polia ou máquina", s:3, r:"8-12", t:"comp", mg:{costas:1, biceps:0.5}, cue:"Espessura."},
+    {id:"d_3", n:"Crucifixo inverso", s:3, r:"15-20", t:"iso", mg:{ombro_post:1}, cue:"Deltoide posterior."},
+    {id:"d_4", n:"Elevação lateral polia unilateral cabo atrás do corpo (alongado)", s:3, r:"12-20 por lado", t:"iso", mg:{ombro_lat:1}, cue:"<em>Unilateral, cabo atrás.</em> Polia baixa do <em>mesmo lado</em> do braço que trabalha; cabo passa <em>por trás do corpo</em>. Braço começa cruzado atrás na diagonal (posição bem alongada — Wolf 2023: cresce mais). Sobe pelo cotovelo até altura do ombro. <em>Log: registre 3 sets — cada set = 1 execução por lado</em> (mesma carga)."},
+    {id:"d_5", n:"Rosca direta na polia ou halter", s:3, r:"10-15", t:"iso", mg:{biceps:1}, cue:"Sente o bíceps. Drop set na última."},
+    {id:"d_6", n:"Rosca martelo", s:2, r:"10-12", t:"iso", mg:{biceps:1}, cue:"Braquial = engrossa e alarga o braço."},
+    {id:"d_7", n:"Mesa flexora", s:2, r:"12-15", t:"iso", mg:{posterior:1}, cue:"Perna leve."},
+    {id:"d_8", n:"Cadeira extensora", s:2, r:"12-15", t:"iso", mg:{quadriceps:1}, cue:"Perna leve."},
+    {id:"d_9", n:"Abdominal declinado com anilha", s:3, r:"10-15", t:"core", mg:{core:1}, cue:"Carregado. Anilha abraçada; enrola o tronco. Progride trocando a anilha."},
+    {id:"d_10", n:"Cadeira romana (joelho dobrado)", s:3, r:"10-15", t:"core", mg:{core:1}, cue:"Parte baixa. Retroversão de pelve, joelho dobrado. Controla a descida."},
+    {id:"d_11", n:"Panturrilha", s:3, r:"12-20", t:"iso", mg:{panturrilha:1}, cue:"Depois do core, antes do cardio."},
   ]},
 };
 
@@ -1837,8 +1961,9 @@ const LS = {
   meta:"meutreino_meta_v1",
   session:"meutreino_session_v1",
   freelog:"meutreino_freelog_v1",
+  exmeta:"meutreino_exmeta_v1",
 };
-const DEFAULTS = {logs:{}, bw:[], sleep:{}, protein:{}, suppl:{}, photos:[], measures:[], cardio:{}, meta:{}, session:{active:null, history:[]}, freelog:{}};
+const DEFAULTS = {logs:{}, bw:[], sleep:{}, protein:{}, suppl:{}, photos:[], measures:[], cardio:{}, meta:{}, session:{active:null, history:[]}, freelog:{}, exmeta:{}};
 const ST = JSON.parse(JSON.stringify(DEFAULTS));
 for(const k of Object.keys(LS)){
   try{ const r=localStorage.getItem(LS[k]); if(r) ST[k]=JSON.parse(r); }catch(e){}
@@ -1853,6 +1978,8 @@ if(!('active' in ST.session)) ST.session.active=null;
 if(!Array.isArray(ST.session.history)) ST.session.history=[];
 // Migração defensiva: freelog deve ser objeto {sessionId: [{date, sets}]}
 if(!ST.freelog || typeof ST.freelog!=='object' || Array.isArray(ST.freelog)) ST.freelog={};
+// Migração defensiva: exmeta = {exId: {n?, cue?, note?}} — overrides do usuário por exercício
+if(!ST.exmeta || typeof ST.exmeta!=='object' || Array.isArray(ST.exmeta)) ST.exmeta={};
 
 /* ============ TOAST (feedback transitório) ============ */
 let toastTimer=null;
@@ -2114,7 +2241,7 @@ function gatherWorkoutSummary(day){
     });
     if(isPRSession(id, tod.sets)){
       const e1=bestE1RM(tod.sets);
-      prs.push({name:e.n, e1:Math.round(e1*10)/10, kg:Math.max(...tod.sets.filter(s=>isValidDone(s)).map(s=>num(s.kg)))});
+      prs.push({name:exName(e), e1:Math.round(e1*10)/10, kg:Math.max(...tod.sets.filter(s=>isValidDone(s)).map(s=>num(s.kg)))});
     }
     // Progressão simples vs sessão anterior
     if(!topProgress){
@@ -2123,7 +2250,7 @@ function gatherWorkoutSummary(day){
         const curE=bestE1RM(tod.sets);
         const lastE=bestE1RM(lastS.sets);
         if(curE>lastE && lastE>0){
-          topProgress={name:e.n, delta:Math.round((curE-lastE)*10)/10};
+          topProgress={name:exName(e), delta:Math.round((curE-lastE)*10)/10};
         }
       }
     }
@@ -2229,6 +2356,80 @@ function today(){ return new Date().toISOString().slice(0,10); }
 function dateAdd(iso, days){ const d=new Date(iso+'T12:00:00'); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
 function daysBetween(a,b){ const da=new Date(a+'T12:00:00'), db=new Date(b+'T12:00:00'); return Math.round((db-da)/86400000); }
 function exId(day,i){ return day+"_"+i; }
+
+/* ============ OVERRIDES DE EXERCÍCIO (edição do usuário, isolado em ST.exmeta) ============
+   Ancorado pelo id ESTÁVEL do exercício (e.id no WK/HOME_SESSIONS), não pela posição.
+   Assim reordenar/renomear no código não faz a edição migrar pro exercício errado.
+   Git nunca vê isto (mora só no localStorage). Entra no backup via LS/exmeta. */
+function exOverride(e){ return (e && e.id && ST.exmeta[e.id]) || {}; }
+// Nome/cue exibidos = override do usuário se houver, senão o padrão do código.
+function exName(e){ const o=exOverride(e); return (o.n!=null && o.n!=='') ? o.n : e.n; }
+function exCue(e){ const o=exOverride(e); return (o.cue!=null && o.cue!=='') ? o.cue : e.cue; }
+function exNote(e){ const o=exOverride(e); return (o.note!=null) ? o.note : ''; }
+function exHasOverride(e){ const o=exOverride(e); return !!(o.n || o.cue || (o.note && o.note.trim())); }
+function saveExMeta(id, patch){
+  if(!id) return;
+  const cur = ST.exmeta[id] || {};
+  const next = {...cur, ...patch};
+  // limpa campos vazios pra não inflar storage nem mascarar mudanças futuras do código
+  for(const k of ['n','cue','note']){ if(next[k]==null || String(next[k]).trim()==='') delete next[k]; }
+  if(Object.keys(next).length) ST.exmeta[id]=next; else delete ST.exmeta[id];
+  saveK('exmeta');
+}
+function resetExMeta(id){ if(id && ST.exmeta[id]){ delete ST.exmeta[id]; saveK('exmeta'); } }
+// Acha o exercício ORIGINAL (padrão do código) pelo id estável, varrendo WK + HOME_SESSIONS.
+function exById(id){
+  if(!id) return null;
+  for(const d of Object.keys(WK)){ const f=WK[d].ex.find(x=>x.id===id); if(f) return f; }
+  for(const t of Object.keys(HOME_SESSIONS)){ const f=HOME_SESSIONS[t].ex.find(x=>x.id===id); if(f) return f; }
+  return null;
+}
+
+/* ---- Modal de edição de exercício ---- */
+let exEditId=null;
+function cuePlain(c){ return String(c||'').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim(); }
+function openExEdit(id){
+  const orig=exById(id);
+  if(!orig){ showToast('Exercício não encontrado', 'warn'); return; }
+  exEditId=id;
+  const o=ST.exmeta[id]||{};
+  const defCue=cuePlain(orig.cue);
+  document.getElementById('exEditName').value = o.n!=null?o.n:orig.n;
+  document.getElementById('exEditCue').value  = o.cue!=null?o.cue:(defCue==='—'?'':defCue);
+  document.getElementById('exEditNote').value = o.note!=null?o.note:'';
+  const hasOv=!!(o.n||o.cue||(o.note&&o.note.trim()));
+  document.getElementById('exEditReset').classList.toggle('hidden', !hasOv);
+  document.getElementById('exEditHint').textContent = hasOv
+    ? 'Já editado por você. Fica só neste iPhone e entra no backup — atualizações do app não sobrescrevem.'
+    : 'O que você editar fica só neste iPhone e entra no backup. Não vai pro código nem é sobrescrito por atualizações.';
+  document.getElementById('exEdit').classList.remove('hidden');
+  setTimeout(()=>{ try{ document.getElementById('exEditName').focus(); }catch(e){} }, 60);
+}
+function closeExEdit(){ document.getElementById('exEdit').classList.add('hidden'); exEditId=null; }
+function saveExEdit(){
+  if(!exEditId) return;
+  const orig=exById(exEditId)||{};
+  let n=document.getElementById('exEditName').value.trim();
+  let cue=document.getElementById('exEditCue').value.trim();
+  const note=document.getElementById('exEditNote').value.trim();
+  // Se igual ao padrão do código, não grava override — deixa o exercício acompanhar futuras
+  // atualizações do app em vez de "congelar" o texto atual.
+  if(n===String(orig.n||'').trim()) n='';
+  if(cue===cuePlain(orig.cue)) cue='';
+  saveExMeta(exEditId, {n, cue, note});
+  closeExEdit();
+  render();
+  showToast('Exercício atualizado', 'ok');
+}
+function resetExEdit(){
+  if(!exEditId) return;
+  if(!confirm('Restaurar nome, descrição e nota originais deste exercício?')) return;
+  resetExMeta(exEditId);
+  closeExEdit();
+  render();
+  showToast('Voltou ao padrão', 'ok');
+}
+
 function dailyPrincipleIdx(){
   // Rotação determinística por dia do ano (mesma dica no mesmo dia entre sessões)
   const t=new Date();
@@ -2243,7 +2444,7 @@ function prTrackerForWorkout(day){
   WK[day].ex.forEach((e,i)=>{
     const id=exId(day,i);
     const best=historicalBestE1RM(id, true);
-    if(best>0){ out.push({name:e.n, e1:Math.round(best*10)/10}); }
+    if(best>0){ out.push({name:exName(e), e1:Math.round(best*10)/10}); }
   });
   out.sort((a,b)=>b.e1-a.e1);
   return out.slice(0,3);
@@ -2593,11 +2794,11 @@ const HOME_SESSIONS = {
       D:["Abdominal declinado com anilha","Cadeira romana (joelho dobrado)"],
     },
     ex:[
-      {n:"Hollow hold", s:3, r:"30s", t:"core", mg:{core:1}, cue:"Lombar colada no chão, braços e pernas estendidos pra cima. <em>Mantém a pelve em retroversão.</em> Se 30s for fácil, sobe pra 45s."},
-      {n:"Dead bug", s:3, r:"10/lado", t:"core", mg:{core:1}, cue:"Anti-extensão. Estende braço oposto à perna, controla a descida. Lombar não sai do chão em nenhum momento."},
-      {n:"Reverse crunch", s:3, r:"15", t:"core", mg:{core:1}, cue:"Substitui cadeira romana. <em>Enrola a pelve</em> (retroversão), joelhos sobem em direção ao peito. Desce devagar."},
-      {n:"Side plank com elevação de quadril", s:3, r:"12/lado", t:"core", mg:{core:1}, cue:"Oblíquos. Desce o quadril até quase encostar, sobe firme. Afina visualmente a cintura."},
-      {n:"Bird dog", s:3, r:"8/lado", t:"core", mg:{core:1}, cue:"McGill Big Three. Anti-rotação. Estende braço D + perna E ao mesmo tempo. Sem balanço."},
+      {id:"core_completo_1", n:"Hollow hold", s:3, r:"30s", t:"core", mg:{core:1}, cue:"Lombar colada no chão, braços e pernas estendidos pra cima. <em>Mantém a pelve em retroversão.</em> Se 30s for fácil, sobe pra 45s."},
+      {id:"core_completo_2", n:"Dead bug", s:3, r:"10/lado", t:"core", mg:{core:1}, cue:"Anti-extensão. Estende braço oposto à perna, controla a descida. Lombar não sai do chão em nenhum momento."},
+      {id:"core_completo_3", n:"Reverse crunch", s:3, r:"15", t:"core", mg:{core:1}, cue:"Substitui cadeira romana. <em>Enrola a pelve</em> (retroversão), joelhos sobem em direção ao peito. Desce devagar."},
+      {id:"core_completo_4", n:"Side plank com elevação de quadril", s:3, r:"12/lado", t:"core", mg:{core:1}, cue:"Oblíquos. Desce o quadril até quase encostar, sobe firme. Afina visualmente a cintura."},
+      {id:"core_completo_5", n:"Bird dog", s:3, r:"8/lado", t:"core", mg:{core:1}, cue:"McGill Big Three. Anti-rotação. Estende braço D + perna E ao mesmo tempo. Sem balanço."},
     ],
   },
   panturrilha_cardio:{
@@ -2612,10 +2813,10 @@ const HOME_SESSIONS = {
       D:["Panturrilha"],
     },
     ex:[
-      {n:"Panturrilha em pé na escada", s:4, r:"15-20", t:"iso", mg:{panturrilha:1}, cue:"Calcanhar fora do degrau, desce máximo. <em>Pausa 1s embaixo</em> (alongado cresce mais). Pode segurar 1 garrafa de água em cada mão pra lastrar."},
-      {n:"Polichinelo baixo (low impact)", s:6, r:"40s", t:"core", mg:{panturrilha:0.3}, cue:"Sem pular alto (vizinho). Braços abrem/fecham + pernas alternadas. Z2 = consegue conversar."},
-      {n:"Marcha estacionária com joelho alto", s:4, r:"45s", t:"core", mg:{core:0.5}, cue:"Joelho na altura do quadril, ritmo constante. Mantém core ativo."},
-      {n:"Burpee leve (sem flexão, sem pulo)", s:3, r:"10", t:"core", mg:{core:0.5, panturrilha:0.3}, cue:"Agacha → joga pés trás → volta → levanta. Só se sentir disposição."},
+      {id:"panturrilha_cardio_1", n:"Panturrilha em pé na escada", s:4, r:"15-20", t:"iso", mg:{panturrilha:1}, cue:"Calcanhar fora do degrau, desce máximo. <em>Pausa 1s embaixo</em> (alongado cresce mais). Pode segurar 1 garrafa de água em cada mão pra lastrar."},
+      {id:"panturrilha_cardio_2", n:"Polichinelo baixo (low impact)", s:6, r:"40s", t:"core", mg:{panturrilha:0.3}, cue:"Sem pular alto (vizinho). Braços abrem/fecham + pernas alternadas. Z2 = consegue conversar."},
+      {id:"panturrilha_cardio_3", n:"Marcha estacionária com joelho alto", s:4, r:"45s", t:"core", mg:{core:0.5}, cue:"Joelho na altura do quadril, ritmo constante. Mantém core ativo."},
+      {id:"panturrilha_cardio_4", n:"Burpee leve (sem flexão, sem pulo)", s:3, r:"10", t:"core", mg:{core:0.5, panturrilha:0.3}, cue:"Agacha → joga pés trás → volta → levanta. Só se sentir disposição."},
     ],
   },
   posterior_mobilidade:{
@@ -2630,11 +2831,11 @@ const HOME_SESSIONS = {
       D:["Mesa flexora"],
     },
     ex:[
-      {n:"Ponte glútea (single leg)", s:3, r:"12/lado", t:"iso", mg:{posterior:0.7}, cue:"Pé apoiado no chão, outra perna estendida. Sobe pelo glúteo, <em>aperta no topo 1s</em>. Lombar não estende excessivamente."},
-      {n:"Single-leg deadlift sem peso", s:3, r:"10/lado", t:"iso", mg:{posterior:1}, cue:"Hip hinge unilateral. Estica braços pra frente como contrapeso. Sente o isquio puxar. Posição alongada (Wolf 2023)."},
-      {n:"Good morning sem carga", s:3, r:"15", t:"iso", mg:{posterior:0.7}, cue:"Mãos atrás da cabeça, hip hinge. Para quando sentir alongamento — não força. Lombar neutra."},
-      {n:"Alongamento isquio em pé", s:3, r:"30s/lado", t:"core", mg:{posterior:0.3}, cue:"Pé num degrau baixo, joelho estendido, inclina tronco pra frente. Respira fundo."},
-      {n:"Mobilidade de quadril (90/90)", s:3, r:"45s", t:"core", mg:{}, cue:"Sentado, perna da frente 90° lateral, perna trás 90° pra trás. Alterna lados. Abre o quadril."},
+      {id:"posterior_mobilidade_1", n:"Ponte glútea (single leg)", s:3, r:"12/lado", t:"iso", mg:{posterior:0.7}, cue:"Pé apoiado no chão, outra perna estendida. Sobe pelo glúteo, <em>aperta no topo 1s</em>. Lombar não estende excessivamente."},
+      {id:"posterior_mobilidade_2", n:"Single-leg deadlift sem peso", s:3, r:"10/lado", t:"iso", mg:{posterior:1}, cue:"Hip hinge unilateral. Estica braços pra frente como contrapeso. Sente o isquio puxar. Posição alongada (Wolf 2023)."},
+      {id:"posterior_mobilidade_3", n:"Good morning sem carga", s:3, r:"15", t:"iso", mg:{posterior:0.7}, cue:"Mãos atrás da cabeça, hip hinge. Para quando sentir alongamento — não força. Lombar neutra."},
+      {id:"posterior_mobilidade_4", n:"Alongamento isquio em pé", s:3, r:"30s/lado", t:"core", mg:{posterior:0.3}, cue:"Pé num degrau baixo, joelho estendido, inclina tronco pra frente. Respira fundo."},
+      {id:"posterior_mobilidade_5", n:"Mobilidade de quadril (90/90)", s:3, r:"45s", t:"core", mg:{}, cue:"Sentado, perna da frente 90° lateral, perna trás 90° pra trás. Alterna lados. Abre o quadril."},
     ],
   },
   peito_triceps:{
@@ -2646,11 +2847,11 @@ const HOME_SESSIONS = {
     avoidBefore:["A","C"],  // A e C já são push pesado
     canSkipNextDay:{},      // não substitui exercício do programa
     ex:[
-      {n:"Pike push-up", s:3, r:"6-12", t:"comp", mg:{ombro_ant:1, triceps:0.7, ombro_lat:0.3}, cue:"Pés elevados (sofá), quadril alto, mãos no chão. Desce a cabeça em direção ao chão. <em>Substituto de desenvolvimento.</em>"},
-      {n:"Decline push-up", s:3, r:"8-15", t:"comp", mg:{peito_sup:1, ombro_ant:0.5, triceps:0.5}, cue:"Pés no sofá, mãos no chão. Único bodyweight que prioriza peito superior. Excêntrica 3s."},
-      {n:"Diamond push-up", s:3, r:"6-12", t:"comp", mg:{triceps:1, peito_med:0.5}, cue:"Mãos juntas (polegares + indicadores formam diamante). Pega cabeça medial do tríceps. Se muito difícil, faz com joelhos."},
-      {n:"Tríceps mergulho no sofá", s:3, r:"10-15", t:"iso", mg:{triceps:1, ombro_ant:0.3}, cue:"Mãos na borda do sofá, pernas estendidas no chão. Desce até cotovelos 90°. Sobe pelo tríceps."},
-      {n:"Flexão diamante negativa lenta", s:2, r:"5", t:"iso", mg:{triceps:0.7, peito_med:0.3}, cue:"Só excêntrica: desce em 5s, sobe como puder (joelho). Foco no dano muscular."},
+      {id:"peito_triceps_1", n:"Pike push-up", s:3, r:"6-12", t:"comp", mg:{ombro_ant:1, triceps:0.7, ombro_lat:0.3}, cue:"Pés elevados (sofá), quadril alto, mãos no chão. Desce a cabeça em direção ao chão. <em>Substituto de desenvolvimento.</em>"},
+      {id:"peito_triceps_2", n:"Decline push-up", s:3, r:"8-15", t:"comp", mg:{peito_sup:1, ombro_ant:0.5, triceps:0.5}, cue:"Pés no sofá, mãos no chão. Único bodyweight que prioriza peito superior. Excêntrica 3s."},
+      {id:"peito_triceps_3", n:"Diamond push-up", s:3, r:"6-12", t:"comp", mg:{triceps:1, peito_med:0.5}, cue:"Mãos juntas (polegares + indicadores formam diamante). Pega cabeça medial do tríceps. Se muito difícil, faz com joelhos."},
+      {id:"peito_triceps_4", n:"Tríceps mergulho no sofá", s:3, r:"10-15", t:"iso", mg:{triceps:1, ombro_ant:0.3}, cue:"Mãos na borda do sofá, pernas estendidas no chão. Desce até cotovelos 90°. Sobe pelo tríceps."},
+      {id:"peito_triceps_5", n:"Flexão diamante negativa lenta", s:2, r:"5", t:"iso", mg:{triceps:0.7, peito_med:0.3}, cue:"Só excêntrica: desce em 5s, sobe como puder (joelho). Foco no dano muscular."},
     ],
   },
   ombro_postura:{
@@ -2662,11 +2863,11 @@ const HOME_SESSIONS = {
     avoidBefore:["A","C"],  // foco principal já é ombro
     canSkipNextDay:{},      // não substitui — é EXTRA pra prioridade #1
     ex:[
-      {n:"Elevação lateral isométrica (mochila/livros)", s:3, r:"30s", t:"iso", mg:{ombro_lat:1}, cue:"Segura peso (mochila com livros, garrafas). Braços a 90° na lateral, mantém 30s. Fadiga lateral real. Volume extra pra <em>prioridade #1</em>."},
-      {n:"Face pull com elástico (ou toalha)", s:3, r:"15", t:"iso", mg:{ombro_post:1}, cue:"Elástico preso numa maçaneta, puxa pra perto da testa, cotovelos altos. Deltoide posterior + postura. Sem elástico: toalha esticada entre as mãos."},
-      {n:"YTW prone (deitado de bruços)", s:3, r:"8 cada letra", t:"iso", mg:{ombro_post:0.7}, cue:"Deitado bruços, braços formam Y (cima), T (lateral), W (cotovelos dobrados). Levanta do chão e segura 1s cada rep."},
-      {n:"Wall slide", s:3, r:"10", t:"iso", mg:{ombro_post:0.3}, cue:"Costas, lombar e braços encostados na parede. Desliza braços pra cima sem tirar contato. Mobilidade de ombro + postura."},
-      {n:"Elevação frontal com mochila", s:2, r:"12", t:"iso", mg:{ombro_ant:0.7}, cue:"Opcional. Pega a mochila com as duas mãos, sobe na frente até a altura do ombro. Controla a descida."},
+      {id:"ombro_postura_1", n:"Elevação lateral isométrica (mochila/livros)", s:3, r:"30s", t:"iso", mg:{ombro_lat:1}, cue:"Segura peso (mochila com livros, garrafas). Braços a 90° na lateral, mantém 30s. Fadiga lateral real. Volume extra pra <em>prioridade #1</em>."},
+      {id:"ombro_postura_2", n:"Face pull com elástico (ou toalha)", s:3, r:"15", t:"iso", mg:{ombro_post:1}, cue:"Elástico preso numa maçaneta, puxa pra perto da testa, cotovelos altos. Deltoide posterior + postura. Sem elástico: toalha esticada entre as mãos."},
+      {id:"ombro_postura_3", n:"YTW prone (deitado de bruços)", s:3, r:"8 cada letra", t:"iso", mg:{ombro_post:0.7}, cue:"Deitado bruços, braços formam Y (cima), T (lateral), W (cotovelos dobrados). Levanta do chão e segura 1s cada rep."},
+      {id:"ombro_postura_4", n:"Wall slide", s:3, r:"10", t:"iso", mg:{ombro_post:0.3}, cue:"Costas, lombar e braços encostados na parede. Desliza braços pra cima sem tirar contato. Mobilidade de ombro + postura."},
+      {id:"ombro_postura_5", n:"Elevação frontal com mochila", s:2, r:"12", t:"iso", mg:{ombro_ant:0.7}, cue:"Opcional. Pega a mochila com as duas mãos, sobe na frente até a altura do ombro. Controla a descida."},
     ],
   },
 };
@@ -2816,6 +3017,36 @@ function suggestedNextDay(){
   return seq[(idx+1)%4];
 }
 
+/* ============ HISTÓRICO DE SESSÕES (ST.session.history — ABCD, com duração) ============ */
+// Duração compacta pra listas: "52min", "1h08".
+function fmtDurMin(ms){
+  const min=Math.round((ms||0)/60000);
+  if(min<60) return min+'min';
+  const h=Math.floor(min/60), m=min%60;
+  return m ? `${h}h${String(m).padStart(2,'0')}` : `${h}h`;
+}
+// Sessões concluídas de um treino ABCD, mais recentes primeiro.
+function sessionsForDay(day){
+  return ST.session.history.filter(h=>h.workoutId===day)
+    .slice().sort((a,b)=>(b.endAt||0)-(a.endAt||0));
+}
+// Quais dias ABCD tiveram sets válidos HOJE (mesmo sem ter concluído/celebrado).
+function todayTrainedDays(){
+  const t=today(); const set=new Set();
+  for(const id of Object.keys(ST.logs)){
+    const day=id.split('_')[0];
+    if(!(day==='A'||day==='B'||day==='C'||day==='D')) continue;
+    for(const s of ST.logs[id]){ if(s.date===t && hasValidDone(s.sets)){ set.add(day); break; } }
+  }
+  return Array.from(set);
+}
+// Último treino ABCD CONCLUÍDO hoje (registro tem duração). null se nenhum finalizado.
+function todaySessionRecord(){
+  const t=today();
+  const recs=ST.session.history.filter(h=>h.date===t);
+  return recs.length ? recs[recs.length-1] : null;
+}
+
 /* ============ NAV ============ */
 let tab="treino", openDay=null, openHomeDay=null;
 function setTab(t){
@@ -2869,17 +3100,36 @@ function renderDays(){
     <div class="stat streak"><div class="l"><span style="display:inline-flex;vertical-align:-3px;margin-right:4px">${I.flame}</span>Semanas seguidas</div><div class="v">${weekN}<small> sem</small></div><div class="s">${weekN>0?'≥3 treinos/sem':'comece esta semana'}</div></div>
     <div class="stat"><div class="l">Esta semana</div><div class="v">${wkN}<small>/4</small></div><div class="s">treinos completados</div></div>
   </div>`;
-  h+=`<h2 class="sec">Próximo · ${WK[sug].name}</h2>`;
+  const trained = new Set(todayTrainedDays());
+  const doneToday = trained.size>0;
+  const todayRec = todaySessionRecord();
+  // Cabeçalho: se já treinou hoje, celebra o feito e aponta o próximo como próximo (não "hoje").
+  h+=`<h2 class="sec">${doneToday ? `Treinou hoje · próximo ${WK[sug].name}` : `Hoje · ${WK[sug].name}`}</h2>`;
   for(const d of ["A","B","C","D"]){
     const w=WK[d];
+    const isDoneToday = trained.has(d);
     const isNext = d===sug;
+    // Duração de hoje só no card do treino que foi concluído hoje
+    const durToday = (isDoneToday && todayRec && todayRec.workoutId===d) ? fmtDurMin(todayRec.activeMs) : '';
+    let tag='';
+    if(isDoneToday){
+      tag = ` <span class="daytag done">${I.check2} HOJE${durToday?` · ${durToday}`:''}</span>`;
+    } else if(isNext){
+      tag = doneToday
+        ? ` <span class="daytag next">· PRÓXIMO</span>`
+        : ` <span class="daytag today">· HOJE</span>`;
+    }
+    // Anel: verde no concluído; azul no sugerido só quando ainda não treinou hoje
+    const ring = isDoneToday
+      ? 'box-shadow:0 0 0 2px rgba(81,216,138,.40), var(--shadow-1)'
+      : (isNext && !doneToday ? 'box-shadow:0 0 0 2px rgba(91,158,255,.35), var(--shadow-1)' : '');
     const heroUrl = photoURL(w.ex[0].n);
     const bg = heroUrl ? `<img class="day-bg" src="${heroUrl}" alt="" loading="lazy" decoding="async" onerror="this.remove()">` : '';
-    h+=`<div class="day ${w.type}" onclick="openWorkout('${d}')" style="${isNext?'box-shadow:0 0 0 2px rgba(91,158,255,.35), var(--shadow-1)':''}">
+    h+=`<div class="day ${w.type}" onclick="openWorkout('${d}')" style="${ring}">
       ${bg}
       <div class="badge">${d}</div>
       <div class="meta">
-        <div class="t">${w.name}${isNext?' <span style="color:var(--pull);font-size:11px;font-weight:700;letter-spacing:.04em">· HOJE</span>':''}</div>
+        <div class="t">${w.name}${tag}</div>
         <div class="f">${w.focus}</div>
         <div class="cnt">${w.ex.length} EXERCÍCIOS</div>
       </div>
@@ -2898,6 +3148,20 @@ function renderDay(d){
     ? `<div class="session-chip ${isSessionPaused()?'paused':''}"><span class="label">${isSessionPaused()?'PAUSADO':'EM TREINO'}</span><span id="sessionElapsed">${fmtDuration(getSessionElapsed())}</span></div>`
     : `<div class="session-chip hidden"><span class="label">EM TREINO</span><span id="sessionElapsed">0:00</span></div>`;
   let h=`<div class="backbar"><button class="back" onclick="backToList()">${I.arrowL}<span>Treinos</span></button>${sessChip}</div>`;
+
+  // Mini-histórico deste treino (últimas 4 vezes): data · duração · sets · volume
+  const hist=sessionsForDay(d);
+  if(hist.length){
+    const rows=hist.slice(0,4).map(r=>{
+      const vol=r.volume?` · ${r.volume>=1000?(r.volume/1000).toFixed(1)+'t':r.volume+'kg'}`:'';
+      return `<div class="wkh-row"><span class="wkh-d">${esc(r.date.slice(5).replace('-','/'))}</span><span class="wkh-v">${fmtDurMin(r.activeMs)}</span><span class="wkh-s">${r.sets||0} sets${vol}</span></div>`;
+    }).join('');
+    h+=`<div class="wkhist">
+      <div class="wkh-h">${I.hist} Histórico deste treino</div>
+      ${rows}
+    </div>`;
+  }
+
   w.ex.forEach((e,i)=>{
     const id=exId(d,i);
     const last=lastSession(id);
@@ -2905,7 +3169,8 @@ function renderDay(d){
     const pillT = e.t==="comp"?"composto":(e.t==="core"?"core":"isolador");
     const pillC = e.t==="comp"?"comp":(e.t==="core"?"core":"iso");
     const nset=parseInt(e.s)||3;
-    const url=photoURL(e.n);
+    const url=photoURL(e.n);                  // foto SEMPRE pela chave original (PHOTO_ID/PHOTO_LOCAL keyados por e.n)
+    const nm=exName(e), cue=exCue(e), note=exNote(e);   // nome/cue/nota exibidos (override do usuário se houver)
 
     // último treino: mostra séries + e1RM melhor (valores sanitizados via fmtKg/fmtInt)
     let lastTxt;
@@ -2972,7 +3237,7 @@ function renderDay(d){
         <div class="chk ${tv.done?'on':''}" onclick="toggleDone('${id}',${k},this)">${I.check}</div>
       </div>`;
     }
-    const yt=`https://www.youtube.com/results?search_query=`+encodeURIComponent(e.n+" execução técnica academia");
+    const yt=`https://www.youtube.com/results?search_query=`+encodeURIComponent(nm+" execução técnica academia");
     const restS=(REST[e.t] ?? 90);
     // warmup pro composto
     const warmup = e.t==='comp' && last && bestE1RM(last.sets)>0 ? (() => {
@@ -2984,9 +3249,9 @@ function renderDay(d){
     const photoBlock = url
       ? `<div class="photo">
            ${prBadge}
-           <img src="${url}" alt="${esc(e.n)}" loading="lazy" decoding="async" onload="this.classList.add('loaded')" onerror="this.parentElement.classList.add('noimg'); this.remove();">
+           <img src="${url}" alt="${esc(nm)}" loading="lazy" decoding="async" onload="this.classList.add('loaded')" onerror="this.parentElement.classList.add('noimg'); this.remove();">
            <div class="ovr">
-             <div class="name">${esc(e.n)}</div>
+             <div class="name">${esc(nm)}</div>
              <div class="pill ${pillC}">${pillT}</div>
            </div>
          </div>`
@@ -2994,7 +3259,7 @@ function renderDay(d){
            ${prBadge}
            <div class="ph-fallback">Sem foto disponível</div>
            <div class="ovr">
-             <div class="name">${esc(e.n)}</div>
+             <div class="name">${esc(nm)}</div>
              <div class="pill ${pillC}">${pillT}</div>
            </div>
          </div>`;
@@ -3009,7 +3274,8 @@ function renderDay(d){
           <span class="dot"></span>
           <span class="met"><b>${Math.floor(restS/60)}:${String(restS%60).padStart(2,'0')}</b> descanso</span>
         </div>
-        ${e.cue!=="—"?`<div class="cue">${e.cue}</div>`:""}
+        ${cue&&cue!=="—"?`<div class="cue">${exOverride(e).cue?esc(cue):cue}</div>`:""}
+        ${note&&note.trim()?`<div class="exnote">${I.pencil}<span>${esc(note)}</span></div>`:""}
         ${warmup}
         ${skipBanner}
         ${sugBlock}
@@ -3017,6 +3283,7 @@ function renderDay(d){
         <div class="exbtns">
           <a class="xb" href="${yt}" target="_blank" rel="noopener">${I.play}<span>Vídeo</span></a>
           <button class="xb rest" onclick="openTimer(${restS})">${I.timer}<span>Descanso ${Math.floor(restS/60)}:${String(restS%60).padStart(2,'0')}</span></button>
+          <button class="xb" onclick="openExEdit('${e.id}')">${I.pencil}<span>Editar</span></button>
         </div>
       </div>
       <div class="log">
@@ -3183,6 +3450,7 @@ function renderHomeDay(templateId){
     const pillT = e.t==="comp"?"composto":(e.t==="core"?"core":"isolador");
     const pillC = e.t==="comp"?"comp":(e.t==="core"?"core":"iso");
     const restS=(REST[e.t] ?? 75);
+    const nm=exName(e), cue=exCue(e), note=exNote(e);   // override do usuário se houver
 
     let lastTxt='';
     if(last){
@@ -3213,7 +3481,7 @@ function renderHomeDay(templateId){
       <div class="photo noimg">
         <div class="ph-fallback">Em casa</div>
         <div class="ovr">
-          <div class="name">${esc(e.n)}</div>
+          <div class="name">${esc(nm)}</div>
           <div class="pill ${pillC}">${pillT}</div>
         </div>
       </div>
@@ -3225,9 +3493,11 @@ function renderHomeDay(templateId){
           <span class="dot"></span>
           <span class="met"><b>${Math.floor(restS/60)}:${String(restS%60).padStart(2,'0')}</b> descanso</span>
         </div>
-        ${e.cue!=="—"?`<div class="cue">${e.cue}</div>`:""}
+        ${cue&&cue!=="—"?`<div class="cue">${exOverride(e).cue?esc(cue):cue}</div>`:""}
+        ${note&&note.trim()?`<div class="exnote">${I.pencil}<span>${esc(note)}</span></div>`:""}
         <div class="exbtns">
           <button class="xb rest" onclick="openTimer(${restS})">${I.timer}<span>Descanso ${Math.floor(restS/60)}:${String(restS%60).padStart(2,'0')}</span></button>
+          <button class="xb" onclick="openExEdit('${e.id}')">${I.pencil}<span>Editar</span></button>
         </div>
       </div>
       <div class="log">
@@ -3286,8 +3556,11 @@ function renderHoje(){
   sub.textContent="Tudo que precisa hoje, num lugar só";
   const t=today();
   const sug=suggestedNextDay();
-  const todayDoneDays = new Set(workoutDates()).has(t);
-  const todayWk = WK[sug];
+  const trainedDays = todayTrainedDays();
+  const doneToday = trainedDays.length>0;
+  const todayRec = todaySessionRecord();
+  const featuredDay = doneToday ? (todayRec ? todayRec.workoutId : trainedDays[trainedDays.length-1]) : sug;
+  const featuredWk = WK[featuredDay];
   const streak=getStreak();
   const weekN=weekStreak();
 
@@ -3321,16 +3594,28 @@ function renderHoje(){
     <div class="date">${date.getDate()} ${monthNames[date.getMonth()]} · ${weekN>0?weekN+' sem seguidas':streak+' dias seguidos'}</div>
   </div>`;
 
-  // Atalho treino do dia
-  h+=`<div class="todayworkout ${todayWk.type}" onclick="setTab('treino');openWorkout('${sug}');">
-    <div class="badge">${sug}</div>
+  // Atalho treino do dia — se já treinou hoje, destaca o feito (com duração) + próximo discreto
+  const featDur = (doneToday && todayRec && todayRec.workoutId===featuredDay) ? fmtDurMin(todayRec.activeMs) : '';
+  const featLabel = doneToday
+    ? `Treino de hoje · concluído${featDur?` · ${featDur}`:''}`
+    : 'Treino sugerido pra hoje';
+  h+=`<div class="todayworkout ${featuredWk.type}${doneToday?' done':''}" onclick="setTab('treino');openWorkout('${featuredDay}');">
+    <div class="badge">${featuredDay}</div>
     <div class="meta">
-      <div class="l">${todayDoneDays?'Treino de hoje · concluído':'Treino sugerido'}</div>
-      <div class="t">${todayWk.name}</div>
-      <div class="f">${todayWk.focus}</div>
+      <div class="l">${featLabel}</div>
+      <div class="t">${featuredWk.name}</div>
+      <div class="f">${featuredWk.focus}</div>
     </div>
     <div class="chev" style="color:var(--ink2)">${I.chevR}</div>
   </div>`;
+  // Próximo treino do ciclo, discreto, só depois de já ter treinado hoje
+  if(doneToday && sug!==featuredDay){
+    h+=`<div class="nextworkout" onclick="setTab('treino');openWorkout('${sug}');">
+      <div class="nb">${sug}</div>
+      <div class="nm"><b>Próximo treino</b> · ${WK[sug].name}</div>
+      <div class="chev">${I.chevR}</div>
+    </div>`;
+  }
 
   // Sessões em casa — recomendadas pra hoje (não competem com ABCD)
   // Mostra a 1ª recomendada em destaque + "Ver mais opções" pras outras
@@ -3375,7 +3660,7 @@ function renderHoje(){
   }
 
   // Card "Antes do treino" — princípio rotativo do dia (item 4 v1)
-  if(!todayDoneDays){
+  if(!doneToday){
     const pIdx=dailyPrincipleIdx();
     const p=PRINC[pIdx]; // [color, icon, title, body]
     if(p){
@@ -3666,6 +3951,26 @@ function renderCorpo(){
     <div class="stat"><div class="l">Séries esta semana</div><div class="v">${Math.round(totalWkSets)}</div><div class="s">total · todos grupos</div></div>
   </div>`;
 
+  // HISTÓRICO DE TREINOS — sessões ABCD concluídas, mais recentes primeiro (data · duração · sets · volume)
+  const recentSessions = ST.session.history.slice().sort((a,b)=>(b.endAt||0)-(a.endAt||0)).slice(0,12);
+  if(recentSessions.length){
+    h+=`<h2 class="sec">Histórico de treinos</h2><div class="histcard">`;
+    for(const r of recentSessions){
+      const wk=WK[r.workoutId];
+      const nm=wk?wk.name:r.workoutId;
+      const vol=r.volume?(r.volume>=1000?(r.volume/1000).toFixed(1)+'t':r.volume+'kg'):'';
+      h+=`<div class="hrow">
+        <div class="hbadge ${wk?wk.type:''}">${r.workoutId}</div>
+        <div class="hmeta">
+          <div class="hnm">${esc(nm)}</div>
+          <div class="hsub">${esc(r.date.slice(5).replace('-','/'))} · ${r.sets||0} sets${vol?` · ${vol}`:''}</div>
+        </div>
+        <div class="hdur">${fmtDurMin(r.activeMs)}</div>
+      </div>`;
+    }
+    h+=`</div>`;
+  }
+
   // SPARKLINE PESO
   if(bws.length>=2){
     const min=Math.min(...bws.map(b=>b.kg)), max=Math.max(...bws.map(b=>b.kg));
@@ -3724,7 +4029,7 @@ function renderCorpo(){
           if(e1>bestSetE1){ bestSetE1=e1; bestSet={...set, date:s.date}; }
         }
       }
-      if(best>0 && e.t==='comp') allPRs.push({name:e.n, e1:best, set:bestSet});
+      if(best>0 && e.t==='comp') allPRs.push({name:exName(e), e1:best, set:bestSet});
     });
   }
   if(allPRs.length){
@@ -4137,9 +4442,10 @@ function openTimer(s){
 function updateShortcutLink(seconds){
   const link = document.getElementById('shortcutLink');
   if(!link) return;
-  const enabled = ST.meta && ST.meta.shortcutTimerEnabled;
+  // Basta ter o nome do Atalho configurado — toggle controla só o disparo automático.
+  // O botão manual funciona sempre que o nome estiver setado.
   const name = ST.meta && String(ST.meta.shortcutName||'').trim();
-  if(!enabled || !name){ link.classList.add('hidden'); return; }
+  if(!name){ link.classList.add('hidden'); return; }
   const s = Math.max(1, Math.round(seconds||0));
   link.href = `shortcuts://run-shortcut?name=${encodeURIComponent(name)}&input=text&text=${s}`;
   link.classList.remove('hidden');
