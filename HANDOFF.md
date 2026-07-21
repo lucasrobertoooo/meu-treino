@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-07-08.02 (Histórico de treinos exposto — mini-histórico no treino aberto + seção na aba Corpo (data/duração/sets/volume, do `session.history` que já existia). Inteligência de dia corrigida: já-treinou-hoje não marca mais o próximo como "HOJE". SHELL v15)
+**Última atualização:** 2026-07-08.03 (Core movido de B/D para A/C — rebalanceia sessões (era A20/B31/C19/D31, virou A26/B25/C25/D25) sem mudar volume nem frequência. Inclui migração única das chaves de log. SHELL v16)
+
+**Antes: 2026-07-08.02** (Histórico de treinos exposto — mini-histórico no treino aberto + seção na aba Corpo (data/duração/sets/volume, do `session.history` que já existia). Inteligência de dia corrigida: já-treinou-hoje não marca mais o próximo como "HOJE". SHELL v15)
 
 **Antes: 2026-07-08.01** — Edição de exercícios pelo app: nome/descrição/nota por exercício, override isolado em `ST.exmeta` ancorado por `id` estável (git nunca sobrescreve).
 
@@ -125,10 +127,12 @@ Cada exercício mostra:
 
 | Treino | Foco | Hero exercise (foto) |
 |--------|------|-------|
-| A — Push 1 | Ênfase Peito | Supino inclinado halter 30° |
-| B — Pull 1 | Costas, bíceps, perna, core | Puxada aberta |
-| C — Push 2 | Ênfase Ombro | Desenvolvimento sentado halter |
-| D — Pull 2 | Costas, bíceps, perna, core (ângulos diferentes) | Puxada neutra |
+| A — Push 1 | Ênfase Peito + core | Supino inclinado halter 30° |
+| B — Pull 1 | Costas, bíceps, perna | Puxada aberta |
+| C — Push 2 | Ênfase Ombro + core | Desenvolvimento sentado halter |
+| D — Pull 2 | Costas, bíceps, perna (ângulos diferentes) | Puxada neutra |
+
+Distribuição de séries (após mover o core pra A/C em 2026-07-08.03): **A 26 · B 25 · C 25 · D 25** = 101/semana.
 
 Estrutura no objeto `WK` em index.html. Cada exercício:
 ```js
@@ -545,6 +549,42 @@ Os `id` foram injetados uma vez via script (`tools/inject_ids.js`, guardado pra 
 
 ### Verificação
 Sem navegador (preview do MCP fica preso no disclaimer de rede do macOS). Validado por: sintaxe (`new Function`), testes de lógica com `localStorage` semeado, e **assertions no HTML real** produzido por `renderDays/renderHoje/renderDay/renderCorpo` nos 2 cenários (treinou hoje / não treinou). Todos passaram.
+
+---
+
+## Core movido de B/D para A/C (2026-07-08.03)
+
+**Pedido:** Lucas quis fazer os abdominais em A e C. Validado contra evidência antes de mexer.
+
+### Por que é seguro (e melhor)
+- **Frequência e espaçamento idênticos:** 2×/semana nos dois arranjos, com o mesmo intervalo de 48h+ (A→C tem B no meio; B→D tinha C). Schoenfeld, Ogborn & Krieger 2016 (Sports Med): 2×/sem > 1×/sem com volume equalizado.
+- **Volume idêntico:** 12 séries diretas de core/semana, antes e depois. Total geral segue 101 séries.
+- **Interferência não se aplica aqui:** o motivo de não pré-fatigar o tronco é carga axial (agachamento/terra/desenvolvimento em pé). O programa não tem nenhum (restrição de náusea + desenvolvimento é sentado), e o core entra **por último** em A/C.
+- **Ganho real = equilíbrio de sessão:** era A 20 / B 31 / C 19 / D 31 séries. Virou **A 26 / B 25 / C 25 / D 25**. B/D eram maratonas de 10-11 exercícios com o core enterrado na 8ª-9ª posição, depois de perna. Simão et al. 2012 (Sports Med): exercício no fim da sessão rende menos sob fadiga acumulada.
+- **Não muda nada pra gordura abdominal** — Vispute et al. 2011 (JSCR): treino abdominal não reduz gordura abdominal (redução localizada não existe). Core aqui é hipertrofia do músculo, não perda de gordura.
+
+**Regra a manter:** core sempre POR ÚLTIMO em A e C (nunca antes das laterais, que são prioridade #1) e sempre carregado/progressivo (anilha).
+
+### A pegadinha técnica: `ST.logs` é posicional
+Logs são keyados por `${dia}_${índice}`, **não** pelo id estável. Tirar 2 exercícios do meio de B/D faz tudo que vinha depois subir de índice. Sem migração, o histórico do core ficaria órfão **e a panturrilha herdaria os dados do abdominal**.
+
+Migração única (idempotente, flag `ST.meta.coreToACMigratedV1`), roda no boot logo após as migrações defensivas:
+```
+B_7→A_6  B_8→A_7  B_9→B_7   (abdominal, romana, panturrilha)
+D_8→C_6  D_9→C_7  D_10→D_8
+```
+Implementação: copia primeiro as chaves não afetadas, depois aplica os remaps por cima (evita a ordem de iteração decidir empate). `ST.exmeta` **não** precisou migrar — é ancorado no id estável, que é justamente pra isso.
+
+### IDs mantidos de propósito
+Os abdominais continuam com os ids `b_8`/`b_9` (agora em A) e `d_9`/`d_10` (agora em C), apesar de terem mudado de dia. **Isso é intencional:** o id é identificador opaco, não rótulo de dia — trocá-lo orfanaria os overrides de nome/nota do usuário. Regra segue valendo: nunca reciclar id.
+
+### Também atualizado
+- `HOME_SESSIONS.core_completo.canSkipNextDay`: era `{B, D}`, virou `{A, C}`.
+- `focus` dos dias: A/C ganharam "· core", B/D perderam.
+- Cue da panturrilha (b_10/d_11): era "Depois do core, antes do cardio" → "Antes do cardio".
+
+### Verificação
+Sintaxe + 15 testes da migração (inclusive o caso crítico: panturrilha NÃO herda dados do abdominal; idempotência; no-op pra quem não tem esses logs; sobrevivência dos overrides) + smoke de render (A/C contêm core, B/D não; `weeklyVolume` soma 6 sets de core feitos em A). Todos passaram.
 
 ---
 
