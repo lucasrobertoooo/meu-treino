@@ -855,15 +855,18 @@
     text-align:center; cursor:pointer; margin-top:8px;
   }
   .uploadbtn input{display:none;}
-  .uploadbtn.ang{margin-top:0; padding:11px 8px; font-size:12.5px;}
-  .angle-uploads{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:10px;}
+  .uploadbtn.ang{margin-top:0; padding:11px 8px; font-size:12.5px; white-space:nowrap;}
+  .uploadbtn.ang.custom{border-style:solid; color:var(--core); border-color:rgba(245,185,78,.3);}
+  .angle-uploads{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px;}
   .pgroup-h{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:16px 0 8px;}
 
   /* ==== MEDIDAS ==== */
   .measure-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; margin-top:6px;}
-  .mfield{display:flex; flex-direction:column; gap:3px;}
-  .mf-l{font-size:11px; color:var(--muted); font-weight:600;}
+  .mfield{display:flex; flex-direction:column; gap:3px; min-width:0;}
+  .mf-l{font-size:11px; color:var(--muted); font-weight:600; display:flex; align-items:center; justify-content:space-between; gap:4px;}
+  .mf-x{background:none; border:none; color:var(--faint); font-size:15px; line-height:1; cursor:pointer; padding:0 2px;}
   .mfield input{
+    width:100%; box-sizing:border-box; min-width:0;
     background:rgba(255,255,255,.04); border:1px solid var(--line-2); border-radius:10px;
     padding:9px 10px; color:var(--ink); font-size:15px; font-family:inherit; font-variant-numeric:tabular-nums;
   }
@@ -892,6 +895,11 @@
   .mc-table td.mc-n, .mc-table th:first-child{text-align:left; color:var(--ink2); font-weight:600;}
   .mc-table tbody td:first-child{text-align:left;}
   .mc-note{font-size:11.5px; color:var(--core); font-style:italic; margin-top:8px;}
+  .cmth-row.tap{cursor:pointer; align-items:center;}
+  .cmth-row.tap:active{background:rgba(255,255,255,.03);}
+  .cmth-edit{flex:none; color:var(--faint); display:inline-flex;}
+  .cmth-edit svg{width:13px; height:13px;}
+  .me-date{font-size:12px; color:var(--muted); font-weight:600; margin-bottom:12px;}
 
   /* ==== COMPARAR (fotos) ==== */
   .pc-angs{display:flex; gap:6px; margin-bottom:12px;}
@@ -1648,9 +1656,16 @@
   </div>
 </div>
 
+<div id="measEdit" class="exedit-back hidden" role="dialog" aria-modal="true" onclick="if(event.target===this)closeMeasEdit()">
+  <div class="exedit-card">
+    <div class="exedit-hd"><span>Corrigir medição</span><button class="exedit-x" onclick="closeMeasEdit()" aria-label="Fechar">×</button></div>
+    <div id="measEditBody"></div>
+  </div>
+</div>
+
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-07-27.01';
+const APP_VERSION = '2026-07-27.02';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -2160,6 +2175,14 @@ async function migratePhotosToIDB(){
 // Metadados de foto ordenados; filtro por ângulo.
 function photosMeta(){ return (ST.photometa||[]).slice().sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:0)); }
 function photosByAngle(angle){ return photosMeta().filter(p=>p.angle===angle); }
+// Rótulo amigável dos 3 ângulos base; qualquer outro (custom) usa o próprio texto.
+function angleLabel(a){ return ({front:'Frente', side:'Lado', back:'Costas'})[a] || a; }
+// Ângulos presentes nas fotos: os 3 base primeiro (se têm foto), depois os customizados.
+function anglesPresent(){
+  const base=['front','side','back'].filter(a=>photosByAngle(a).length);
+  const custom=[...new Set(photosMeta().map(p=>p.angle))].filter(a=>!['front','side','back'].includes(a));
+  return base.concat(custom);
+}
 // Preenche <img data-pid> com o pixel do IDB depois do render (async, tolera erro).
 function hydratePhotos(root){
   const scope=root||document;
@@ -4279,32 +4302,32 @@ function renderCorpo(){
   <div class="check-card">
     <h3><span class="ic" style="color:var(--pull)">${I.ruler}</span>Nova medida de hoje (cm)</h3>
     <div class="measure-grid">`;
-  for(const [k,nm] of MEASURE_FIELDS){
+  for(const [k,nm,prio,isCustom] of allMeasureFields()){
     const last = latestM&&latestM[k]!=null?latestM[k]:'';
-    h+=`<label class="mfield"><span class="mf-l">${nm}</span><input id="m_${k}" inputmode="decimal" placeholder="${last!==''?last:'—'}"></label>`;
+    h+=`<label class="mfield"><span class="mf-l">${esc(nm)}${isCustom?`<button class="mf-x" onclick="event.preventDefault();removeCustomMeasure('${k}')" title="Remover campo">×</button>`:''}</span><input id="m_${k}" inputmode="decimal" placeholder="${last!==''?last:'—'}"></label>`;
   }
   h+=`</div>
     <input id="m_note" class="logcmt" type="text" maxlength="120" placeholder="Nota (ex: de manhã, em jejum)" style="margin-top:10px">
-    <div class="tools" style="margin-top:12px"><button onclick="saveMeasures()">Salvar medidas de hoje</button></div>
+    <div class="tools" style="margin-top:12px"><button onclick="saveMeasures()">Salvar medidas de hoje</button><button onclick="addCustomMeasure()">+ Medida</button></div>
   </div>`;
 
   if(latestM){
     // Tendência por medida: valor atual, delta vs primeira, mini-gráfico
     h+=`<div class="check-card">
       <h3><span class="ic" style="color:var(--pull)">${I.trend}</span>Evolução por medida</h3>`;
-    for(const [k,nm,prio] of MEASURE_FIELDS){
+    for(const [k,nm,prio] of allMeasureFields()){
       const series=measureSeries(k);
       if(!series.length) continue;
       const cur=series[series.length-1].val, base=series[0].val;
       const dv=cur-base, hasDelta=series.length>1;
       const dCol=dv>=0?'var(--ok)':'var(--push)';
       h+=`<div class="mrow">
-        <div class="mrow-l"><span class="mrow-n">${nm}${prio?' <span class="mstar">★</span>':''}</span>
+        <div class="mrow-l"><span class="mrow-n">${esc(nm)}${prio?' <span class="mstar">★</span>':''}</span>
           <span class="mrow-v">${cur.toFixed(1)}<small>cm</small>${hasDelta?` <b style="color:${dCol}">${dv>=0?'+':''}${dv.toFixed(1)}</b>`:''}</span></div>
         ${miniSpark(series)}
       </div>`;
     }
-    h+=`<button class="xb" style="margin-top:12px;width:100%" onclick="openMeasCompare()">${I.hist}<span>Comparar 2 datas · histórico</span></button>
+    h+=`<button class="xb" style="margin-top:12px;width:100%" onclick="openMeasCompare()">${I.hist}<span>Comparar 2 datas · corrigir · histórico</span></button>
     </div>`;
   }
 
@@ -4317,24 +4340,25 @@ function renderCorpo(){
       <label class="uploadbtn ang">Frente<input type="file" accept="image/*" capture="environment" onchange="addPhoto(this,'front')"></label>
       <label class="uploadbtn ang">Lado<input type="file" accept="image/*" capture="environment" onchange="addPhoto(this,'side')"></label>
       <label class="uploadbtn ang">Costas<input type="file" accept="image/*" capture="environment" onchange="addPhoto(this,'back')"></label>
+      <label class="uploadbtn ang custom">+ Outra<input type="file" accept="image/*" capture="environment" onchange="addPhotoCustom(this)"></label>
     </div>`;
   if(nPhotos){
     h+=`<button class="xb" style="margin-top:10px;width:100%" onclick="openPhotoCompare()">${I.trend}<span>Comparar fotos (antes/depois)</span></button>`;
-    for(const [ang,label] of [['front','Frente'],['side','Lado'],['back','Costas']]){
+    for(const ang of anglesPresent()){
       const list=photosByAngle(ang);
       if(!list.length) continue;
-      h+=`<div class="pgroup-h">${label} · ${list.length}</div><div class="photos-grid">`;
+      h+=`<div class="pgroup-h">${esc(angleLabel(ang))} · ${list.length}</div><div class="photos-grid">`;
       list.slice().reverse().forEach(p=>{
         h+=`<div class="pthumb">
-          <img data-pid="${p.id}" alt="${p.date}">
+          <img data-pid="${p.id}" alt="${esc(p.date)}">
           <button class="px" onclick="delPhotoById('${p.id}')">×</button>
-          <div class="pdate">${p.date.slice(5)}</div>
+          <div class="pdate">${esc(p.date.slice(5))}</div>
         </div>`;
       });
       h+=`</div>`;
     }
   } else {
-    h+=`<div style="margin-top:12px;font-size:12px;color:var(--faint)">Nenhuma foto ainda. Frente, lado e costas dão a comparação mais justa.</div>`;
+    h+=`<div style="margin-top:12px;font-size:12px;color:var(--faint)">Nenhuma foto ainda. Frente, lado e costas dão a comparação mais justa. Use "+ Outra" pra focos específicos (bíceps, perna…).</div>`;
   }
   h+=`</div>`;
 
@@ -4343,6 +4367,27 @@ function renderCorpo(){
 }
 
 // séries de uma medida (só datas que têm o valor), ascendente
+// Campos de medida = base (MEASURE_FIELDS) + customizados do usuário (ST.meta.customMeasures)
+function allMeasureFields(){
+  const custom=((ST.meta&&ST.meta.customMeasures)||[]).map(c=>[c.key, c.label, false, true]); // 4º = isCustom
+  return MEASURE_FIELDS.concat(custom);
+}
+function addCustomMeasure(){
+  const label=(typeof prompt==='function'?prompt('Nome da nova medida (ex: Pescoço, Bíceps E, Cintura baixa):'):'')||'';
+  const lb=label.trim(); if(!lb) return;
+  if(!ST.meta||typeof ST.meta!=='object') ST.meta={};
+  if(!Array.isArray(ST.meta.customMeasures)) ST.meta.customMeasures=[];
+  const taken=new Set(allMeasureFields().map(f=>f[0]));
+  let base='c_'+(normTxt(lb).replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,20)||'x');
+  let key=base, i=2; while(taken.has(key)) key=base+'_'+(i++);
+  ST.meta.customMeasures.push({key, label:lb.slice(0,28)});
+  saveK('meta'); renderCorpo(); showToast('Medida adicionada', 'ok');
+}
+function removeCustomMeasure(key){
+  if(!confirm('Remover esse campo de medida? (os valores já registrados ficam guardados, só somem da lista)')) return;
+  if(ST.meta&&Array.isArray(ST.meta.customMeasures)) ST.meta.customMeasures=ST.meta.customMeasures.filter(c=>c.key!==key);
+  saveK('meta'); renderCorpo();
+}
 function measureSeries(key){
   return ST.measures.filter(m=>m[key]!=null && m[key]!=='').map(m=>({date:m.date, val:num(m[key])}));
 }
@@ -4370,7 +4415,7 @@ function saveMeasures(){
   const t=today();
   const m={date:t};
   let any=false;
-  for(const [k] of MEASURE_FIELDS){
+  for(const [k] of allMeasureFields()){
     const el=document.getElementById('m_'+k);
     if(el && (el.value||'').trim()){ m[k]=num(el.value); any=true; }
   }
@@ -4386,9 +4431,9 @@ function saveMeasures(){
 }
 
 // Adiciona foto: comprime -> IndexedDB (pixel) + ST.photometa (metadado). Só grava o metadado
-// DEPOIS de confirmar o pixel no IDB (nada de miniatura quebrada). angle: front|side|back.
-function addPhoto(input, angle){
-  const f=input.files&&input.files[0]; if(!f) return;
+// DEPOIS de confirmar o pixel no IDB (nada de miniatura quebrada). angle: front|side|back|<custom>.
+function addPhotoFile(f, angle){
+  if(!f) return;
   const r=new FileReader();
   r.onload=()=>{
     const img=new Image();
@@ -4413,6 +4458,13 @@ function addPhoto(input, angle){
     img.src=r.result;
   };
   r.readAsDataURL(f);
+}
+function addPhoto(input, angle){ addPhotoFile(input.files&&input.files[0], angle); }
+function addPhotoCustom(input){
+  const f=input.files&&input.files[0]; if(!f) return;
+  const label=(typeof prompt==='function'?prompt('Nome desse foco/ângulo (ex: Bíceps, Perna, Costas relaxado):'):'')||'';
+  const lb=label.trim(); if(!lb){ input.value=''; return; }
+  addPhotoFile(f, lb.slice(0,24));
 }
 function delPhotoById(id){
   if(!confirm('Apagar essa foto?')) return;
@@ -4440,36 +4492,89 @@ function renderMeasCompare(){
   const line=(label,a,b,unit,star)=>{
     const dv=(a!=null&&b!=null)?(b-a):null;
     const dc=dv==null?'':(dv>=0?'var(--ok)':'var(--push)');
-    return `<tr><td class="mc-n">${label}${star?' <span class="mstar">★</span>':''}</td>
+    return `<tr><td class="mc-n">${esc(label)}${star?' <span class="mstar">★</span>':''}</td>
       <td>${a!=null?a.toFixed(1):'–'}</td><td>${b!=null?b.toFixed(1):'–'}</td>
       <td style="color:${dc};font-weight:700">${dv==null?'–':(dv>=0?'+':'')+dv.toFixed(1)}</td></tr>`;
   };
   let rows='';
   const wA=nearestBW(mcA), wB=nearestBW(mcB);
   if(wA||wB) rows+=line('Peso (kg)', wA?wA.kg:null, wB?wB.kg:null,'kg',false);
-  for(const [k,nm,prio] of MEASURE_FIELDS){
+  for(const [k,nm,prio] of allMeasureFields()){
     if(A[k]==null && B[k]==null) continue;
     rows+=line(nm, A[k]!=null?num(A[k]):null, B[k]!=null?num(B[k]):null,'cm',prio);
   }
   const notes=[A.note?`<div class="mc-note">${esc(mcA.slice(5).replace('-','/'))}: “${esc(A.note)}”</div>`:'',
                B.note?`<div class="mc-note">${esc(mcB.slice(5).replace('-','/'))}: “${esc(B.note)}”</div>`:''].join('');
-  // histórico completo (colapsável)
+  // histórico completo (colapsável) — toque numa data pra corrigir/editar
   const hist=ST.measures.slice().reverse().map(m=>{
-    const vals=MEASURE_FIELDS.filter(([k])=>m[k]!=null).map(([k,nm])=>`${nm.split(' ')[0]} ${num(m[k]).toFixed(1)}`).join(' · ');
-    return `<div class="cmth-row"><span class="cmth-d">${esc(m.date.slice(5).replace('-','/'))}</span><span class="cmth-t">${vals}${m.note?` — ${esc(m.note)}`:''}</span></div>`;
+    const vals=allMeasureFields().filter(([k])=>m[k]!=null).map(([k,nm])=>`${esc(nm.split(' ')[0])} ${num(m[k]).toFixed(1)}`).join(' · ');
+    return `<div class="cmth-row tap" onclick="openMeasEdit('${m.date}')"><span class="cmth-d">${esc(m.date.slice(5).replace('-','/'))}</span><span class="cmth-t">${vals}${m.note?` — ${esc(m.note)}`:''}</span><span class="cmth-edit">${I.pencil}</span></div>`;
   }).join('');
   document.getElementById('measCompareBody').innerHTML=`
     <div class="mc-picker"><select onchange="mcSet('a',this.value)">${opt(mcA)}</select><span class="mc-arrow">→</span><select onchange="mcSet('b',this.value)">${opt(mcB)}</select></div>
     <table class="mc-table"><thead><tr><td></td><td>${esc(mcA.slice(5).replace('-','/'))}</td><td>${esc(mcB.slice(5).replace('-','/'))}</td><td>Δ</td></tr></thead><tbody>${rows}</tbody></table>
     ${notes}
-    <details class="cmthist" style="margin-top:14px"><summary>${I.hist} Histórico completo (${ST.measures.length})</summary>${hist}</details>`;
+    <details class="cmthist" style="margin-top:14px" open><summary>${I.hist} Histórico · toque numa data pra corrigir (${ST.measures.length})</summary>${hist}</details>`;
+}
+
+/* ---- Editar/corrigir uma medição anterior ---- */
+let meEditDate=null;
+function openMeasEdit(date){
+  const m=ST.measures.find(x=>x.date===date); if(!m) return;
+  meEditDate=date;
+  let grid='';
+  for(const [k,nm,prio,isCustom] of allMeasureFields()){
+    grid+=`<label class="mfield"><span class="mf-l">${esc(nm)}</span><input id="me_${k}" inputmode="decimal" value="${m[k]!=null?num(m[k]):''}" placeholder="—"></label>`;
+  }
+  document.getElementById('measEditBody').innerHTML=`
+    <div class="me-date">Medição de ${esc(date.slice(5).replace('-','/'))}</div>
+    <div class="measure-grid">${grid}</div>
+    <input id="me_note" class="logcmt" type="text" maxlength="120" value="${esc(m.note||'')}" placeholder="Nota" style="margin-top:10px">
+    <div class="exedit-ctrl">
+      <button class="exedit-btn ghost" onclick="deleteMeasEdit()">Excluir</button>
+      <button class="exedit-btn cancel" onclick="closeMeasEdit()">Cancelar</button>
+      <button class="exedit-btn save" onclick="saveMeasEdit()">Salvar</button>
+    </div>`;
+  document.getElementById('measEdit').classList.remove('hidden');
+}
+function closeMeasEdit(){ document.getElementById('measEdit').classList.add('hidden'); meEditDate=null; }
+function saveMeasEdit(){
+  if(!meEditDate) return;
+  const m={date:meEditDate};
+  let any=false;
+  for(const [k] of allMeasureFields()){
+    const el=document.getElementById('me_'+k);
+    if(el && (el.value||'').trim()){ m[k]=num(el.value); any=true; }
+  }
+  const noteEl=document.getElementById('me_note');
+  const note=noteEl&&(noteEl.value||'').trim(); if(note) m.note=note;
+  if(!any && !note){ // esvaziou tudo = excluir
+    if(!confirm('Nenhum valor preenchido — excluir essa medição?')){ return; }
+    ST.measures=ST.measures.filter(x=>x.date!==meEditDate);
+  } else {
+    ST.measures=ST.measures.filter(x=>x.date!==meEditDate);
+    ST.measures.push(m);
+    ST.measures.sort((a,b)=>a.date<b.date?-1:1);
+  }
+  saveK('measures'); closeMeasEdit(); renderCorpo();
+  if(!document.getElementById('measCompare').classList.contains('hidden')){ const d=measDates(); if(d.length){ if(!d.includes(mcA))mcA=d[0]; if(!d.includes(mcB))mcB=d[d.length-1]; renderMeasCompare(); } }
+  showToast('Medição atualizada', 'ok');
+}
+function deleteMeasEdit(){
+  if(!meEditDate) return;
+  if(!confirm('Excluir a medição de '+meEditDate.slice(5).replace('-','/')+'?')) return;
+  ST.measures=ST.measures.filter(x=>x.date!==meEditDate);
+  saveK('measures'); closeMeasEdit(); renderCorpo();
+  const cmp=document.getElementById('measCompare');
+  if(cmp && !cmp.classList.contains('hidden')){ const d=measDates(); if(d.length){ mcA=d[0]; mcB=d[d.length-1]; renderMeasCompare(); } else closeMeasCompare(); }
+  showToast('Medição excluída', 'ok');
 }
 
 /* ---- Comparar FOTOS (ângulo + lado a lado / slider / sobreposição) ---- */
 let pcAngle='front', pcA=null, pcB=null, pcMode='side';
 function openPhotoCompare(){
-  const angs=['front','side','back'];
-  pcAngle = angs.find(a=>photosByAngle(a).length>=2) || angs.find(a=>photosByAngle(a).length>=1) || 'front';
+  const angs=anglesPresent();
+  pcAngle = angs.find(a=>photosByAngle(a).length>=2) || angs[0] || 'front';
   pcResetDates(); pcMode='side';
   document.getElementById('photoCompare').classList.remove('hidden');
   renderPhotoCompare();
@@ -4483,16 +4588,16 @@ function pcMeta(id){ return (ST.photometa||[]).find(p=>p.id===id)||null; }
 function pcWeightLine(id){ const m=pcMeta(id); if(!m) return ''; const w=nearestBW(m.date); return w?` · ${w.kg}kg`:''; }
 function renderPhotoCompare(){
   const list=photosByAngle(pcAngle);
-  const angBtns=[['front','Frente'],['side','Lado'],['back','Costas']].map(([a,l])=>{
+  const angBtns=anglesPresent().map(a=>{
     const n=photosByAngle(a).length;
-    return `<button class="pc-ang ${a===pcAngle?'on':''}" ${n?'':'disabled'} onclick="pcSetAngle('${a}')">${l}${n?` (${n})`:''}</button>`;
+    return `<button class="pc-ang ${a===pcAngle?'on':''}" onclick="pcSetAngle('${esc(a).replace(/'/g,"\\'")}')">${esc(angleLabel(a))}${n?` (${n})`:''}</button>`;
   }).join('');
   const modeBtns=[['side','Lado a lado'],['slider','Slider'],['overlay','Sobrepor']].map(([m,l])=>
     `<button class="pc-mode ${m===pcMode?'on':''}" onclick="pcSetMode('${m}')">${l}</button>`).join('');
   const opt=(sel)=>list.map(p=>`<option value="${p.id}" ${p.id===sel?'selected':''}>${esc(p.date.slice(5).replace('-','/'))}</option>`).join('');
   let view='';
   if(list.length<1){
-    view=`<div class="pc-empty">Nenhuma foto de ${pcAngle==='front'?'frente':pcAngle==='side'?'lado':'costas'} ainda.</div>`;
+    view=`<div class="pc-empty">Nenhuma foto de ${esc(angleLabel(pcAngle))} ainda.</div>`;
   } else if(list.length<2 || pcA===pcB){
     view=`<div class="pc-empty">Precisa de 2 fotos deste ângulo pra comparar.</div>`;
   } else {

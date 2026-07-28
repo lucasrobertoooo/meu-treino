@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-07-27.01 (Módulo Medidas+Fotos completo: 8 medidas + gráfico por medida + comparar 2 datas com Δ e peso + histórico; fotos por ângulo (frente/lado/costas) em **IndexedDB** com comparação lado a lado / slider / sobreposição; backup de fotos separado. SHELL v18. **Correção de versionamento:** os quatro `2026-07-08.*` foram na verdade feitos em 27/07 — a data estava errada; daqui pra frente é a data real.)
+**Última atualização:** 2026-07-27.02 (Feedback do device: fix do overflow dos inputs de medida (width:100%+box-sizing+min-width:0); medidas **customizáveis** (`+ Medida`, com remover) e **editar/corrigir/excluir medição anterior** (toque na data no histórico → modal); fotos com ângulo **custom** (`+ Outra` → nome livre, ex: Bíceps). SHELL v19)
+
+**Antes: 2026-07-27.01** (Módulo Medidas+Fotos completo: 8 medidas + gráfico por medida + comparar 2 datas com Δ e peso + histórico; fotos por ângulo (frente/lado/costas) em **IndexedDB** com comparação lado a lado / slider / sobreposição; backup de fotos separado. SHELL v18. **Correção de versionamento:** os quatro `2026-07-08.*` foram na verdade feitos em 27/07 — a data estava errada; daqui pra frente é a data real.)
 
 **Antes: 2026-07-08.04** (Comentário do dia por exercício — campo `cmt` no registro da sessão, com input no log + histórico de comentários anteriores colapsável. Distinto da "nota" permanente. SHELL v17)
 
@@ -646,6 +648,13 @@ localStorage estoura em ~1 ano de fotos (teto ~5MB) → viraria manutenção man
 
 ### Verificação
 Sem navegador (rede do preview bloqueada no ambiente). Validado via **node + `fake-indexeddb`** rodando o código real do app: camada IDB + migração não-destrutiva + idempotência (10), medidas/nearestBW/miniSpark/compare + render real (11), comparação de fotos nos 3 modos + ângulos + backup roundtrip + anti-colisão de id + pdbClear (8). Endurecido `saveMeasures` contra `value` indefinido. **Falta confirmar no device:** visual do slider e hidratação assíncrona das imagens.
+
+### Ajustes pós-device (2026-07-27.02)
+- **Bug de layout:** inputs de medida estouravam a coluna direita — faltava `width:100%`+`box-sizing:border-box`+`min-width:0`. Uploads de foto viraram grid 2×2 (cabe o 4º botão).
+- **Medidas customizáveis:** `allMeasureFields()` = `MEASURE_FIELDS` base + `ST.meta.customMeasures` `[{key,label}]`. `+ Medida` (`addCustomMeasure`, slug `c_*` único via `normTxt`) e `×` pra remover (`removeCustomMeasure` — valores históricos ficam guardados, só somem da lista). **Todo loop de medida passa por `allMeasureFields()`** (entrada, evolução, save, compare, edição).
+- **Editar/corrigir medição anterior:** no histórico do compare, cada data é tocável → `openMeasEdit(date)` (modal `#measEdit`), prefill de todos os campos + nota, Salvar / Excluir. Esvaziar tudo = exclui. Não duplica a data.
+- **Foto com ângulo custom:** `+ Outra` (`addPhotoCustom` → `prompt` de nome livre, ex: Bíceps). `angleLabel()`/`anglesPresent()` generalizam galeria e abas de comparação (3 base + customs). `addPhoto` refatorado sobre `addPhotoFile(file, angle)`.
+- Verificado com +17 asserts (campo custom no CRUD, edição sem duplicar, exclusão, ângulo custom na galeria/compare, fix de CSS presente).
 
 ---
 
