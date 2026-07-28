@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-07-08.03 (Core movido de B/D para A/C — rebalanceia sessões (era A20/B31/C19/D31, virou A26/B25/C25/D25) sem mudar volume nem frequência. Inclui migração única das chaves de log. SHELL v16)
+**Última atualização:** 2026-07-08.04 (Comentário do dia por exercício — campo `cmt` no registro da sessão, com input no log + histórico de comentários anteriores colapsável. Distinto da "nota" permanente. SHELL v17)
+
+**Antes: 2026-07-08.03** (Core movido de B/D para A/C — rebalanceia sessões (era A20/B31/C19/D31, virou A26/B25/C25/D25) sem mudar volume nem frequência. Inclui migração única das chaves de log. SHELL v16)
 
 **Antes: 2026-07-08.02** (Histórico de treinos exposto — mini-histórico no treino aberto + seção na aba Corpo (data/duração/sets/volume, do `session.history` que já existia). Inteligência de dia corrigida: já-treinou-hoje não marca mais o próximo como "HOJE". SHELL v15)
 
@@ -209,7 +211,7 @@ Função `searchFoods(q)`: normaliza acento, multi-termo, top 12 resultados.
 ## Storage (localStorage keys)
 
 ```
-meutreino_logs_v1     = {id: [{date, sets:[{kg,reps,rir,done}]}]}
+meutreino_logs_v1     = {id: [{date, sets:[{kg,reps,rir,done}], cmt?}]}   (cmt = comentário do dia, opcional)
 meutreino_bw_v1       = [{date, kg}]                                  (array sorteado)
 meutreino_sleep_v1    = {[date]: hours}
 meutreino_protein_v1  = {[date]: [{n,q,p,c,k}]}                       (array de entries — migrado 2026-06-29)
@@ -219,7 +221,7 @@ meutreino_measures_v1 = [{date, peito, ombro, braco, cintura, coxa}]
 meutreino_cardio_v1   = {[date]: {steps, z2min}}
 meutreino_meta_v1     = {proteinTarget, carbTarget, calTarget, lastDeloadWeek}
 meutreino_session_v1  = {active:{workoutId,startAt,pausedAt,pausedTotal}|null, history:[{date,workoutId,startAt,endAt,durationMs,activeMs,sets,volume}]}
-meutreino_freelog_v1  = {"<templateId>_<exIdx>": [{date,sets:[{kg,reps,rir,done}]}]}   (sessões de casa — HOME_SESSIONS.md)
+meutreino_freelog_v1  = {"<templateId>_<exIdx>": [{date,sets:[{kg,reps,rir,done}], cmt?}]}   (sessões de casa — HOME_SESSIONS.md; cmt = comentário do dia)
 meutreino_exmeta_v1   = {"<id>": {n?, cue?, note?}}                   (overrides de exercício editados pelo usuário — ver § Edição de exercícios)
 ```
 
@@ -585,6 +587,33 @@ Os abdominais continuam com os ids `b_8`/`b_9` (agora em A) e `d_9`/`d_10` (agor
 
 ### Verificação
 Sintaxe + 15 testes da migração (inclusive o caso crítico: panturrilha NÃO herda dados do abdominal; idempotência; no-op pra quem não tem esses logs; sobrevivência dos overrides) + smoke de render (A/C contêm core, B/D não; `weeklyVolume` soma 6 sets de core feitos em A). Todos passaram.
+
+---
+
+## Comentário do dia por exercício (2026-07-08.04)
+
+**Pedido:** poder comentar num exercício quando fez outra máquina / uma variação / qualquer motivo — e **ver os comentários anteriores**, pra rastrear uma inconsistência nos números e ter certeza do que se trata.
+
+### Nota (permanente) vs Comentário (do dia) — não confundir
+- **Nota** = `ST.exmeta[id].note`, permanente, colada no exercício, aparece sempre. Ex: "máquina 3 do fundo, pino no 4".
+- **Comentário** = campo `cmt` no registro da sessão daquele dia (`ST.logs[id]`/`ST.freelog[id]`). Contextual, datado. Ex: "hoje máquina 1 quebrada, usei a 3", "peguei mais leve, ombro doendo".
+
+### Como funciona
+- Schema: cada entrada de sessão passa a ser `{date, sets, cmt?}`. `cmt` só existe quando há texto.
+- Helpers: `setTodayComment(id,txt)` / `setTodayFreeComment(id,txt)` (upsert do dia sem mexer nos sets; texto vazio remove o campo). `commentsFor(id, 'log'|'free')` retorna os comentários **anteriores** (exclui hoje), mais recentes primeiro.
+- UI no bloco de log de cada exercício (ABCD em `renderDay`, casa em `renderHomeDay`):
+  - Input "Comentário do dia" (salva em `oninput`, sem re-render, preserva foco — igual aos sets).
+  - Linha "Última (data)" ganha o comentário daquela sessão entre aspas (`.lastcmt`).
+  - `<details class="cmthist">` nativo (colapsável, sem JS) listando os comentários anteriores datados.
+- Entra no backup automaticamente (mora dentro de `ST.logs`/`ST.freelog`). Escapado via `esc()` (sem injeção).
+- `cleanupPhantomSessions` preserva sessão antiga que só tenha `cmt` (não apaga comentário histórico sem sets).
+
+### Onde mexer
+- Helpers logo após `upsertFreeToday`. Handlers `onComment`/`onHomeComment` ao lado de `onLog`/`onHomeLog`.
+- CSS: `.logcmt`, `.lastcmt` (usa `flex-wrap` no `.last`), `.cmthist`/`.cmth-row`.
+
+### Verificação
+Sintaxe + 8 testes de lógica (gravar/limpar comentário sem tocar nos sets, `commentsFor` ordenado e excluindo hoje, faxina preserva só-comentário) + 6 de render (input com valor de hoje, `<details>` com anteriores, escaping anti-injeção). Todos passaram.
 
 ---
 
