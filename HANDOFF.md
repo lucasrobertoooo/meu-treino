@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-07-08.04 (Comentário do dia por exercício — campo `cmt` no registro da sessão, com input no log + histórico de comentários anteriores colapsável. Distinto da "nota" permanente. SHELL v17)
+**Última atualização:** 2026-07-27.01 (Módulo Medidas+Fotos completo: 8 medidas + gráfico por medida + comparar 2 datas com Δ e peso + histórico; fotos por ângulo (frente/lado/costas) em **IndexedDB** com comparação lado a lado / slider / sobreposição; backup de fotos separado. SHELL v18. **Correção de versionamento:** os quatro `2026-07-08.*` foram na verdade feitos em 27/07 — a data estava errada; daqui pra frente é a data real.)
+
+**Antes: 2026-07-08.04** (Comentário do dia por exercício — campo `cmt` no registro da sessão, com input no log + histórico de comentários anteriores colapsável. Distinto da "nota" permanente. SHELL v17)
 
 **Antes: 2026-07-08.03** (Core movido de B/D para A/C — rebalanceia sessões (era A20/B31/C19/D31, virou A26/B25/C25/D25) sem mudar volume nem frequência. Inclui migração única das chaves de log. SHELL v16)
 
@@ -216,8 +218,9 @@ meutreino_bw_v1       = [{date, kg}]                                  (array sor
 meutreino_sleep_v1    = {[date]: hours}
 meutreino_protein_v1  = {[date]: [{n,q,p,c,k}]}                       (array de entries — migrado 2026-06-29)
 meutreino_suppl_v1    = {[date]: {creatina, d, b12, omega, cafe, whey}}
-meutreino_photos_v1   = [{date, dataUrl(base64)}]
-meutreino_measures_v1 = [{date, peito, ombro, braco, cintura, coxa}]
+meutreino_photos_v1   = [{date, dataUrl(base64)}]                     (LEGADO — migrado pro IndexedDB no boot; fica vazio depois)
+meutreino_photometa_v1= [{id, date, angle}]                          (metadados das fotos; pixels no IndexedDB store "meutreino_photos" — ver § Medidas+Fotos)
+meutreino_measures_v1 = [{date, ombro?, peito?, braco?, antebraco?, cintura?, quadril?, coxa?, panturrilha?, note?}]
 meutreino_cardio_v1   = {[date]: {steps, z2min}}
 meutreino_meta_v1     = {proteinTarget, carbTarget, calTarget, lastDeloadWeek}
 meutreino_session_v1  = {active:{workoutId,startAt,pausedAt,pausedTotal}|null, history:[{date,workoutId,startAt,endAt,durationMs,activeMs,sets,volume}]}
@@ -614,6 +617,35 @@ Sintaxe + 15 testes da migração (inclusive o caso crítico: panturrilha NÃO h
 
 ### Verificação
 Sintaxe + 8 testes de lógica (gravar/limpar comentário sem tocar nos sets, `commentsFor` ordenado e excluindo hoje, faxina preserva só-comentário) + 6 de render (input com valor de hoje, `<details>` com anteriores, escaping anti-injeção). Todos passaram.
+
+---
+
+## Módulo Medidas + Fotos (2026-07-27.01)
+
+**Pedido:** medidas e fotos mais completas — histórico maior, backup, mais fácil comparar. Decisões tomadas priorizando robustez e **zero manutenção** (pesquisa dos apps de referência: MacroFactor, Hevy, Progress, Renpho, Body Tracker — padrões em `§ pesquisa` do commit).
+
+### Fotos em IndexedDB (a decisão central)
+localStorage estoura em ~1 ano de fotos (teto ~5MB) → viraria manutenção manual. Por isso **pixels vão pro IndexedDB** (store `meutreino_photos`, sem teto prático); metadados leves `{id,date,angle}` ficam em `ST.photometa` (localStorage) — renderizam rápido e entram no backup de dados.
+- **Camada:** `pdbOpen/pdbPut/pdbGet/pdbDel/pdbAllKeys/pdbClear` (Promises). `idbReady()` faz feature-detect; sem IDB, fotos ficam no fallback `ST.photos` e a migração tenta de novo noutro boot — nunca some nada.
+- **Migração NÃO-destrutiva** (`migratePhotosToIDB`, no boot): move `ST.photos`→IDB e **só remove do localStorage o que confirmou gravado**. Idempotente (esvazia `ST.photos`). Ângulo default `front`.
+- **Render:** thumbs saem como `<img data-pid>`; `hydratePhotos()` preenche os `src` do IDB depois (async, tolera erro). `renderCorpo` e o modal de comparação chamam hydrate.
+- **`nextPhotoId()`** = contador em `ST.meta.photoSeq` (ids `p1,p2,…`); import avança o seq pra evitar colisão.
+
+### Medidas (8 campos, sem toggle)
+`MEASURE_FIELDS` = ombro, peito, braço, antebraço, cintura, quadril, coxa, panturrilha (★ = ligado às metas do Lucas). Sem toggle on/off de propósito (menos estado = menos manutenção; deixa em branco o que não medir). Entrada ganhou **nota** opcional (`m.note`).
+- **Evolução por medida:** valor atual + Δ vs primeira + mini-sparkline neutro (`miniSpark`, cor única — direção não implica bom/ruim: cintura↓ e ombro↑ ambos bons).
+- **Comparar 2 datas** (`openMeasCompare`): tabela A / B / Δ colorido por medida, **incluindo peso** (`nearestBW` pega a pesagem mais próxima de cada data) + notas + histórico completo colapsável. É o "Compare All Metrics" que os apps quase não fazem bem.
+
+### Fotos: captura e comparação
+- Captura por **ângulo** (3 botões: Frente/Lado/Costas → `addPhoto(input, angle)`), câmera nativa (`<input capture>`). **Sem câmera custom com ghost overlay** (getUserMedia no iOS PWA é frágil = manutenção); o overlay foi pro lado da comparação, onde rende de verdade.
+- Galeria agrupada por ângulo. Comparação (`openPhotoCompare`): abas de ângulo + 2 datas + 3 modos — **lado a lado**, **slider** (clip-path numa imagem, não wrapper de largura — evita distorção), **sobreposição** (opacidade via range). Peso de cada data anexado.
+
+### Backup: dois arquivos
+- **Dados** (existente): treinos/peso/medidas/**metadados** de foto — pequeno, frequente.
+- **Fotos** (novo, `exportPhotos`/`importPhotos`): pixels do IDB → 1 JSON (grande, ocasional). Import é **merge** (dedup por id, sem apagar existentes). `resetData` chama `pdbClear`.
+
+### Verificação
+Sem navegador (rede do preview bloqueada no ambiente). Validado via **node + `fake-indexeddb`** rodando o código real do app: camada IDB + migração não-destrutiva + idempotência (10), medidas/nearestBW/miniSpark/compare + render real (11), comparação de fotos nos 3 modos + ângulos + backup roundtrip + anti-colisão de id + pdbClear (8). Endurecido `saveMeasures` contra `value` indefinido. **Falta confirmar no device:** visual do slider e hidratação assíncrona das imagens.
 
 ---
 

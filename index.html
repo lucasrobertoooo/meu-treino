@@ -460,13 +460,13 @@
   .anchor b{color:var(--pull); font-weight:700; font-variant-numeric:tabular-nums;}
 
   .tools{display:flex; gap:8px; margin-top:12px;}
-  .tools button{
+  .tools button, .tools .btn-like{
     flex:1; background:var(--glass-2); border:1px solid var(--line-2);
     color:var(--ink); border-radius:12px; padding:11px;
     font-size:13px; font-weight:600; cursor:pointer; letter-spacing:-.01em;
-    backdrop-filter:blur(8px);
+    backdrop-filter:blur(8px); text-align:center;
   }
-  .tools button:active{background:var(--glass-3);}
+  .tools button:active, .tools .btn-like:active{background:var(--glass-3);}
   textarea{
     width:100%; height:120px; background:rgba(0,0,0,.25);
     border:1px solid var(--line-2); color:var(--ink);
@@ -855,6 +855,66 @@
     text-align:center; cursor:pointer; margin-top:8px;
   }
   .uploadbtn input{display:none;}
+  .uploadbtn.ang{margin-top:0; padding:11px 8px; font-size:12.5px;}
+  .angle-uploads{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:10px;}
+  .pgroup-h{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:16px 0 8px;}
+
+  /* ==== MEDIDAS ==== */
+  .measure-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; margin-top:6px;}
+  .mfield{display:flex; flex-direction:column; gap:3px;}
+  .mf-l{font-size:11px; color:var(--muted); font-weight:600;}
+  .mfield input{
+    background:rgba(255,255,255,.04); border:1px solid var(--line-2); border-radius:10px;
+    padding:9px 10px; color:var(--ink); font-size:15px; font-family:inherit; font-variant-numeric:tabular-nums;
+  }
+  .mfield input:focus{outline:none; border-color:var(--core); background:rgba(255,255,255,.06);}
+  .mstar{color:var(--core); font-size:10px; vertical-align:1px;}
+  .mrow{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 0; border-top:1px solid var(--line);}
+  .mrow:first-of-type{border-top:none;}
+  .mrow-n{font-size:13px; color:var(--ink2); font-weight:600;}
+  .mrow-v{font-size:14px; color:var(--ink); font-weight:700; font-variant-numeric:tabular-nums;}
+  .mrow-v small{font-size:10px; color:var(--muted); font-weight:600;}
+  .mrow-v b{font-size:12px; margin-left:4px;}
+  .mrow-l{display:flex; flex-direction:column; gap:2px;}
+  .mspark{width:96px; height:26px; flex:none;}
+  .mspark-empty{font-size:10px; color:var(--faint); width:96px; text-align:right; flex:none;}
+
+  /* ==== COMPARAR (medidas) ==== */
+  .mc-picker{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
+  .mc-picker select{
+    flex:1; background:var(--bg1); border:1px solid var(--line-2); border-radius:10px;
+    padding:9px 10px; color:var(--ink); font-size:14px; font-family:inherit;
+  }
+  .mc-arrow{color:var(--muted); font-weight:700;}
+  .mc-table{width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums;}
+  .mc-table td{padding:8px 6px; font-size:13px; text-align:right; border-top:1px solid var(--line); color:var(--ink);}
+  .mc-table thead td{color:var(--muted); font-size:11px; font-weight:700; text-align:right; border-top:none;}
+  .mc-table td.mc-n, .mc-table th:first-child{text-align:left; color:var(--ink2); font-weight:600;}
+  .mc-table tbody td:first-child{text-align:left;}
+  .mc-note{font-size:11.5px; color:var(--core); font-style:italic; margin-top:8px;}
+
+  /* ==== COMPARAR (fotos) ==== */
+  .pc-angs{display:flex; gap:6px; margin-bottom:12px;}
+  .pc-ang{flex:1; padding:9px 6px; border-radius:10px; border:1px solid var(--line-2); background:var(--glass-2); color:var(--ink2); font-size:12.5px; font-weight:600; cursor:pointer;}
+  .pc-ang.on{background:var(--pull-grad); color:#fff; border-color:transparent;}
+  .pc-ang:disabled{opacity:.35;}
+  .pc-modes{display:flex; gap:6px; margin-bottom:12px;}
+  .pc-mode{flex:1; padding:8px 6px; border-radius:9px; border:1px solid var(--line); background:none; color:var(--muted); font-size:12px; font-weight:600; cursor:pointer;}
+  .pc-mode.on{color:var(--ink); border-color:var(--core); background:rgba(245,185,78,.08);}
+  .pc-side{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .pc-side figure{margin:0;}
+  .pc-side img{width:100%; aspect-ratio:3/4; object-fit:cover; border-radius:12px; background:var(--glass-2);}
+  .pc-side figcaption{font-size:11px; color:var(--muted); text-align:center; margin-top:5px; font-variant-numeric:tabular-nums;}
+  .pc-stage{}
+  .pc-slider{position:relative; width:100%; aspect-ratio:3/4; border-radius:12px; overflow:hidden; background:var(--glass-2); user-select:none;}
+  .pc-slider img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;}
+  .pc-base{z-index:1;}
+  .pc-clip{z-index:2;}
+  .pc-over{z-index:2;}
+  .pc-divider{position:absolute; top:0; bottom:0; width:2px; background:#fff; box-shadow:0 0 6px rgba(0,0,0,.5); z-index:3; transform:translateX(-1px); pointer-events:none;}
+  .pc-range{width:100%; margin-top:12px; accent-color:var(--core);}
+  .pc-cap{display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:6px; font-variant-numeric:tabular-nums;}
+  .pc-empty{padding:30px 10px; text-align:center; color:var(--faint); font-size:13px;}
 
   /* ============ MINI SPARKLINE (peso) ============ */
   .spark-card{
@@ -1574,9 +1634,23 @@
   </div>
 </div>
 
+<div id="measCompare" class="exedit-back hidden" role="dialog" aria-modal="true" onclick="if(event.target===this)closeMeasCompare()">
+  <div class="exedit-card">
+    <div class="exedit-hd"><span>Comparar medidas</span><button class="exedit-x" onclick="closeMeasCompare()" aria-label="Fechar">×</button></div>
+    <div id="measCompareBody"></div>
+  </div>
+</div>
+
+<div id="photoCompare" class="exedit-back hidden" role="dialog" aria-modal="true" onclick="if(event.target===this)closePhotoCompare()">
+  <div class="exedit-card">
+    <div class="exedit-hd"><span>Comparar fotos</span><button class="exedit-x" onclick="closePhotoCompare()" aria-label="Fechar">×</button></div>
+    <div id="photoCompareBody"></div>
+  </div>
+</div>
+
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-07-08.04';
+const APP_VERSION = '2026-07-27.01';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -1965,12 +2039,17 @@ function searchFoods(q){
     .slice(0,12);
 }
 
+// [chave, rótulo, prioridade?] — prioridade marca os locais ligados às metas do Lucas.
+// Deixa em branco o que não medir (sem toggle: menos estado = menos manutenção).
 const MEASURE_FIELDS = [
-  ["peito","Peito (cm)"],
-  ["ombro","Ombro/largura (cm)"],
-  ["braco","Braço D (cm)"],
-  ["cintura","Cintura (cm)"],
-  ["coxa","Coxa (cm)"],
+  ["ombro","Ombro / largura", true],
+  ["peito","Peito", true],
+  ["braco","Braço", true],
+  ["antebraco","Antebraço"],
+  ["cintura","Cintura", true],
+  ["quadril","Quadril"],
+  ["coxa","Coxa"],
+  ["panturrilha","Panturrilha"],
 ];
 
 /* ============ ESTADO + STORAGE ============ */
@@ -1987,8 +2066,9 @@ const LS = {
   session:"meutreino_session_v1",
   freelog:"meutreino_freelog_v1",
   exmeta:"meutreino_exmeta_v1",
+  photometa:"meutreino_photometa_v1",
 };
-const DEFAULTS = {logs:{}, bw:[], sleep:{}, protein:{}, suppl:{}, photos:[], measures:[], cardio:{}, meta:{}, session:{active:null, history:[]}, freelog:{}, exmeta:{}};
+const DEFAULTS = {logs:{}, bw:[], sleep:{}, protein:{}, suppl:{}, photos:[], measures:[], cardio:{}, meta:{}, session:{active:null, history:[]}, freelog:{}, exmeta:{}, photometa:[]};
 const ST = JSON.parse(JSON.stringify(DEFAULTS));
 for(const k of Object.keys(LS)){
   try{ const r=localStorage.getItem(LS[k]); if(r) ST[k]=JSON.parse(r); }catch(e){}
@@ -2005,6 +2085,8 @@ if(!Array.isArray(ST.session.history)) ST.session.history=[];
 if(!ST.freelog || typeof ST.freelog!=='object' || Array.isArray(ST.freelog)) ST.freelog={};
 // Migração defensiva: exmeta = {exId: {n?, cue?, note?}} — overrides do usuário por exercício
 if(!ST.exmeta || typeof ST.exmeta!=='object' || Array.isArray(ST.exmeta)) ST.exmeta={};
+// Migração defensiva: photometa = [{id, date, angle}] — metadados das fotos (pixels no IndexedDB)
+if(!Array.isArray(ST.photometa)) ST.photometa=[];
 
 /* Migração ÚNICA 2026-07-08.03 — core movido de B/D para A/C.
    ST.logs é keyado por POSIÇÃO (`${dia}_${idx}`), não pelo id estável do exercício.
@@ -2027,6 +2109,64 @@ if(!ST.meta.coreToACMigratedV1){
   }
   ST.meta.coreToACMigratedV1=true;
   saveK('meta');
+}
+
+/* ============ FOTOS: IndexedDB (pixels) + metadados em ST.photometa ============
+   Pixels (base64) vão pro IndexedDB — sem o teto de ~5MB do localStorage, então o
+   histórico de fotos cresce à vontade sem manutenção. Metadados leves {id,date,angle}
+   ficam em ST.photometa (renderizam rápido e entram no backup de dados).
+   Se o IndexedDB não existir/falhar, as fotos ficam no fallback ST.photos (localStorage),
+   nunca some nada silenciosamente. */
+const PDB_NAME='meutreino_photos', PDB_STORE='photos', PDB_VER=1;
+let _pdb=null;
+function idbReady(){ try{ return typeof indexedDB!=='undefined' && !!indexedDB; }catch(e){ return false; } }
+function pdbOpen(){
+  return new Promise((res,rej)=>{
+    if(_pdb) return res(_pdb);
+    if(!idbReady()) return rej(new Error('no-indexeddb'));
+    let req; try{ req=indexedDB.open(PDB_NAME, PDB_VER); }catch(e){ return rej(e); }
+    req.onupgradeneeded=()=>{ const db=req.result; if(!db.objectStoreNames.contains(PDB_STORE)) db.createObjectStore(PDB_STORE); };
+    req.onsuccess=()=>{ _pdb=req.result; res(_pdb); };
+    req.onerror=()=>rej(req.error);
+  });
+}
+function pdbPut(id, dataUrl){ return pdbOpen().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(PDB_STORE,'readwrite'); tx.objectStore(PDB_STORE).put(dataUrl, id); tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error); tx.onabort=()=>rej(tx.error||new Error('abort')); })); }
+function pdbGet(id){ return pdbOpen().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(PDB_STORE,'readonly'); const r=tx.objectStore(PDB_STORE).get(id); r.onsuccess=()=>res(r.result||null); r.onerror=()=>rej(r.error); })); }
+function pdbDel(id){ return pdbOpen().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(PDB_STORE,'readwrite'); tx.objectStore(PDB_STORE).delete(id); tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error); })); }
+function pdbAllKeys(){ return pdbOpen().then(db=>new Promise((res,rej)=>{ const r=db.transaction(PDB_STORE,'readonly').objectStore(PDB_STORE).getAllKeys(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error); })); }
+
+function nextPhotoId(){ ST.meta.photoSeq=(ST.meta.photoSeq||0)+1; return 'p'+ST.meta.photoSeq; }
+
+// Migração NÃO-DESTRUTIVA das fotos antigas (base64 em ST.photos) -> IndexedDB.
+// Só remove do localStorage o que foi confirmado gravado no IDB. Idempotente (esvazia ST.photos).
+async function migratePhotosToIDB(){
+  if(!Array.isArray(ST.photos) || !ST.photos.length) return;
+  if(!idbReady()) return; // sem IDB: mantém no fallback, tenta de novo noutro boot
+  let moved=0, failed=0; const remaining=[];
+  for(const p of ST.photos){
+    if(!p || !p.dataUrl){ continue; }
+    const id=nextPhotoId();
+    try{
+      await pdbPut(id, p.dataUrl);
+      ST.photometa.push({id, date:p.date||today(), angle:p.angle||'front'});
+      moved++;
+    }catch(e){ failed++; remaining.push(p); }
+  }
+  if(moved){ ST.photometa.sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:0)); saveK('photometa'); saveK('meta'); }
+  ST.photos=remaining; saveK('photos');
+  if(moved){ console.log('[migração] '+moved+' foto(s) -> IndexedDB'+(failed?(' ('+failed+' mantidas no localStorage)'):'')); if(typeof tab!=='undefined' && tab==='corpo'){ try{ render(); }catch(e){} } }
+}
+
+// Metadados de foto ordenados; filtro por ângulo.
+function photosMeta(){ return (ST.photometa||[]).slice().sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:0)); }
+function photosByAngle(angle){ return photosMeta().filter(p=>p.angle===angle); }
+// Preenche <img data-pid> com o pixel do IDB depois do render (async, tolera erro).
+function hydratePhotos(root){
+  const scope=root||document;
+  scope.querySelectorAll('img[data-pid]').forEach(img=>{
+    const id=img.getAttribute('data-pid'); if(!id || img.dataset.loaded) return;
+    pdbGet(id).then(url=>{ if(url){ img.src=url; img.dataset.loaded='1'; } }).catch(()=>{});
+  });
 }
 
 /* ============ TOAST (feedback transitório) ============ */
@@ -4132,52 +4272,98 @@ function renderCorpo(){
   }
 
   // MEDIDAS
-  const latestM = ST.measures.length? ST.measures[ST.measures.length-1] : null;
-  const firstM = ST.measures.length? ST.measures[0] : null;
+  const ms=ST.measures;
+  const latestM = ms.length? ms[ms.length-1] : null;
+  const firstM = ms.length? ms[0] : null;
   h+=`<h2 class="sec">Medidas</h2>
   <div class="check-card">
-    <h3><span class="ic" style="color:var(--pull)">${I.ruler}</span>Nova medida (cm)</h3>`;
+    <h3><span class="ic" style="color:var(--pull)">${I.ruler}</span>Nova medida de hoje (cm)</h3>
+    <div class="measure-grid">`;
   for(const [k,nm] of MEASURE_FIELDS){
-    const last = latestM?latestM[k]:'';
-    h+=`<div class="ilog" style="${k!=='peito'?'border-top:1px solid var(--line);padding-top:10px':''}">
-      <span class="lb">${nm}</span>
-      <input id="m_${k}" inputmode="decimal" placeholder="${last||'cm'}">
-      <span class="u">cm</span>
+    const last = latestM&&latestM[k]!=null?latestM[k]:'';
+    h+=`<label class="mfield"><span class="mf-l">${nm}</span><input id="m_${k}" inputmode="decimal" placeholder="${last!==''?last:'—'}"></label>`;
+  }
+  h+=`</div>
+    <input id="m_note" class="logcmt" type="text" maxlength="120" placeholder="Nota (ex: de manhã, em jejum)" style="margin-top:10px">
+    <div class="tools" style="margin-top:12px"><button onclick="saveMeasures()">Salvar medidas de hoje</button></div>
+  </div>`;
+
+  if(latestM){
+    // Tendência por medida: valor atual, delta vs primeira, mini-gráfico
+    h+=`<div class="check-card">
+      <h3><span class="ic" style="color:var(--pull)">${I.trend}</span>Evolução por medida</h3>`;
+    for(const [k,nm,prio] of MEASURE_FIELDS){
+      const series=measureSeries(k);
+      if(!series.length) continue;
+      const cur=series[series.length-1].val, base=series[0].val;
+      const dv=cur-base, hasDelta=series.length>1;
+      const dCol=dv>=0?'var(--ok)':'var(--push)';
+      h+=`<div class="mrow">
+        <div class="mrow-l"><span class="mrow-n">${nm}${prio?' <span class="mstar">★</span>':''}</span>
+          <span class="mrow-v">${cur.toFixed(1)}<small>cm</small>${hasDelta?` <b style="color:${dCol}">${dv>=0?'+':''}${dv.toFixed(1)}</b>`:''}</span></div>
+        ${miniSpark(series)}
+      </div>`;
+    }
+    h+=`<button class="xb" style="margin-top:12px;width:100%" onclick="openMeasCompare()">${I.hist}<span>Comparar 2 datas · histórico</span></button>
     </div>`;
   }
-  h+=`<div class="tools" style="margin-top:12px"><button onclick="saveMeasures()">Salvar medidas de hoje</button></div>`;
-  if(latestM){
-    h+=`<div style="margin-top:14px;font-size:11.5px;color:var(--muted);font-weight:600">Última (${latestM.date.slice(5)}): `;
-    h+=MEASURE_FIELDS.filter(([k])=>latestM[k]).map(([k,nm])=>{
-      const d=firstM&&firstM!==latestM&&firstM[k]?` <b style="color:${(latestM[k]-firstM[k])>=0?'var(--ok)':'var(--push)'}">(${(latestM[k]-firstM[k])>=0?'+':''}${(latestM[k]-firstM[k]).toFixed(1)})</b>`:'';
-      return `${nm.split(' ')[0]} <b style="color:var(--ink)">${latestM[k]}cm</b>${d}`;
-    }).join(' · ');
-    h+=`</div>`;
-  }
-  h+=`</div>`;
 
   // FOTOS
+  const nPhotos=(ST.photometa||[]).length;
   h+=`<h2 class="sec">Fotos · progresso</h2>
   <div class="check-card">
-    <h3><span class="ic" style="color:var(--pull)">${I.camera}</span>Tire foto cada 2 semanas (mesma luz/pose)</h3>
-    <label class="uploadbtn">${I.camera} Adicionar foto de hoje
-      <input type="file" accept="image/*" capture="environment" onchange="addPhoto(this)">
-    </label>`;
-  if(ST.photos.length){
-    h+=`<div class="photos-grid">`;
-    ST.photos.slice().reverse().forEach((p,idx)=>{
-      const realIdx = ST.photos.length-1-idx;
-      h+=`<div class="pthumb">
-        <img src="${p.dataUrl}" alt="${p.date}">
-        <button class="px" onclick="delPhoto(${realIdx})">×</button>
-        <div class="pdate">${p.date.slice(5)}</div>
-      </div>`;
-    });
-    h+=`</div>`;
+    <h3><span class="ic" style="color:var(--pull)">${I.camera}</span>Foto a cada 2 semanas · mesma luz, pose e horário</h3>
+    <div class="angle-uploads">
+      <label class="uploadbtn ang">Frente<input type="file" accept="image/*" capture="environment" onchange="addPhoto(this,'front')"></label>
+      <label class="uploadbtn ang">Lado<input type="file" accept="image/*" capture="environment" onchange="addPhoto(this,'side')"></label>
+      <label class="uploadbtn ang">Costas<input type="file" accept="image/*" capture="environment" onchange="addPhoto(this,'back')"></label>
+    </div>`;
+  if(nPhotos){
+    h+=`<button class="xb" style="margin-top:10px;width:100%" onclick="openPhotoCompare()">${I.trend}<span>Comparar fotos (antes/depois)</span></button>`;
+    for(const [ang,label] of [['front','Frente'],['side','Lado'],['back','Costas']]){
+      const list=photosByAngle(ang);
+      if(!list.length) continue;
+      h+=`<div class="pgroup-h">${label} · ${list.length}</div><div class="photos-grid">`;
+      list.slice().reverse().forEach(p=>{
+        h+=`<div class="pthumb">
+          <img data-pid="${p.id}" alt="${p.date}">
+          <button class="px" onclick="delPhotoById('${p.id}')">×</button>
+          <div class="pdate">${p.date.slice(5)}</div>
+        </div>`;
+      });
+      h+=`</div>`;
+    }
+  } else {
+    h+=`<div style="margin-top:12px;font-size:12px;color:var(--faint)">Nenhuma foto ainda. Frente, lado e costas dão a comparação mais justa.</div>`;
   }
   h+=`</div>`;
 
   app.innerHTML=h;
+  hydratePhotos(app);
+}
+
+// séries de uma medida (só datas que têm o valor), ascendente
+function measureSeries(key){
+  return ST.measures.filter(m=>m[key]!=null && m[key]!=='').map(m=>({date:m.date, val:num(m[key])}));
+}
+// peso mais próximo de uma data (pra comparação de medidas)
+function nearestBW(date){
+  if(!ST.bw||!ST.bw.length) return null;
+  let best=null, bd=1e9;
+  for(const b of ST.bw){ const d=Math.abs(daysBetween(b.date,date)); if(d<bd){ bd=d; best=b; } }
+  return best?{kg:best.kg, date:best.date, off:bd}:null;
+}
+// mini sparkline neutro (cor única — direção não implica bom/ruim; cintura↓ e ombro↑ são ambos bons)
+function miniSpark(series){
+  if(!series||series.length<2) return `<span class="mspark-empty">1 medição</span>`;
+  const w=96,hh=26,pad=3;
+  const vals=series.map(s=>s.val), mn=Math.min(...vals), mx=Math.max(...vals), rng=Math.max(0.1,mx-mn);
+  const pts=series.map((s,i)=>{
+    const x=pad+(i/(series.length-1))*(w-2*pad);
+    const y=hh-pad-((s.val-mn)/rng)*(hh-2*pad);
+    return x.toFixed(1)+','+y.toFixed(1);
+  }).join(' ');
+  return `<svg class="mspark" viewBox="0 0 ${w} ${hh}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="#5b9eff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 }
 
 function saveMeasures(){
@@ -4186,45 +4372,164 @@ function saveMeasures(){
   let any=false;
   for(const [k] of MEASURE_FIELDS){
     const el=document.getElementById('m_'+k);
-    if(el && el.value.trim()){ m[k]=num(el.value); any=true; }
+    if(el && (el.value||'').trim()){ m[k]=num(el.value); any=true; }
   }
   if(!any){ showToast('Preencha pelo menos uma medida', 'warn', 2000); return; }
+  const noteEl=document.getElementById('m_note');
+  const note=noteEl&&(noteEl.value||'').trim();
+  if(note) m.note=note;
   ST.measures = ST.measures.filter(x=>x.date!==t);
   ST.measures.push(m);
   ST.measures.sort((a,b)=>a.date<b.date?-1:1);
-  if(saveK('measures')){
-    showToast('Medidas salvas ✓', 'ok', 1800);
-  }
+  if(saveK('measures')){ showToast('Medidas salvas', 'ok', 1800); }
   renderCorpo();
 }
 
-function addPhoto(input){
+// Adiciona foto: comprime -> IndexedDB (pixel) + ST.photometa (metadado). Só grava o metadado
+// DEPOIS de confirmar o pixel no IDB (nada de miniatura quebrada). angle: front|side|back.
+function addPhoto(input, angle){
   const f=input.files&&input.files[0]; if(!f) return;
   const r=new FileReader();
   r.onload=()=>{
     const img=new Image();
     img.onload=()=>{
-      const maxW=800; const ratio=Math.min(1, maxW/img.width);
-      const w=Math.round(img.width*ratio), h=Math.round(img.height*ratio);
-      const c=document.createElement('canvas'); c.width=w; c.height=h;
-      const ctx=c.getContext('2d'); ctx.drawImage(img,0,0,w,h);
-      const dataUrl=c.toDataURL('image/jpeg', 0.78);
-      ST.photos.push({date:today(), dataUrl});
-      if(!saveK('photos')){
-        ST.photos.pop(); // rollback
-        alert('Sem espaço! Apague fotos antigas (toque no ×) e tente de novo.');
-        return;
-      }
-      renderCorpo();
+      const maxW=720; const ratio=Math.min(1, maxW/img.width);
+      const w=Math.round(img.width*ratio), hh=Math.round(img.height*ratio);
+      const c=document.createElement('canvas'); c.width=w; c.height=hh;
+      c.getContext('2d').drawImage(img,0,0,w,hh);
+      const dataUrl=c.toDataURL('image/jpeg', 0.75);
+      const id=nextPhotoId();
+      pdbPut(id, dataUrl).then(()=>{
+        ST.photometa.push({id, date:today(), angle:angle||'front'});
+        ST.photometa.sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:0));
+        saveK('photometa'); saveK('meta');
+        showToast('Foto salva', 'ok', 1500);
+        renderCorpo();
+      }).catch(err=>{
+        console.error('pdbPut', err);
+        alert('Não consegui salvar a foto (armazenamento). Tente de novo.');
+      });
     };
     img.src=r.result;
   };
   r.readAsDataURL(f);
 }
-function delPhoto(idx){
+function delPhotoById(id){
   if(!confirm('Apagar essa foto?')) return;
-  ST.photos.splice(idx,1); saveK('photos'); renderCorpo();
+  pdbDel(id).catch(()=>{}).then(()=>{
+    ST.photometa = ST.photometa.filter(p=>p.id!==id);
+    saveK('photometa'); renderCorpo();
+  });
 }
+
+/* ---- Comparar MEDIDAS (2 datas + histórico) ---- */
+let mcA=null, mcB=null;
+function measDates(){ return ST.measures.map(m=>m.date); }
+function openMeasCompare(){
+  const d=measDates(); if(!d.length){ showToast('Sem medidas ainda','warn'); return; }
+  mcA=d[0]; mcB=d[d.length-1];
+  document.getElementById('measCompare').classList.remove('hidden');
+  renderMeasCompare();
+}
+function closeMeasCompare(){ document.getElementById('measCompare').classList.add('hidden'); }
+function mcSet(which,val){ if(which==='a') mcA=val; else mcB=val; renderMeasCompare(); }
+function renderMeasCompare(){
+  const d=measDates();
+  const A=ST.measures.find(m=>m.date===mcA)||{}, B=ST.measures.find(m=>m.date===mcB)||{};
+  const opt=(sel)=>d.map(x=>`<option value="${x}" ${x===sel?'selected':''}>${esc(x.slice(5).replace('-','/'))}</option>`).join('');
+  const line=(label,a,b,unit,star)=>{
+    const dv=(a!=null&&b!=null)?(b-a):null;
+    const dc=dv==null?'':(dv>=0?'var(--ok)':'var(--push)');
+    return `<tr><td class="mc-n">${label}${star?' <span class="mstar">★</span>':''}</td>
+      <td>${a!=null?a.toFixed(1):'–'}</td><td>${b!=null?b.toFixed(1):'–'}</td>
+      <td style="color:${dc};font-weight:700">${dv==null?'–':(dv>=0?'+':'')+dv.toFixed(1)}</td></tr>`;
+  };
+  let rows='';
+  const wA=nearestBW(mcA), wB=nearestBW(mcB);
+  if(wA||wB) rows+=line('Peso (kg)', wA?wA.kg:null, wB?wB.kg:null,'kg',false);
+  for(const [k,nm,prio] of MEASURE_FIELDS){
+    if(A[k]==null && B[k]==null) continue;
+    rows+=line(nm, A[k]!=null?num(A[k]):null, B[k]!=null?num(B[k]):null,'cm',prio);
+  }
+  const notes=[A.note?`<div class="mc-note">${esc(mcA.slice(5).replace('-','/'))}: “${esc(A.note)}”</div>`:'',
+               B.note?`<div class="mc-note">${esc(mcB.slice(5).replace('-','/'))}: “${esc(B.note)}”</div>`:''].join('');
+  // histórico completo (colapsável)
+  const hist=ST.measures.slice().reverse().map(m=>{
+    const vals=MEASURE_FIELDS.filter(([k])=>m[k]!=null).map(([k,nm])=>`${nm.split(' ')[0]} ${num(m[k]).toFixed(1)}`).join(' · ');
+    return `<div class="cmth-row"><span class="cmth-d">${esc(m.date.slice(5).replace('-','/'))}</span><span class="cmth-t">${vals}${m.note?` — ${esc(m.note)}`:''}</span></div>`;
+  }).join('');
+  document.getElementById('measCompareBody').innerHTML=`
+    <div class="mc-picker"><select onchange="mcSet('a',this.value)">${opt(mcA)}</select><span class="mc-arrow">→</span><select onchange="mcSet('b',this.value)">${opt(mcB)}</select></div>
+    <table class="mc-table"><thead><tr><td></td><td>${esc(mcA.slice(5).replace('-','/'))}</td><td>${esc(mcB.slice(5).replace('-','/'))}</td><td>Δ</td></tr></thead><tbody>${rows}</tbody></table>
+    ${notes}
+    <details class="cmthist" style="margin-top:14px"><summary>${I.hist} Histórico completo (${ST.measures.length})</summary>${hist}</details>`;
+}
+
+/* ---- Comparar FOTOS (ângulo + lado a lado / slider / sobreposição) ---- */
+let pcAngle='front', pcA=null, pcB=null, pcMode='side';
+function openPhotoCompare(){
+  const angs=['front','side','back'];
+  pcAngle = angs.find(a=>photosByAngle(a).length>=2) || angs.find(a=>photosByAngle(a).length>=1) || 'front';
+  pcResetDates(); pcMode='side';
+  document.getElementById('photoCompare').classList.remove('hidden');
+  renderPhotoCompare();
+}
+function closePhotoCompare(){ document.getElementById('photoCompare').classList.add('hidden'); }
+function pcResetDates(){ const l=photosByAngle(pcAngle); pcA=l.length?l[0].id:null; pcB=l.length?l[l.length-1].id:null; }
+function pcSetAngle(a){ pcAngle=a; pcResetDates(); renderPhotoCompare(); }
+function pcSetDate(which,id){ if(which==='a') pcA=id; else pcB=id; renderPhotoCompare(); }
+function pcSetMode(m){ pcMode=m; renderPhotoCompare(); }
+function pcMeta(id){ return (ST.photometa||[]).find(p=>p.id===id)||null; }
+function pcWeightLine(id){ const m=pcMeta(id); if(!m) return ''; const w=nearestBW(m.date); return w?` · ${w.kg}kg`:''; }
+function renderPhotoCompare(){
+  const list=photosByAngle(pcAngle);
+  const angBtns=[['front','Frente'],['side','Lado'],['back','Costas']].map(([a,l])=>{
+    const n=photosByAngle(a).length;
+    return `<button class="pc-ang ${a===pcAngle?'on':''}" ${n?'':'disabled'} onclick="pcSetAngle('${a}')">${l}${n?` (${n})`:''}</button>`;
+  }).join('');
+  const modeBtns=[['side','Lado a lado'],['slider','Slider'],['overlay','Sobrepor']].map(([m,l])=>
+    `<button class="pc-mode ${m===pcMode?'on':''}" onclick="pcSetMode('${m}')">${l}</button>`).join('');
+  const opt=(sel)=>list.map(p=>`<option value="${p.id}" ${p.id===sel?'selected':''}>${esc(p.date.slice(5).replace('-','/'))}</option>`).join('');
+  let view='';
+  if(list.length<1){
+    view=`<div class="pc-empty">Nenhuma foto de ${pcAngle==='front'?'frente':pcAngle==='side'?'lado':'costas'} ainda.</div>`;
+  } else if(list.length<2 || pcA===pcB){
+    view=`<div class="pc-empty">Precisa de 2 fotos deste ângulo pra comparar.</div>`;
+  } else {
+    const mA=pcMeta(pcA), mB=pcMeta(pcB);
+    const capA=`${esc(mA.date.slice(5).replace('-','/'))}${pcWeightLine(pcA)}`;
+    const capB=`${esc(mB.date.slice(5).replace('-','/'))}${pcWeightLine(pcB)}`;
+    if(pcMode==='side'){
+      view=`<div class="pc-side">
+        <figure><img data-pid="${pcA}" alt=""><figcaption>${capA}</figcaption></figure>
+        <figure><img data-pid="${pcB}" alt=""><figcaption>${capB}</figcaption></figure>
+      </div>`;
+    } else if(pcMode==='slider'){
+      view=`<div class="pc-stage"><div class="pc-slider">
+        <img class="pc-base" data-pid="${pcB}" alt="">
+        <img class="pc-clip" id="pcClip" data-pid="${pcA}" alt="" style="clip-path:inset(0 50% 0 0)">
+        <div class="pc-divider" id="pcDiv" style="left:50%"></div>
+      </div>
+      <input type="range" min="0" max="100" value="50" class="pc-range" oninput="pcSlide(this.value)">
+      <div class="pc-cap"><span>${capA}</span><span>${capB}</span></div></div>`;
+    } else {
+      view=`<div class="pc-stage"><div class="pc-slider">
+        <img class="pc-base" data-pid="${pcB}" alt="">
+        <img class="pc-over" id="pcOver" data-pid="${pcA}" alt="" style="opacity:.5">
+      </div>
+      <input type="range" min="0" max="100" value="50" class="pc-range" oninput="pcFade(this.value)">
+      <div class="pc-cap"><span>${capA} (frente)</span><span>${capB} (fundo)</span></div></div>`;
+    }
+  }
+  document.getElementById('photoCompareBody').innerHTML=`
+    <div class="pc-angs">${angBtns}</div>
+    ${list.length>=2?`<div class="mc-picker"><select onchange="pcSetDate('a',this.value)">${opt(pcA)}</select><span class="mc-arrow">→</span><select onchange="pcSetDate('b',this.value)">${opt(pcB)}</select></div>
+    <div class="pc-modes">${modeBtns}</div>`:''}
+    ${view}`;
+  hydratePhotos(document.getElementById('photoCompareBody'));
+}
+function pcSlide(v){ const c=document.getElementById('pcClip'), d=document.getElementById('pcDiv'); if(c) c.style.clipPath='inset(0 '+(100-v)+'% 0 0)'; if(d) d.style.left=v+'%'; }
+function pcFade(v){ const o=document.getElementById('pcOver'); if(o) o.style.opacity=(v/100); }
 
 /* ============ MAIS — princípios + nutrição + backup ============ */
 function renderMais(){
@@ -4340,7 +4645,7 @@ function renderMais(){
 
   <h2 class="sec">Backup dos teus dados</h2>
   <div class="infocard">
-    <p>Os registros (treinos, peso, sono, fotos) ficam neste dispositivo. Faça backup periódico.</p>
+    <p>Treinos, peso, sono, medidas e <b>metadados das fotos</b> (datas/ângulos). Arquivo pequeno — faça com frequência. <b>As fotos em si têm backup próprio abaixo.</b></p>
     <div class="tools">
       <button onclick="exportData()">Exportar</button>
       <button onclick="document.getElementById('imp').classList.toggle('hidden')">Importar</button>
@@ -4350,6 +4655,15 @@ function renderMais(){
     <textarea id="exp" class="hidden" readonly></textarea>
     <textarea id="imp" class="hidden" placeholder="Cole aqui um backup e toque em 'Confirmar importação'"></textarea>
     <div class="tools hidden" id="impbtn"><button onclick="importData()">Confirmar importação</button></div>
+  </div>
+
+  <h2 class="sec">Backup das fotos</h2>
+  <div class="infocard">
+    <p>As fotos ficam no IndexedDB (sem limite prático). O backup delas é um arquivo separado e grande — faça de vez em quando e guarde junto do backup de dados.</p>
+    <div class="tools">
+      <button onclick="exportPhotos()">Exportar fotos</button>
+      <label class="btn-like">Importar fotos<input type="file" accept="application/json,.json" style="display:none" onchange="importPhotos(this)"></label>
+    </div>
   </div>
   <div class="foot">Adicione à Tela de Início no iPhone: Compartilhar → "Adicionar à Tela de Início".<br>Feito sob medida pro teu ABCD Push/Pull.<br><span style="color:var(--faint);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px">versão ${APP_VERSION}</span></div>`;
   app.innerHTML=h;
@@ -4418,10 +4732,61 @@ document.addEventListener('input',e=>{
   if(e.target.id==='imp'){ document.getElementById('impbtn').classList.remove('hidden'); }
 });
 function resetData(){
-  if(confirm('Apagar TODOS os registros deste app (treinos, peso, sono, fotos)?')){
+  if(confirm('Apagar TODOS os registros deste app (treinos, peso, sono, medidas, fotos)?')){
     for(const k of Object.keys(LS)){ ST[k]=JSON.parse(JSON.stringify(DEFAULTS[k])); saveK(k); }
+    pdbClear(); // apaga também os pixels das fotos no IndexedDB
     render();
   }
+}
+
+/* ---- Backup de FOTOS (separado — pixels moram no IndexedDB, arquivo grande) ---- */
+function pdbClear(){ return pdbOpen().then(db=>new Promise((res)=>{ const tx=db.transaction(PDB_STORE,'readwrite'); tx.objectStore(PDB_STORE).clear(); tx.oncomplete=()=>res(true); tx.onerror=()=>res(false); })).catch(()=>{}); }
+async function exportPhotos(){
+  const metas=ST.photometa||[];
+  if(!metas.length){ showToast('Nenhuma foto pra exportar','warn'); return; }
+  showToast('Preparando backup de fotos…','info',2500);
+  const photos=[];
+  for(const m of metas){ try{ const url=await pdbGet(m.id); if(url) photos.push({id:m.id, date:m.date, angle:m.angle, dataUrl:url}); }catch(e){} }
+  const json=JSON.stringify({_v:1, _type:'meutreino-photos', _at:new Date().toISOString(), photos});
+  const filename=`meutreino-fotos-${new Date().toISOString().slice(0,10)}.json`;
+  try{
+    if(navigator.share){
+      const file=new File([json], filename, {type:'application/json'});
+      if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:'MeuTreino Fotos'}); return; }
+    }
+  }catch(e){ if(e && e.name==='AbortError') return; }
+  try{
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([json],{type:'application/json'})); a.download=filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+    showToast('Backup de '+photos.length+' foto(s) gerado', 'ok', 3000);
+  }catch(e){ showToast('Falha ao gerar backup de fotos', 'warn'); }
+}
+function importPhotos(input){
+  const f=input.files&&input.files[0]; if(!f){ return; }
+  const r=new FileReader();
+  r.onload=async()=>{
+    try{
+      const o=JSON.parse(r.result);
+      const arr=(o&&o.photos)||[];
+      if(!Array.isArray(arr)||!arr.length){ alert('Arquivo sem fotos.'); return; }
+      let n=0, maxSeq=(ST.meta&&ST.meta.photoSeq)||0;
+      for(const p of arr){
+        if(!p||!p.id||!p.dataUrl) continue;
+        try{
+          await pdbPut(p.id, p.dataUrl);
+          if(!ST.photometa.some(m=>m.id===p.id)) ST.photometa.push({id:p.id, date:p.date||today(), angle:p.angle||'front'});
+          const sq=parseInt(String(p.id).replace(/^p/,'')); if(isFinite(sq)&&sq>maxSeq) maxSeq=sq;
+          n++;
+        }catch(e){}
+      }
+      if(!ST.meta) ST.meta={}; ST.meta.photoSeq=maxSeq;
+      ST.photometa.sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:0));
+      saveK('photometa'); saveK('meta');
+      alert(n+' foto(s) importada(s).'); renderCorpo();
+    }catch(e){ alert('Backup de fotos inválido: '+e.message); }
+  };
+  r.readAsText(f);
 }
 function clearTodayData(){
   if(!confirm('Apagar SETS, sessão ativa e celebração de HOJE (mantém peso/sono/macros/cardio de hoje + todos os outros dias)?')) return;
@@ -4853,8 +5218,10 @@ if('serviceWorker' in navigator && (location.protocol==='https:' || location.hos
 async function boot(){
   // 1. Cleanup defensivo (phantom sessions de dias passados sem ✓)
   cleanupPhantomSessions();
-  // 2. Storage seguro (resistente a ITP)
+  // 2. Storage seguro (resistente a ITP) — protege localStorage E IndexedDB de eviction
   await requestPersistentStorage();
+  // 2b. Migra fotos antigas (base64 no localStorage) pro IndexedDB, não-destrutivo
+  try{ await migratePhotosToIDB(); }catch(e){ console.error('[migração fotos]', e); }
   // 3. Aviso de quota se >80%
   await checkStorageQuota();
   // 4. Banner A2HS se não estiver em modo standalone
