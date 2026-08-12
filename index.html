@@ -358,6 +358,14 @@
     border-color:transparent; color:#fff;
     box-shadow:0 1px 0 rgba(255,255,255,.25) inset, 0 4px 12px -2px rgba(81,216,138,.5);
   }
+  .addset{
+    width:100%; margin-top:8px; padding:9px; border-radius:11px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+    background:none; border:1px dashed rgba(255,255,255,.14);
+    color:var(--muted); font-size:12.5px; font-weight:600; font-family:inherit;
+  }
+  .addset:active{background:rgba(255,255,255,.03);}
+  .addset svg{width:13px; height:13px;}
   .loghint{
     font-size:11px; color:var(--faint); display:flex;
     justify-content:space-between; align-items:center; margin-top:6px;
@@ -648,6 +656,14 @@
     font-size:10.5px; color:var(--faint); font-weight:500;
     line-height:1.5; padding-top:8px; border-top:1px solid rgba(255,255,255,.06);
   }
+  .swap-acts{display:flex; gap:7px; margin-top:10px;}
+  .swap-btn{
+    flex:1; padding:9px 8px; border-radius:10px; cursor:pointer; font-family:inherit;
+    font-size:12px; font-weight:600; letter-spacing:-.01em;
+    background:var(--glass-2); border:1px solid var(--line-2); color:var(--ink);
+  }
+  .swap-btn.ghost{flex:0 0 auto; background:none; color:var(--muted);}
+  .swap-btn:active{opacity:.8;}
 
   /* ============ STAT CARDS (Hoje/Corpo) ============ */
   .stats{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
@@ -1605,7 +1621,7 @@
     </div>
     <div class="presets">
       <button class="preset" data-s="90" onclick="setTimer(90)">1:30 iso</button>
-      <button class="preset" data-s="120" onclick="setTimer(120)">2:00 comp.</button>
+      <button class="preset" data-s="150" onclick="setTimer(150)">2:30 comp.</button>
       <button class="preset core" data-s="45" onclick="setTimer(45)">0:45</button>
     </div>
     <div class="tctrl">
@@ -1665,7 +1681,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-07-27.03';
+const APP_VERSION = '2026-07-28.01';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -2524,7 +2540,15 @@ function cleanupPhantomSessions(){
     console.log(`[boot] limpou ${cleaned} sessão(ões) fantasma`);
   }
 }
-function todayISO(){ return new Date().toISOString().slice(0,10); }
+/* Data no fuso LOCAL (não UTC). `toISOString()` devolve UTC: no Brasil (UTC-3) tudo que
+   fosse registrado das 21h à meia-noite ganhava a data de AMANHÃ — sets, peso, sono, macros,
+   medidas e comentários caíam no dia errado, quebrando streak, "treino de hoje" e a rotação ABCD. */
+function localISO(d){
+  const x = d || new Date();
+  const p = n => String(n).padStart(2,'0');
+  return x.getFullYear()+'-'+p(x.getMonth()+1)+'-'+p(x.getDate());
+}
+function todayISO(){ return localISO(); }
 function hasValidDoneSafe(sets){
   if(!Array.isArray(sets)) return false;
   return sets.some(s => s && s.done && parseFloat(String(s.kg||'').replace(',','.'))>0 && parseFloat(String(s.reps||'').replace(',','.'))>0);
@@ -2563,8 +2587,8 @@ function checkBackupReminder(){
     showToast(`Último backup há ${days} dias — exporta novo`, 'warn', 4500);
   }
 }
-function today(){ return new Date().toISOString().slice(0,10); }
-function dateAdd(iso, days){ const d=new Date(iso+'T12:00:00'); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
+function today(){ return localISO(); }
+function dateAdd(iso, days){ const d=new Date(iso+'T12:00:00'); d.setDate(d.getDate()+days); return localISO(d); }
 function daysBetween(a,b){ const da=new Date(a+'T12:00:00'), db=new Date(b+'T12:00:00'); return Math.round((db-da)/86400000); }
 function exId(day,i){ return day+"_"+i; }
 
@@ -2662,7 +2686,7 @@ function prTrackerForWorkout(day){
 }
 
 function lastSession(id){
-  const h=ST.logs[id]; if(!h||!h.length) return null;
+  const h=progressSessions(id); if(!h||!h.length) return null;   // respeita a fronteira de troca
   const t=today();
   for(let k=h.length-1;k>=0;k--){ if(h[k].date!==t) return h[k]; }
   return null;
@@ -2830,6 +2854,48 @@ function parseRange(r){
   if(m) return {min:+m[1], max:+m[2]};
   const n=parseInt(r); return n? {min:n,max:n} : {min:8,max:12};
 }
+/* TROCA DE EXERCÍCIO — fronteira, não apagamento.
+   Ao marcar "Troquei", grava a data em ST.meta.swapAt[id]. As funções de progressão só olham
+   sessões a partir dela: as cargas do exercício antigo (ex: supino halter 30kg) param de
+   contaminar as sugestões do novo (ex: máquina 50kg). Nada é deletado — o histórico continua
+   no storage e no backup. Sem swapAt gravado, o comportamento é idêntico ao de antes. */
+function progressSessions(id){
+  const all=ST.logs[id]||[];
+  const from=(ST.meta&&ST.meta.swapAt&&ST.meta.swapAt[id])||null;
+  return from ? all.filter(s=>s&&s.date>=from) : all;
+}
+function markExerciseSwapped(id){
+  if(!confirm('Marcar que você trocou este exercício?\n\nO histórico antigo é preservado, mas as sugestões de carga recomeçam do zero — as cargas do exercício anterior não valem pro novo.')) return;
+  if(!ST.meta||typeof ST.meta!=='object') ST.meta={};
+  if(!ST.meta.swapAt) ST.meta.swapAt={};
+  ST.meta.swapAt[id]=today();
+  if(ST.meta.swapSnooze) delete ST.meta.swapSnooze[id];
+  saveK('meta'); render(); showToast('Progressão reiniciada pro exercício novo','ok',2600);
+}
+function snoozeSwap(id){
+  if(!ST.meta||typeof ST.meta!=='object') ST.meta={};
+  if(!ST.meta.swapSnooze) ST.meta.swapSnooze={};
+  ST.meta.swapSnooze[id]=dateAdd(today(), 56); // 8 semanas
+  saveK('meta'); render(); showToast('Ok — não sugiro trocar por 8 semanas','ok',2400);
+}
+function swapSnoozed(id){
+  const until=(ST.meta&&ST.meta.swapSnooze&&ST.meta.swapSnooze[id])||null;
+  return !!(until && until>today());
+}
+
+/* Passo de carga que a academia REALMENTE tem: infere pelas cargas já usadas neste exercício
+   em vez de chutar (evita sugerir 22.5kg numa máquina que só tem placas de 5, ou 2.5 num
+   par de halteres que anda de 2 em 2). Precisa de ≥2 cargas distintas; senão usa o padrão.
+   Zero configuração e se auto-corrige conforme você registra. */
+function inferLoadStep(id){
+  const vals=[...new Set(progressSessions(id).flatMap(s=>(s.sets||[]).map(x=>num(x.kg))).filter(v=>v>0))];
+  if(vals.length<2) return 0;
+  for(const step of [5,2.5,2,1]){
+    if(vals.every(v=>Math.abs(v/step-Math.round(v/step))<1e-9)) return step;
+  }
+  return 0;
+}
+
 // Sugestão baseada na última sessão: se TOP set bateu top range com mesma kg, sugere +incremento; senão +1 rep ou repete.
 function suggestNext(id, e){
   const last=lastSession(id);
@@ -2840,7 +2906,9 @@ function suggestNext(id, e){
   const maxKg=Math.max(...done.map(s=>num(s.kg)));
   const topSets=done.filter(s=>num(s.kg)===maxKg);
   const minRepsTop = Math.min(...topSets.map(s=>num(s.reps)));
-  const inc = e.t==='comp' ? (maxKg>=40?5:2.5) : (maxKg>=20?2.5:1);
+  const baseInc = e.t==='comp' ? (maxKg>=40?5:2.5) : (maxKg>=20?2.5:1);
+  const step = inferLoadStep(id);
+  const inc = step ? Math.max(step, Math.round(baseInc/step)*step) : baseInc;
   if(minRepsTop >= rng.max){
     return {kg:maxKg+inc, reps:rng.min, why:"bateu o topo · sobe carga"};
   }
@@ -2849,21 +2917,41 @@ function suggestNext(id, e){
   }
   return {kg:maxKg, reps:rng.min, why:"foca em chegar no mínimo"};
 }
-// Plateau: 3 últimas sessões VÁLIDAS sem subir e1RM
-function detectPlateau(id){
-  const h=(ST.logs[id]||[]).filter(s=>bestE1RM(s.sets)>0);
-  if(h.length<3) return false;
-  const last3=h.slice(-3).map(s=>bestE1RM(s.sets));
-  return last3[2] <= last3[0] && last3[2] <= last3[1];
+/* "Top set" da sessão: maior carga e, entre as séries nessa carga, a melhor rep.
+   Mede progresso do MESMO jeito que suggestNext prescreve (dupla progressão). Necessário
+   porque o e1RM capa reps em 12 (Brzycki): nas faixas 12-20 (todas as elevações laterais,
+   panturrilha, crucifixo inverso) subir 13→15→17 reps dá e1RM idêntico, e a detecção
+   antiga acusava "plateau" e sugeria trocar o exercício enquanto o usuário progredia. */
+function sessionTop(sets){
+  const valid=(sets||[]).filter(s=>s&&num(s.kg)>0&&num(s.reps)>0);
+  if(!valid.length) return null;
+  const kg=Math.max(...valid.map(s=>num(s.kg)));
+  const reps=Math.max(...valid.filter(s=>num(s.kg)===kg).map(s=>num(s.reps)));
+  return {kg, reps};
 }
-// Quantas semanas o usuário tem treinado esse exercício específico
+// >0 se A progrediu em relação a B (mais carga, ou mesma carga com mais reps)
+function cmpTop(a,b){
+  if(!a||!b) return 0;
+  if(a.kg!==b.kg) return a.kg>b.kg?1:-1;
+  if(a.reps!==b.reps) return a.reps>b.reps?1:-1;
+  return 0;
+}
+// Plateau: 3 últimas sessões VÁLIDAS sem progredir (nem carga, nem reps na mesma carga)
+function detectPlateau(id){
+  const h=progressSessions(id).filter(s=>sessionTop(s.sets));
+  if(h.length<3) return false;
+  const t=h.slice(-3).map(s=>sessionTop(s.sets));
+  return cmpTop(t[2],t[0])<=0 && cmpTop(t[2],t[1])<=0;
+}
+// Quantas semanas o usuário tem treinado esse exercício específico (reinicia após troca marcada)
 function weeksOnExercise(id){
-  const h=(ST.logs[id]||[]).filter(s=>hasValidDone(s.sets));
+  const h=progressSessions(id).filter(s=>hasValidDone(s.sets));
   if(!h.length) return 0;
   return Math.floor(daysBetween(h[0].date, today())/7)+1;
 }
 // Plateau persistente APÓS deload (segundo Schoenfeld, Helms: só trocar se deload feito não destravou)
 function shouldSwapExercise(id){
+  if(swapSnoozed(id)) return null;              // usuário escolheu manter este exercício
   if(!detectPlateau(id)) return null;
   const lastDeload = ST.meta.lastDeloadWeek||0;
   const exerciseWeeks = weeksOnExercise(id);
@@ -3409,7 +3497,9 @@ function renderDay(d){
     const tod=todaySession(id);
     const pillT = e.t==="comp"?"composto":(e.t==="core"?"core":"isolador");
     const pillC = e.t==="comp"?"comp":(e.t==="core"?"core":"iso");
-    const nset=parseInt(e.s)||3;
+    const planned=parseInt(e.s)||3;
+    // séries extras (drop set, série a mais) ficam salvas na própria sessão — o log cresce junto
+    const nset=Math.max(planned, (tod&&tod.sets&&tod.sets.length)||0);
     const url=photoURL(e.n);                  // foto SEMPRE pela chave original (PHOTO_ID/PHOTO_LOCAL keyados por e.n)
     const nm=exName(e), cue=exCue(e), note=exNote(e);   // nome/cue/nota exibidos (override do usuário se houver)
 
@@ -3447,6 +3537,10 @@ function renderDay(d){
         <div class="swap-head">${I.trend} Considere trocar: <b>${reason}</b></div>
         <div class="swap-list">${alts.map(a=>`<div class="swap-alt">• ${esc(a)}</div>`).join('')}</div>
         <div class="swap-foot">Posição alongada cresce mais (Wolf et al 2023). Próximo treino: testa uma alternativa.</div>
+        <div class="swap-acts">
+          <button class="swap-btn" onclick="markExerciseSwapped('${id}')">Troquei — reiniciar progressão</button>
+          <button class="swap-btn ghost" onclick="snoozeSwap('${id}')">Manter esse</button>
+        </div>
       </div>`;
     } else if(plateau){
       platBlock2 = `<div class="plateau">${I.flame} 3 sessões sem progresso · tenta deload essa semana (volume -50% ou kg -20%) antes de trocar exercício</div>`;
@@ -3533,6 +3627,7 @@ function renderDay(d){
         <div class="last">${lastTxt}</div>
         <div class="colhead r4"><span></span><span>kg</span><span>reps</span><span>RIR</span><span></span></div>
         ${rows}
+        <button class="addset" onclick="addSet('${id}')">${I.plus}<span>Série extra${nset>planned?` · ${nset-planned} a mais`:''}</span></button>
         <div class="loghint"><span>RIR = reps em reserva (0-2 = ideal)</span><span class="saved" id="sv_${id}">${I.check2} salvo</span></div>
         <input class="logcmt" type="text" maxlength="200" placeholder="Comentário do dia (outra máquina, variação, dor...)" value="${esc(todCmt)}" data-cid="${id}" oninput="onComment(this)">
         ${(()=>{ const pc=commentsFor(id,'log'); return pc.length?`<details class="cmthist"><summary>${I.hist} Comentários anteriores (${pc.length})</summary>${pc.map(c=>`<div class="cmth-row"><span class="cmth-d">${esc(c.date.slice(5).replace('-','/'))}</span><span class="cmth-t">${esc(c.cmt)}</span></div>`).join('')}</details>`:''; })()}
@@ -3564,13 +3659,29 @@ function flashSaved(id){
   svTimer=setTimeout(()=>el.classList.remove('show'),1200);
 }
 function onLog(inp){ const id=inp.dataset.id; upsertToday(id, collect(id)); flashSaved(id); }
+/* Série extra além do planejado (drop set, série a mais). Fica salva na sessão do dia e
+   conta no volume semanal como qualquer outra. collect() antes de anexar preserva o que já
+   estava digitado e ainda não foi salvo. */
+function addSet(id){
+  const tod=todaySession(id);
+  const stored=(tod&&Array.isArray(tod.sets))?tod.sets:[];
+  const fromDom=collect(id);
+  // usa o DOM (pega o que foi digitado e ainda não salvou), mas NUNCA encolhe o que já está gravado
+  const sets = fromDom.length>=stored.length ? fromDom : stored.slice();
+  sets.push({kg:'', reps:'', rir:'', done:false});
+  upsertToday(id, sets);
+  render();
+}
 function onComment(inp){ const id=inp.dataset.cid; setTodayComment(id, inp.value); flashSaved(id); }
 
 /* ============ Helpers: última posição planejada + Shortcut deep-link ============ */
 function isLastPlannedPosition(day, exIdx, setIdx){
   const W = WK[day]; if(!W) return false;
   if(exIdx !== W.ex.length - 1) return false;
-  const nset = parseInt(W.ex[exIdx].s) || 3;
+  const planned = parseInt(W.ex[exIdx].s) || 3;
+  const tod = todaySession(exId(day, exIdx));
+  // conta séries extras: o descanso só é pulado na ÚLTIMA linha real, não na última planejada
+  const nset = Math.max(planned, (tod && tod.sets && tod.sets.length) || 0);
   return setIdx === nset - 1;
 }
 function isLastHomePosition(templateId, exIdx, setIdx){
@@ -4798,7 +4909,7 @@ async function exportData(){
   // Oferece share sheet (cole no Notes, Mail, Files, etc.)
   try{
     if(navigator.share){
-      const filename=`meutreino-backup-${new Date().toISOString().slice(0,10)}.json`;
+      const filename=`meutreino-backup-${localISO()}.json`;
       const file=new File([json], filename, {type:'application/json'});
       if(navigator.canShare && navigator.canShare({files:[file]})){
         await navigator.share({files:[file], title:'MeuTreino Backup'});
@@ -4853,7 +4964,7 @@ async function exportPhotos(){
   const photos=[];
   for(const m of metas){ try{ const url=await pdbGet(m.id); if(url) photos.push({id:m.id, date:m.date, angle:m.angle, dataUrl:url}); }catch(e){} }
   const json=JSON.stringify({_v:1, _type:'meutreino-photos', _at:new Date().toISOString(), photos});
-  const filename=`meutreino-fotos-${new Date().toISOString().slice(0,10)}.json`;
+  const filename=`meutreino-fotos-${localISO()}.json`;
   try{
     if(navigator.share){
       const file=new File([json], filename, {type:'application/json'});

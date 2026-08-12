@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-07-27.02 (Feedback do device: fix do overflow dos inputs de medida (width:100%+box-sizing+min-width:0); medidas **customizáveis** (`+ Medida`, com remover) e **editar/corrigir/excluir medição anterior** (toque na data no histórico → modal); fotos com ângulo **custom** (`+ Outra` → nome livre, ex: Bíceps). SHELL v19)
+**Última atualização:** 2026-07-28.01 (**Auditoria do módulo de treino** — 2 bugs corrigidos: datas em UTC (treino à noite caía no dia seguinte) e falso plateau nas faixas 12-20. Mais: troca de exercício com fronteira + snooze, série extra no log, incremento inferido do equipamento, preset do timer 2:00→2:30. SHELL v21)
+
+**Antes: 2026-07-27.02** (Feedback do device: fix do overflow dos inputs de medida (width:100%+box-sizing+min-width:0); medidas **customizáveis** (`+ Medida`, com remover) e **editar/corrigir/excluir medição anterior** (toque na data no histórico → modal); fotos com ângulo **custom** (`+ Outra` → nome livre, ex: Bíceps). SHELL v19)
 
 **Antes: 2026-07-27.01** (Módulo Medidas+Fotos completo: 8 medidas + gráfico por medida + comparar 2 datas com Δ e peso + histórico; fotos por ângulo (frente/lado/costas) em **IndexedDB** com comparação lado a lado / slider / sobreposição; backup de fotos separado. SHELL v18. **Correção de versionamento:** os quatro `2026-07-08.*` foram na verdade feitos em 27/07 — a data estava errada; daqui pra frente é a data real.)
 
@@ -655,6 +657,37 @@ Sem navegador (rede do preview bloqueada no ambiente). Validado via **node + `fa
 - **Editar/corrigir medição anterior:** no histórico do compare, cada data é tocável → `openMeasEdit(date)` (modal `#measEdit`), prefill de todos os campos + nota, Salvar / Excluir. Esvaziar tudo = exclui. Não duplica a data.
 - **Foto com ângulo custom:** `+ Outra` (`addPhotoCustom` → `prompt` de nome livre, ex: Bíceps). `angleLabel()`/`anglesPresent()` generalizam galeria e abas de comparação (3 base + customs). `addPhoto` refatorado sobre `addPhotoFile(file, angle)`.
 - Verificado com +17 asserts (campo custom no CRUD, edição sem duplicar, exclusão, ângulo custom na galeria/compare, fix de CSS presente).
+
+---
+
+## Auditoria do módulo de treino (2026-07-28.01)
+
+### Bug 1 — datas em UTC (corrompia o dia de TODO registro noturno)
+`today()`/`todayISO()` usavam `new Date().toISOString()`, que é **UTC**. No Brasil (UTC-3), tudo registrado **das 21h à meia-noite** ganhava a data de **amanhã**: sets, peso, sono, macros, medidas, comentários. Efeitos: "treino de hoje · concluído" no dia errado, streak e contagem semanal furados, rotação ABCD confusa.
+Fix: helper `localISO(d)` (getFullYear/Month/Date) usado por `today()`, `todayISO()` e `dateAdd()`. Nomes de arquivo de backup também.
+**Efeito de transição:** registros antigos feitos à noite continuam com a data adiantada em 1 dia (não reescrevi dados do usuário — migração cega seria pior que o sintoma). Some sozinho conforme os dias passam; o único sintoma é o log de "ontem à noite" aparecer com data de hoje/amanhã por um dia.
+
+### Bug 2 — falso plateau nas faixas 12-20 (justo a prioridade #1)
+`detectPlateau` comparava só e1RM, e o Brzycki **capa reps em 12**. Nas faixas 12-20 (as 4 elevações laterais, panturrilha, crucifixo inverso), progredir 13→15→17 reps na mesma carga dá **e1RM idêntico** → na 3ª sessão o app acusava "plateau" e depois sugeria trocar o exercício, **enquanto o usuário seguia exatamente o que o `suggestNext` mandou** (+1 rep).
+Fix: `sessionTop(sets)` = {maior carga, melhor rep nessa carga} + `cmpTop(a,b)`. O plateau agora usa o **mesmo modelo de dupla progressão** que a sugestão prescreve. Continua acusando plateau real (nada muda / regride).
+
+### Troca de exercício: fronteira em vez de beco sem saída
+Antes o banner "Considere trocar" não tinha ação — e se o usuário trocasse de verdade (renomeando via Editar), os logs continuavam na mesma chave e o `suggestNext` misturava cargas de movimentos diferentes (supino halter 30kg vs máquina 50kg).
+- **"Troquei — reiniciar progressão"** → `ST.meta.swapAt[id] = hoje`. `progressSessions(id)` filtra por essa fronteira, e `lastSession`/`suggestNext`/`detectPlateau`/`weeksOnExercise` passam a enxergar só o que veio depois. **Nada é deletado** — histórico intacto no storage e no backup. Sem `swapAt`, comportamento idêntico ao de antes.
+- **"Manter esse"** → `ST.meta.swapSnooze[id]` = hoje+56d; `shouldSwapExercise` devolve null. O aviso de plateau/deload continua.
+- *Correção de uma análise minha:* o banner de 12 semanas **nunca** apareceu sozinho — sempre exigiu plateau junto (`if(!detectPlateau) return null`). Com o Bug 2 corrigido ele já fica bem mais raro.
+
+### Série extra no log
+`nset` agora é `max(planejado, séries salvas hoje)` e há um botão **"Série extra"** (`addSet`) — atende os cues que pedem *"drop set na última"* e *"suba 1-2 séries"*, que antes não tinham onde ser registrados. Conta no volume semanal como qualquer série. `addSet` é blindado: usa o DOM (pega o que foi digitado e não salvou) mas **nunca encolhe** o que já está gravado. `isLastPlannedPosition` passou a considerar as extras (o descanso só é pulado na última linha real).
+
+### Incremento inferido do equipamento
+`inferLoadStep(id)` deduz o passo de carga pelas **cargas que o usuário já usou** naquele exercício (5 / 2.5 / 2 / 1), com ≥2 cargas distintas; senão usa o padrão. Resolve a pendência P3 ("sugere 22.5kg numa máquina de placas de 5") **sem configuração e sem manutenção** — se auto-corrige conforme o histórico cresce.
+
+### Preset do timer
+Overlay dizia "2:00 comp." enquanto `REST.comp=150`. Virou **2:30**, alinhado com Schoenfeld 2016/Grgic 2017 (que o próprio card do exercício cita).
+
+### Verificação
+37 asserts em node rodando o código real (fuso, plateau nos 4 cenários, inferência de passo, fronteira de troca, snooze, série extra + blindagem anti-truncamento, e os 5 renders). Endereços locais são bloqueados no painel do navegador deste ambiente → **o visual (botões novos, layout) segue pra confirmar no device**.
 
 ---
 
