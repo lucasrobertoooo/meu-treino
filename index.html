@@ -636,6 +636,12 @@
     background:rgba(255,107,92,.08); border:1px solid rgba(255,107,92,.25);
     font-size:12px; color:#ffbab2; font-weight:600;
   }
+  .holding{
+    margin-top:8px; padding:9px 12px; border-radius:12px;
+    background:rgba(81,216,138,.09); border:1px solid rgba(81,216,138,.26);
+    font-size:12px; color:#9fe6bd; font-weight:600; line-height:1.45;
+  }
+  .stnote{ display:block; margin-top:4px; font-weight:600; color:var(--muted); font-size:11.5px; }
   .swap{
     margin-top:8px; padding:12px 14px; border-radius:14px;
     background:linear-gradient(135deg, rgba(122,178,255,.12), rgba(91,158,255,.04));
@@ -1681,7 +1687,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-07-28.01';
+const APP_VERSION = '2026-08-15.01';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -2895,27 +2901,63 @@ function inferLoadStep(id){
   }
   return 0;
 }
+/* Passo do APP INTEIRO, pro caso em que o exercício sozinho não tem o que ensinar.
+   É o pior caso e o mais comum: enquanto travado, o exercício nunca acumula 2 cargas
+   distintas pra inferir, e aí o padrão de 1kg (isolador abaixo de 20kg) sugere uma carga
+   que não existe em polia nem em halter. Aí o app cria o platô que depois diagnostica. */
+function globalLoadStep(){
+  const vals=new Set();
+  for(const id of Object.keys(ST.logs||{}))
+    for(const s of (ST.logs[id]||[]))
+      for(const x of (s.sets||[])){ const v=num(x.kg); if(v>0) vals.add(v); }
+  const uniq=[...vals];
+  if(uniq.length<2) return 0;
+  for(const step of [5,2.5,2,1]){
+    if(uniq.every(v=>Math.abs(v/step-Math.round(v/step))<1e-9)) return step;
+  }
+  return 0;
+}
+function loadStepFor(id, e){ return inferLoadStep(id) || globalLoadStep() || 0; }
 
 // Sugestão baseada na última sessão: se TOP set bateu top range com mesma kg, sugere +incremento; senão +1 rep ou repete.
-function suggestNext(id, e){
-  const last=lastSession(id);
-  if(!last) return null;
+/* Núcleo da sugestão, rodando sobre QUALQUER sessão (não só a última). Rodar sobre a
+   penúltima é o que permite ao app saber o que ele mesmo aconselhou e comparar com o que
+   aconteceu, sem gravar nada e sem migração. */
+function suggestFrom(sets, e, id){
   const rng=parseRange(e.r);
-  const done=last.sets.filter(s=>s&&s.done&&num(s.kg)>0&&num(s.reps)>0);
+  const done=(sets||[]).filter(s=>s&&s.done&&num(s.kg)>0&&num(s.reps)>0);
   if(!done.length) return null;
   const maxKg=Math.max(...done.map(s=>num(s.kg)));
   const topSets=done.filter(s=>num(s.kg)===maxKg);
   const minRepsTop = Math.min(...topSets.map(s=>num(s.reps)));
   const baseInc = e.t==='comp' ? (maxKg>=40?5:2.5) : (maxKg>=20?2.5:1);
-  const step = inferLoadStep(id);
+  const step = loadStepFor(id, e);
   const inc = step ? Math.max(step, Math.round(baseInc/step)*step) : baseInc;
   if(minRepsTop >= rng.max){
-    return {kg:maxKg+inc, reps:rng.min, why:"bateu o topo · sobe carga"};
+    return {kg:maxKg+inc, reps:rng.min, why:"bateu o topo · sobe carga", de:maxKg, inc};
   }
   if(minRepsTop >= rng.min){
-    return {kg:maxKg, reps:minRepsTop+1, why:"mesma carga · +1 rep"};
+    return {kg:maxKg, reps:minRepsTop+1, why:"mesma carga · +1 rep", de:maxKg, inc};
   }
-  return {kg:maxKg, reps:rng.min, why:"foca em chegar no mínimo"};
+  return {kg:maxKg, reps:rng.min, why:"foca em chegar no mínimo", de:maxKg, inc};
+}
+/* Sessão âncora da próxima meta: quase sempre a última, mas não quando a última foi leve
+   (semana de deload, dia cortado). Ancorar ali faz o app prescrever a carga do deload na
+   volta. Detecta pelo número de séries feitas, sem depender do deload estar marcado. */
+function refSession(id){
+  const h=(progressSessions(id)||[]).filter(s=>sessionTop(s.sets) && s.date!==today());
+  if(!h.length) return null;
+  const ult=h.slice(-4);
+  const cont=ult.map(s=>(s.sets||[]).filter(x=>x&&x.done&&num(x.reps)>0).length);
+  const tipico=Math.max(...cont);
+  if(ult.length>1 && cont[cont.length-1] < tipico*0.6) return ult[ult.length-2];
+  return ult[ult.length-1];
+}
+function suggestNext(id, e){
+  if(!e) return null;
+  const ref=refSession(id);
+  if(!ref) return null;
+  return suggestFrom(ref.sets, e, id);
 }
 /* "Top set" da sessão: maior carga e, entre as séries nessa carga, a melhor rep.
    Mede progresso do MESMO jeito que suggestNext prescreve (dupla progressão). Necessário
@@ -2949,18 +2991,87 @@ function weeksOnExercise(id){
   if(!h.length) return 0;
   return Math.floor(daysBetween(h[0].date, today())/7)+1;
 }
-// Plateau persistente APÓS deload (segundo Schoenfeld, Helms: só trocar se deload feito não destravou)
+/* Trocar exercício é o ÚLTIMO recurso, não o primeiro.
+   A evidência citada nos próprios princípios argumenta contra variar por variar: Fonseca et
+   al 2014 (hipertrofia regional, mas perde força) e Baz-Valle et al 2019 (variação não supera
+   exercício fixo em hipertrofia total). A alavanca com melhor suporte é volume e recuperação
+   (Schoenfeld, Ogborn & Krieger 2017). Por isso caiu o gatilho "12 semanas no mesmo
+   exercício": ficava aceso por meses e virava ruído. Só sugere depois de deload feito. */
 function shouldSwapExercise(id){
   if(swapSnoozed(id)) return null;              // usuário escolheu manter este exercício
   if(!detectPlateau(id)) return null;
   const lastDeload = ST.meta.lastDeloadWeek||0;
-  const exerciseWeeks = weeksOnExercise(id);
-  // Só sugere troca se houve deload depois do início desse exercício
-  // (proxy: lastDeload > 0 e usuário já está há >=6 semanas no exercício)
-  if(lastDeload>0 && exerciseWeeks>=6) return "plateau-pos-deload";
-  // Ou se exercício passou de 12 semanas (variar pra ganhar hipertrofia regional)
-  if(exerciseWeeks>=12) return "tempo-longo";
+  if(lastDeload>0 && weeksOnExercise(id)>=6) return "plateau-pos-deload";
   return null;
+}
+
+/* ============ ESTADO DE PROGRESSÃO (um estado, uma mensagem, uma ação) ============
+   Substitui os três banners independentes que podiam aparecer juntos e se contradizer
+   ("bateu o topo, sobe carga" + "plateau" + "considere trocar" na mesma tela). Nada é
+   gravado: o que o app aconselhou é recalculado a partir da sessão anterior. */
+function sessionRIR(sets){
+  const v=(sets||[]).filter(s=>s&&s.done&&String(s.rir==null?'':s.rir).trim()!=='').map(s=>num(s.rir));
+  return v.length ? v.reduce((a,b)=>a+b,0)/v.length : null;
+}
+/* Tendência do peso em kg/semana (negativo = perdendo). Compara a média das primeiras
+   pesagens da janela com a das últimas: ponto isolado engana (água, glicogênio, comida). */
+function bwTrend(days){
+  days=days||28;
+  const t=today();
+  const win=(ST.bw||[]).filter(b=>b&&b.date&&num(b.kg)>0 && daysBetween(b.date,t)>=0 && daysBetween(b.date,t)<days);
+  if(win.length<4) return null;
+  win.sort((a,b)=> a.date<b.date ? -1 : 1);
+  const n=Math.max(2, Math.round(win.length/3));
+  const avg=arr=>arr.reduce((a,b)=>a+num(b.kg),0)/arr.length;
+  const semanas=Math.max(1, daysBetween(win[0].date, win[win.length-1].date)/7);
+  return (avg(win.slice(-n)) - avg(win.slice(0,n))) / semanas;
+}
+function fmtStep(v){ return (Math.round(v*10)/10).toString().replace('.',','); }
+function progressState(id, e){
+  if(!e) return null;
+  const sug=suggestNext(id, e);
+  const h=progressSessions(id).filter(s=>sessionTop(s.sets));
+  if(h.length<2) return {k:'inicio', sug, msg:'', nota:'Duas sessões registradas e eu já começo a sugerir carga.'};
+  const rng=parseRange(e.r);
+  const tops=h.map(s=>sessionTop(s.sets));
+  const cur=tops[tops.length-1], prev=tops[tops.length-2];
+  // Carga nova e ainda abaixo do mínimo da faixa: é o esperado na dupla progressão.
+  if(cur.kg>prev.kg && cur.reps<rng.min)
+    return {k:'tentando', sug, msg:'', nota:`Carga nova. O trabalho agora é chegar em ${rng.min} reps antes de subir de novo.`};
+  let travadas=0;
+  for(let i=tops.length-1;i>0;i--){ if(cmpTop(tops[i],tops[i-1])<=0) travadas++; else break; }
+  if(travadas<2) return {k:'progredindo', sug, msg:''};   // 1 sessão parada é ruído normal
+  const nSess=()=>`${travadas} ${travadas===1?'sessão':'sessões'}`;
+  // RIR: o sinal de fadiga que o app coletava em toda série e nunca lia
+  const rirs=h.slice(-Math.min(travadas,3)).map(s=>sessionRIR(s.sets)).filter(v=>v!=null);
+  const rirMed=rirs.length ? rirs.reduce((a,b)=>a+b,0)/rirs.length : null;
+  if(travadas>=3 && rirMed!=null && rirMed<=1)
+    return {k:'fadiga', sug, acao:'deload',
+      msg:`${nSess()} sem subir, todas perto da falha (RIR ${fmtStep(rirMed)}). Isso é fadiga acumulada, não falta de esforço.`,
+      nota:'Faça uma semana leve: metade das séries, ou 20% menos carga. Depois volta.'};
+  // No topo da faixa sem conseguir subir: o problema costuma ser o TAMANHO do salto
+  if(cur.reps>=rng.max && travadas>=2){
+    const step=loadStepFor(id, e) || (sug && sug.inc) || 0;
+    const pct=step && cur.kg ? Math.round(step/cur.kg*100) : 0;
+    return {k:'travado-passo', sug,
+      msg:`${nSess()} no topo da faixa (${cur.reps} reps) sem subir a carga.`,
+      nota: step
+        ? `O menor salto que esse equipamento tem é ${fmtStep(step)}kg (${pct}% a mais). Duas saídas boas: sobe pra ${fmtKg(cur.kg+step)}kg e aceita cair pra ${rng.min} reps, ou mantém ${fmtKg(cur.kg)}kg e acrescenta 1 série.`
+        : `Sobe pro próximo peso disponível e aceita cair pra ${rng.min} reps, ou mantém a carga e acrescenta 1 série.`};
+  }
+  // Carga parada com peso caindo é massa magra preservada, não fracasso (Helms 2014)
+  const tend=bwTrend(28);
+  if(travadas>=3 && tend!=null && tend<=-0.15)
+    return {k:'mantendo', sug,
+      msg:`Carga mantida e peso caindo ${fmtStep(Math.abs(tend))}kg por semana.`,
+      nota:'Segurar a carga enquanto o peso cai é massa magra preservada. Não precisa mudar nada.'};
+  if(shouldSwapExercise(id))
+    return {k:'trocar', sug, acao:'trocar',
+      msg:`Travado há ${nSess()} mesmo depois do deload, ${weeksOnExercise(id)} semanas nesse exercício.`,
+      nota:'Agora sim vale testar uma variação.'};
+  return {k:'travado', sug,
+    msg:`${nSess()} sem progredir.`,
+    nota:'Antes de mudar o treino: confere o sono e a comida da semana. É o que trava progresso com mais frequência.'};
 }
 // Mapa de alternativas — priorizando posição alongada (Wolf et al 2023) e mesmo grupo
 const EXERCISE_ALTERNATIVES = {
@@ -3322,6 +3433,39 @@ function weekStreak(){
   }
   return streak;
 }
+/* Séries válidas numa janela de 7 dias terminando em `fim` (ISO). */
+function setsInWeekEnding(fim){
+  let n=0;
+  for(const id of Object.keys(ST.logs||{})){
+    for(const sess of (ST.logs[id]||[])){
+      const dd=daysBetween(sess.date, fim);
+      if(dd>=0 && dd<7) n+=(sess.sets||[]).filter(s=>s&&s.done&&num(s.kg)>0&&num(s.reps)>0).length;
+    }
+  }
+  return n;
+}
+/* Deload detectado pelos DADOS, não por botão. A semana leve é o que você FAZ, não o que
+   declara. Janela móvel de 7 dias vs as 4 anteriores: como todas são múltiplas de 7 dias,
+   caem no mesmo dia da semana e a comparação é alinhada por construção. Sem isto o alerta
+   vermelho fica aceso pra sempre até alguém tocar em "Feito", e alerta permanente é alerta
+   invisível. Idempotente: no máximo uma marcação por semana. */
+function autoDetectDeload(){
+  const semAtual=weeksTraining();
+  if(semAtual<4) return;
+  if((ST.meta.lastDeloadWeek||0) >= semAtual-1) return;
+  const atual=setsInWeekEnding(today());
+  const refs=[];
+  for(let k=1;k<=4;k++) refs.push(setsInWeekEnding(dateAdd(today(), -7*k)));
+  const treinadas=refs.filter(v=>v>0);
+  if(treinadas.length<2) return;
+  const media=treinadas.reduce((a,b)=>a+b,0)/treinadas.length;
+  if(media<=0) return;
+  if(atual <= media*0.6){
+    ST.meta.lastDeloadWeek=Math.max(1, semAtual-1);
+    ST.meta.lastDeloadAuto=true;
+    saveK('meta');
+  }
+}
 function needsDeload(){
   // a cada 5 semanas treinadas sem pausa
   const last=ST.meta.lastDeloadWeek||0;
@@ -3519,31 +3663,31 @@ function renderDay(d){
     }
     const todCmt=(tod&&tod.cmt)||'';
 
-    // sugestão próxima carga
-    const sug=suggestNext(id, e);
+    /* UM estado, UMA mensagem, UMA ação. Antes eram três banners independentes que podiam
+       aparecer juntos dizendo coisas opostas na mesma tela. */
+    const st = progressState(id, e);
+    const sug = st && st.sug;
     const sugBlock = sug ? `<div class="suggest">${I.spark}<span>Meta: <span class="v">${fmtKg(sug.kg)}kg × ${sug.reps}</span></span><span class="why">${sug.why}</span></div>` : '';
 
-    // plateau + sugestão de troca de exercício
-    const plateau=detectPlateau(id);
-    const swap = shouldSwapExercise(id);
+    const swap = st && st.k==='trocar';
     const alts = EXERCISE_ALTERNATIVES[e.n] || [];
     let platBlock2 = '';
-    if(swap && alts.length){
-      const wks = weeksOnExercise(id);
-      const reason = swap==='plateau-pos-deload'
-        ? `Plateau persistente após deload · ${wks} sem nesse exercício`
-        : `${wks} semanas no mesmo exercício · oportunidade de variar ângulo (Schoenfeld 2021)`;
+    if(swap){
       platBlock2 = `<div class="swap">
-        <div class="swap-head">${I.trend} Considere trocar: <b>${reason}</b></div>
-        <div class="swap-list">${alts.map(a=>`<div class="swap-alt">• ${esc(a)}</div>`).join('')}</div>
-        <div class="swap-foot">Posição alongada cresce mais (Wolf et al 2023). Próximo treino: testa uma alternativa.</div>
+        <div class="swap-head">${I.trend} <b>${esc(st.msg)}</b></div>
+        ${alts.length ? `<div class="swap-list">${alts.map(a=>`<div class="swap-alt">• ${esc(a)}</div>`).join('')}</div>` : ''}
+        <div class="swap-foot">${esc(st.nota)} Prefira a versão mais alongada (Wolf et al 2023).</div>
         <div class="swap-acts">
           <button class="swap-btn" onclick="markExerciseSwapped('${id}')">Troquei — reiniciar progressão</button>
           <button class="swap-btn ghost" onclick="snoozeSwap('${id}')">Manter esse</button>
         </div>
       </div>`;
-    } else if(plateau){
-      platBlock2 = `<div class="plateau">${I.flame} 3 sessões sem progresso · tenta deload essa semana (volume -50% ou kg -20%) antes de trocar exercício</div>`;
+    } else if(st && st.k==='mantendo'){
+      platBlock2 = `<div class="holding">${I.check2} ${esc(st.msg)}<span class="stnote">${esc(st.nota)}</span></div>`;
+    } else if(st && (st.k==='fadiga' || st.k==='travado-passo' || st.k==='travado')){
+      platBlock2 = `<div class="plateau">${I.flame} ${esc(st.msg)}<span class="stnote">${esc(st.nota)}</span></div>`;
+    } else if(st && st.nota){
+      platBlock2 = `<div class="suggest" style="opacity:.85"><span class="why" style="margin:0">${esc(st.nota)}</span></div>`;
     }
 
     // Banner "feito ontem em casa" — se sessão livre de ontem cobre esse exercício
@@ -5471,6 +5615,7 @@ async function boot(){
   setTimeout(checkBackupReminder, 1500);
 }
 setTimer(90);
+try{ autoDetectDeload(); }catch(_){}   // semana leve se marca sozinha, sem depender de botão
 render();
 boot();
 </script>
