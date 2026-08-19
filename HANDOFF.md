@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-08-19.01 (**Prioridades alinhadas ao objetivo** — as ★ da aba Corpo marcavam bíceps/tríceps e não marcavam costas, contra o objetivo declarado "grande, largo, peito e laterais". Auditoria de volume: braços somam 33 séries/sem contra 19 do peito. SHELL v23)
+**Última atualização:** 2026-08-19.02 (**Ombro posterior 6→10 séries** — única lacuna real depois de refazer a conta separando trabalho direto de carona. Ver § Correção da auditoria de volume. SHELL v24)
+
+**Antes: 2026-08-19.01** (**Prioridades alinhadas ao objetivo** — as ★ da aba Corpo marcavam bíceps/tríceps e não marcavam costas, contra o objetivo declarado "grande, largo, peito e laterais". Auditoria de volume: braços somam 33 séries/sem contra 19 do peito. SHELL v23)
 
 **Antes: 2026-07-28.01** (**Auditoria do módulo de treino** — 2 bugs corrigidos: datas em UTC (treino à noite caía no dia seguinte) e falso plateau nas faixas 12-20. Mais: troca de exercício com fronteira + snooze, série extra no log, incremento inferido do equipamento, preset do timer 2:00→2:30. SHELL v21)
 
@@ -705,6 +707,27 @@ Só o rótulo mudou; nenhuma série foi mexida. A realocação proposta (trícep
 - **Costas 14 séries, 8 verticais / 6 horizontais** — composição já favorece largura. Na meta.
 - **Pernas 5+5** — baixo, mas é trade-off consciente da restrição (sem agachamento/leg press).
 - **O app só alerta volume ABAIXO da meta, nunca muito ACIMA.** Tríceps a 18 com meta 12 mostra barra cheia e nenhum aviso, enquanto rouba recuperação do prioritário. Uma faixa min-max resolveria.
+
+---
+
+## Correção da auditoria de volume + ombro posterior (2026-08-19.02)
+
+**Erro que eu cometi e a correção.** Na auditoria de 2026-08-19.01 afirmei que "braços recebem 33 séries/semana contra 19 do peito" e propus cortar tríceps e bíceps pra alimentar o peito. **Isso estava errado** — é o mesmo erro de categoria que eu tinha acabado de corrigir no programa dela (contar volume de carona como se fosse trabalho dedicado). Separando:
+
+| | Direto | Carona | Total |
+|---|---|---|---|
+| Tríceps | **11** | 7 (supinos + desenvolvimento) | 18 |
+| Bíceps | **8** | 7 (puxadas + remadas) | 15 |
+| **Braços direto** | **19** | | |
+| **Peito direto** | **16** | | |
+
+São 19 contra 16, não 33 contra 19. E as 14 séries de carona vêm de exercícios que existem pro peito e pras costas de qualquer forma — não dá pra cortar sem cortar peito e costas. **11 séries diretas de tríceps e 8 de bíceps estão em faixa normal, não em excesso.** A proposta de realocação foi retirada: não se sustentava em evidência, era raciocínio de alocação em cima de número inflado.
+
+**O que sobrou, e foi feito: ombro posterior 6 → 10 séries.** Era a única lacuna clara (meta 10, fazia 6) e serve diretamente o objetivo "largo" — deltoide posterior é largura vista de trás e o que fecha o ombro em 3D junto com o lateral. `b_3` e `d_3` foram de 3 para 5 séries cada; `d_3` ganhou cue completo (tinha só "Deltoide posterior."). Total do programa: 101 → 105 séries.
+- **Volume como alavanca, não frequência** (mesmo critério aplicado no glúteo médio dela): a dose-resposta sustenta subir séries num músculo abaixo da meta (Schoenfeld, Ogborn & Krieger 2017); ir de 2 para 3 exposições tem suporte fraco com volume igualado (mesmos autores, 2016). Por isso subi séries nos exercícios existentes em vez de criar um terceiro dia — sem id novo, sem foto nova, sem manutenção.
+- Sem migração: aumentar `s` faz o log renderizar 5 linhas; sessões antigas de 3 séries continuam íntegras (o app já renderiza `max(planejado, salvo)`).
+
+**Avaliação do resto do programa (não mexer):** ombro lateral 16 séries em 4 exposições é o melhor item pro objetivo; costas 14 com viés vertical (8 verticais / 6 horizontais) serve largura; peito 16 diretas em 2x está bem servido. Pernas em 5+5 é baixo, mas é trade-off consciente da restrição de agachamento/leg press.
 
 ---
 
