@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-07-28.01 (**Auditoria do módulo de treino** — 2 bugs corrigidos: datas em UTC (treino à noite caía no dia seguinte) e falso plateau nas faixas 12-20. Mais: troca de exercício com fronteira + snooze, série extra no log, incremento inferido do equipamento, preset do timer 2:00→2:30. SHELL v21)
+**Última atualização:** 2026-08-19.01 (**Prioridades alinhadas ao objetivo** — as ★ da aba Corpo marcavam bíceps/tríceps e não marcavam costas, contra o objetivo declarado "grande, largo, peito e laterais". Auditoria de volume: braços somam 33 séries/sem contra 19 do peito. SHELL v23)
+
+**Antes: 2026-07-28.01** (**Auditoria do módulo de treino** — 2 bugs corrigidos: datas em UTC (treino à noite caía no dia seguinte) e falso plateau nas faixas 12-20. Mais: troca de exercício com fronteira + snooze, série extra no log, incremento inferido do equipamento, preset do timer 2:00→2:30. SHELL v21)
 
 **Antes: 2026-07-27.02** (Feedback do device: fix do overflow dos inputs de medida (width:100%+box-sizing+min-width:0); medidas **customizáveis** (`+ Medida`, com remover) e **editar/corrigir/excluir medição anterior** (toque na data no histórico → modal); fotos com ângulo **custom** (`+ Outra` → nome livre, ex: Bíceps). SHELL v19)
 
@@ -688,6 +690,21 @@ Overlay dizia "2:00 comp." enquanto `REST.comp=150`. Virou **2:30**, alinhado co
 
 ### Verificação
 37 asserts em node rodando o código real (fuso, plateau nos 4 cenários, inferência de passo, fronteira de troca, snooze, série extra + blindagem anti-truncamento, e os 5 renders). Endereços locais são bloqueados no painel do navegador deste ambiente → **o visual (botões novos, layout) segue pra confirmar no device**.
+
+---
+
+## Prioridades alinhadas ao objetivo (2026-08-19.01)
+
+`MG_PRIORITY` (as ★ da aba Corpo) marcava **bíceps e tríceps** como prioridade e deixava **costas** de fora. O objetivo declarado é "grande, largo, peito e laterais". Medindo o volume real extraído do `WK`: braços somam **33 séries/semana** (tríceps 18 + bíceps 15) contra **19 do peito** — e tríceps está 50% acima da própria meta do app (12), sem contar o volume indireto que ele pega de todo supino e desenvolvimento. As ★ agora são **ombro lateral, peito superior, peito médio e costas** (os dois motores da largura + o peito).
+
+Só o rótulo mudou; nenhuma série foi mexida. A realocação proposta (tríceps 18→12, bíceps 15→12, peito médio 7,5→12, ombro posterior 6→10) **aguarda decisão** — envolve escolher em quais exercícios cortar.
+
+### Achados da auditoria de volume (2026-08-19), ainda não implementados
+- **Ombro posterior 6 séries vs meta 10** — é largura vista de trás e saúde do ombro. Subdosado.
+- **Ombro lateral 16 séries em 4 exposições semanais** é o melhor do programa pro objetivo. Não mexer.
+- **Costas 14 séries, 8 verticais / 6 horizontais** — composição já favorece largura. Na meta.
+- **Pernas 5+5** — baixo, mas é trade-off consciente da restrição (sem agachamento/leg press).
+- **O app só alerta volume ABAIXO da meta, nunca muito ACIMA.** Tríceps a 18 com meta 12 mostra barra cheia e nenhum aviso, enquanto rouba recuperação do prioritário. Uma faixa min-max resolveria.
 
 ---
 

@@ -1687,7 +1687,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-15.01';
+const APP_VERSION = '2026-08-19.01';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -1795,7 +1795,10 @@ const MG_COLOR = {
   quadriceps:"#a8e6a8", posterior:"#a8e6a8", panturrilha:"#a8e6a8",
   core:"#f5b94e",
 };
-const MG_PRIORITY = {ombro_lat:true, peito_sup:true, biceps:true, triceps:true};
+/* ★ na aba Corpo = o que o objetivo declarado exige ("grande, largo, peito e laterais").
+   Estava marcando bíceps e tríceps — que recebem 33 séries/semana somados, contra 19 do peito —
+   e deixava costas de fora, que é o outro motor da largura junto com o deltoide lateral. */
+const MG_PRIORITY = {ombro_lat:true, peito_sup:true, peito_med:true, costas:true};
 
 /* Mapeamento exercício → foto. Prefere imagens locais (img/*.jpg) quando existem;
    fallback pro Free Exercise DB (yuhonas/free-exercise-db). */
