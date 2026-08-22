@@ -358,6 +358,34 @@
     border-color:transparent; color:#fff;
     box-shadow:0 1px 0 rgba(255,255,255,.25) inset, 0 4px 12px -2px rgba(81,216,138,.5);
   }
+  /* ==== SESSÃO CURTA ==== */
+  .timecap{
+    background:var(--glass); border:1px solid var(--line-2);
+    border-radius:16px; padding:13px 14px; margin-bottom:14px;
+  }
+  .tc-hd{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:10px;}
+  .tc-l{font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--faint); font-weight:700;}
+  .tc-v{font-size:17px; font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums;}
+  .tc-v small{font-size:11px; color:var(--muted); font-weight:600;}
+  .tc-opts{display:flex; gap:7px;}
+  .tc-opt{
+    flex:1; padding:9px 6px; border-radius:11px; cursor:pointer; font-family:inherit;
+    font-size:12.5px; font-weight:600; color:var(--ink2);
+    background:var(--glass-2); border:1px solid var(--line-2);
+  }
+  .tc-opt.on{background:var(--pull-grad); color:#fff; border-color:transparent;}
+  .tc-opt:active{opacity:.82;}
+  .tc-note{font-size:11.5px; color:var(--muted); line-height:1.5; margin-top:10px;}
+  .tc-note b{color:var(--core);}
+  .ex.skipped{opacity:.45;}
+  .ex.skipped .photo{filter:grayscale(1);}
+  .skiptag{
+    display:flex; align-items:center; gap:6px; margin-bottom:10px;
+    font-size:11.5px; font-weight:700; color:var(--muted);
+    background:rgba(255,255,255,.04); border:1px solid var(--line);
+    border-radius:10px; padding:7px 10px;
+  }
+  .skiptag svg{width:13px; height:13px; flex:none;}
   .addset{
     width:100%; margin-top:8px; padding:9px; border-radius:11px; cursor:pointer;
     display:flex; align-items:center; justify-content:center; gap:6px;
@@ -1687,7 +1715,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.02';
+const APP_VERSION = '2026-08-19.03';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -3469,6 +3497,104 @@ function autoDetectDeload(){
     saveK('meta');
   }
 }
+/* ============ SESSÃO CURTA — "hoje só tenho X min" ============
+   Mesmo padrão do "dia de mais cardio" do app dela: o usuário sinaliza a restrição e o app
+   decide o que sai. A diferença é que aqui existe histórico REAL de duração
+   (ST.session.history.activeMs), então a estimativa é calibrada no ritmo dele em vez de
+   confiar num modelo genérico. */
+
+// Minutos estimados de um exercício: execução + descanso por série (+ aquecimento nos compostos).
+// Unilateral ("por lado") conta dobrado — são duas execuções por série registrada.
+const EXEC_SEC = {comp:45, iso:35, core:40};
+function exMinutes(e){
+  if(!e) return 0;
+  const sets = (parseInt(e.s)||3) * (/por lado/i.test(String(e.r||'')) ? 2 : 1);
+  const exec = EXEC_SEC[e.t] ?? 35;
+  const rest = REST[e.t] ?? 90;
+  const warm = e.t==='comp' ? 2*(25+45) : 0;     // 2 séries de aquecimento
+  return (sets*(exec+rest) + warm)/60;
+}
+// Fator que aproxima o modelo do tempo que ELE de fato leva neste treino (mediana do histórico).
+// Sem histórico suficiente, fica 1 (modelo puro). Limitado pra um outlier não distorcer tudo.
+function paceFactor(d){
+  const h=sessionsForDay(d).filter(r=>r && r.activeMs>0);
+  if(h.length<2) return 1;
+  const mins=h.slice(0,6).map(r=>r.activeMs/60000).sort((a,b)=>a-b);
+  const real=mins[Math.floor(mins.length/2)];
+  const modelo=(WK[d]?WK[d].ex:[]).reduce((a,e)=>a+exMinutes(e),0);
+  if(!(modelo>0) || !(real>0)) return 1;
+  return Math.min(1.8, Math.max(0.6, real/modelo));
+}
+function dayEstMin(d){
+  const f=paceFactor(d);
+  return Math.round((WK[d]?WK[d].ex:[]).reduce((a,e)=>a+exMinutes(e),0)*f);
+}
+
+/* Quanto vale manter cada exercício hoje. Ordem de decisão:
+   (1) o que o corpo ainda NÃO recebeu esta semana (weeklyVolume vs MG_TARGETS),
+   (2) MG_PRIORITY (ombro lateral, peito superior, peito médio, costas),
+   (3) composto pesa mais que isolador, core pesa menos. */
+function exValue(e){
+  const vol=weeklyVolume();
+  let sc=0;
+  for(const [mg,w] of Object.entries(e.mg||{})){
+    const meta=MG_TARGETS[mg]||0, feito=vol[mg]||0;
+    const falta = meta>0 ? Math.max(0, Math.min(1,(meta-feito)/meta)) : 0.5;
+    sc += w*(falta*2 + (MG_PRIORITY[mg] ? 1.5 : 0));
+  }
+  if(e.t==='comp') sc+=1;
+  if(e.t==='core') sc-=0.3;
+  return sc;
+}
+/* Plano da sessão curta. Protege, nesta ordem:
+   - o PRIMEIRO exercício do dia (é o principal, e exercício no começo rende mais — Simão 2012);
+   - pelo menos UM exercício de cada músculo prioritário presente no dia (senão o corte apagaria
+     justamente o objetivo — manter estímulo na prioridade importa mais que espalhar o corte,
+     porque manter músculo exige bem menos volume que construir, Bickel 2011);
+   - um piso de 3 exercícios: abaixo disso não é treino, é passagem pela academia. */
+function shortPlan(d, alvoMin){
+  const ex=(WK[d]?WK[d].ex:[]);
+  const f=paceFactor(d);
+  const min=ex.map(e=>exMinutes(e)*f);
+  const total=min.reduce((a,b)=>a+b,0);
+  const fora=new Set();
+  if(!(alvoMin>0) || total<=alvoMin) return {fora, estMin:Math.round(total), total:Math.round(total), coube:true};
+
+  // um guardião por músculo prioritário presente hoje: o de maior valor
+  const guard=new Set([0]);
+  for(const mg of Object.keys(MG_PRIORITY)){
+    let melhor=-1, best=-Infinity;
+    ex.forEach((e,i)=>{ if((e.mg||{})[mg]>=1){ const v=exValue(e); if(v>best){best=v; melhor=i;} } });
+    if(melhor>=0) guard.add(melhor);
+  }
+  const cand=ex.map((e,i)=>i).filter(i=>!guard.has(i)).sort((a,b)=> exValue(ex[a])-exValue(ex[b]) || b-a);
+  const maxFora=Math.max(0, ex.length-3);
+  let atual=total;
+  for(const i of cand){
+    if(atual<=alvoMin || fora.size>=maxFora) break;
+    fora.add(i); atual-=min[i];
+  }
+  return {fora, estMin:Math.round(atual), total:Math.round(total), coube:atual<=alvoMin};
+}
+
+// Marcação por data (só hoje), expira em 30 dias, entra no backup junto com ST.meta.
+function shortDayMin(d){
+  const m=(ST.meta && ST.meta.shortDays) || {};
+  const r=m[today()];
+  return (r && r.d===d) ? r.min : 0;
+}
+function setShortDay(d, min){
+  if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
+  ST.meta.shortDays=ST.meta.shortDays||{};
+  const t=today();
+  if(!min) delete ST.meta.shortDays[t];
+  else ST.meta.shortDays[t]={d, min};
+  for(const k of Object.keys(ST.meta.shortDays)){
+    if(daysBetween(k,t)>30 || daysBetween(k,t)<-1) delete ST.meta.shortDays[k];
+  }
+  saveK('meta'); render();
+}
+
 function needsDeload(){
   // a cada 5 semanas treinadas sem pausa
   const last=ST.meta.lastDeloadWeek||0;
@@ -3638,8 +3764,27 @@ function renderDay(d){
     </div>`;
   }
 
+  // Sessão curta: controle de tempo + plano do que sai hoje
+  const capMin=shortDayMin(d);
+  const plano=shortPlan(d, capMin);
+  /* Rótulos honestos: com descanso de 2:30 nos compostos, 3 exercícios já custam ~40 min.
+     Um botão "30 min" nunca entregaria 30 — então o mais curto se chama Essencial e a UI diz
+     o número real que sobrou, em vez de prometer um alvo que o protocolo não permite. */
+  const opcoes=[[0,'Completo'],[45,'45 min'],[25,'Essencial']].map(([mm,rot])=>
+    `<button class="tc-opt ${mm===capMin?'on':''}" onclick="setShortDay('${d}',${mm})">${rot}</button>`).join('');
+  const cortados=[...plano.fora].length;
+  h+=`<div class="timecap">
+    <div class="tc-hd">
+      <span class="tc-l">Tempo hoje</span>
+      <span class="tc-v">~${capMin?plano.estMin:plano.total} min${capMin?` <small>de ${plano.total}</small>`:''}</span>
+    </div>
+    <div class="tc-opts">${opcoes}</div>
+    ${capMin ? `<div class="tc-note">${cortados? `${cortados} exercício${cortados>1?'s':''} marcado${cortados>1?'s':''} pra pular — ficou o que mais falta na semana e o que serve as prioridades. Continua registrável se sobrar tempo.` : 'Já cabe no tempo, não precisei cortar nada.'}${!plano.coube&&cortados?` <b>Piso de ~${plano.estMin} min</b>: cortar mais deixaria de ser treino, e encurtar descanso custaria estímulo.`:''}</div>` : ''}
+  </div>`;
+
   w.ex.forEach((e,i)=>{
     const id=exId(d,i);
+    const pular=plano.fora.has(i);
     const last=lastSession(id);
     const tod=todaySession(id);
     const pillT = e.t==="comp"?"composto":(e.t==="core"?"core":"isolador");
@@ -3748,9 +3893,10 @@ function renderDay(d){
            </div>
          </div>`;
 
-    h+=`<div class="ex">
+    h+=`<div class="ex${pular?' skipped':''}">
       ${photoBlock}
       <div class="body">
+        ${pular?`<div class="skiptag">${I.moon} Pular hoje · libera ~${Math.round(exMinutes(e)*paceFactor(d))} min</div>`:''}
         <div class="target">
           <span class="met"><b>${e.s}</b> séries</span>
           <span class="dot"></span>

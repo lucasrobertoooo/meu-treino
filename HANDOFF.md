@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-08-19.02 (**Ombro posterior 6→10 séries** — única lacuna real depois de refazer a conta separando trabalho direto de carona. Ver § Correção da auditoria de volume. SHELL v24)
+**Última atualização:** 2026-08-19.03 (**Sessão curta** — "hoje só tenho X min": o app decide o que pular, protegendo o principal e as prioridades, com estimativa calibrada no ritmo real dele. SHELL v25)
+
+**Antes: 2026-08-19.02** (**Ombro posterior 6→10 séries** — única lacuna real depois de refazer a conta separando trabalho direto de carona. Ver § Correção da auditoria de volume. SHELL v24)
 
 **Antes: 2026-08-19.01** (**Prioridades alinhadas ao objetivo** — as ★ da aba Corpo marcavam bíceps/tríceps e não marcavam costas, contra o objetivo declarado "grande, largo, peito e laterais". Auditoria de volume: braços somam 33 séries/sem contra 19 do peito. SHELL v23)
 
@@ -728,6 +730,37 @@ São 19 contra 16, não 33 contra 19. E as 14 séries de carona vêm de exercíc
 - Sem migração: aumentar `s` faz o log renderizar 5 linhas; sessões antigas de 3 séries continuam íntegras (o app já renderiza `max(planejado, salvo)`).
 
 **Avaliação do resto do programa (não mexer):** ombro lateral 16 séries em 4 exposições é o melhor item pro objetivo; costas 14 com viés vertical (8 verticais / 6 horizontais) serve largura; peito 16 diretas em 2x está bem servido. Pernas em 5+5 é baixo, mas é trade-off consciente da restrição de agachamento/leg press.
+
+---
+
+## Sessão curta — "hoje só tenho X min" (2026-08-19.03)
+
+Mesmo padrão do "dia de mais cardio" do app dela: o usuário sinaliza a restrição, o app decide o que sai. Controle no topo do treino aberto com três opções: **Completo · 45 min · Essencial**.
+
+### Estimativa calibrada no ritmo real (diferença em relação ao app dela)
+`exMinutes(e)` modela execução + descanso por série (+2 séries de aquecimento nos compostos; unilateral conta dobrado). Mas este app tem `ST.session.history` com `activeMs` medido — então `paceFactor(d)` compara o modelo com a **mediana das últimas 6 sessões daquele treino** e escala tudo pelo ritmo dele. Sem 2+ sessões registradas, fator 1 (modelo puro). Limitado a 0,6-1,8 pra um outlier não distorcer.
+
+Estimativa do modelo puro: A ~66 · B ~75 · C ~64 · D ~75 min.
+
+### Ordem de decisão (`exValue` + `shortPlan`)
+Pontuação por exercício: (1) quanto do músculo **ainda falta na semana** (`weeklyVolume` vs `MG_TARGETS`), (2) `MG_PRIORITY`, (3) composto soma, core desconta. Corta do menor valor até caber.
+
+**Três proteções duras:**
+- **O primeiro exercício do dia nunca sai** — é o principal, e exercício no começo da sessão rende mais (Simão et al 2012).
+- **Pelo menos um exercício de cada músculo prioritário presente no dia** — senão o corte apagaria justamente o objetivo. Manter estímulo na prioridade importa mais que espalhar o corte, porque manter músculo exige bem menos volume que construir (Bickel et al 2011).
+- **Piso de 3 exercícios.**
+
+Exercício marcado pra pular **continua registrável** e conta no volume — se sobrar tempo, é só fazer.
+
+### Por que "Essencial" e não "30 min"
+Com descanso de 2:30 nos compostos (Schoenfeld 2016, Grgic 2017 — protocolo que este app segue), **três exercícios já custam ~36-42 min**. Um botão "30 min" nunca entregaria 30. Cortar mais deixaria de ser treino; encurtar descanso custaria estímulo. Então o mais curto se chama **Essencial** e a UI informa o piso real que sobrou, em vez de prometer um alvo que o protocolo não permite.
+
+O que o Essencial preserva (semana zerada): **A** supino inclinado + supino reto + elevação lateral · **B** puxada + remada + lateral unilateral · **C** desenvolvimento + lateral inclinada + supino inclinado + peck deck · **D** puxada neutra + remada + lateral cabo atrás. Ou seja, compostos e laterais — exatamente o objetivo.
+
+Marcação por data em `ST.meta.shortDays`, expira em 30 dias, entra no backup.
+
+### Verificação
+Testado em node no código real: calibração pelo histórico (50 min medidos → estimativa vira 50), o termo de déficit funcionando (mesmo exercício vale 2,00 com músculo zerado e 0,00 com ele cheio), as três proteções em 8 combinações (4 dias × 2 alvos), e o ciclo de UI (marcar, mostrar quanto libera, voltar pro Completo limpa).
 
 ---
 
