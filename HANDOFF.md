@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-08-19.03 (**Sessão curta** — "hoje só tenho X min": o app decide o que pular, protegendo o principal e as prioridades, com estimativa calibrada no ritmo real dele. SHELL v25)
+**Última atualização:** 2026-08-19.04 (**Estado `carga-alta`** — o app nunca mandava BAIXAR carga: quem ficava abaixo do piso da faixa via "foca em chegar no mínimo" com a mesma carga pra sempre. SHELL v26)
+
+**Antes: 2026-08-19.03** (**Sessão curta** — "hoje só tenho X min": o app decide o que pular, protegendo o principal e as prioridades, com estimativa calibrada no ritmo real dele. SHELL v25)
 
 **Antes: 2026-08-19.02** (**Ombro posterior 6→10 séries** — única lacuna real depois de refazer a conta separando trabalho direto de carona. Ver § Correção da auditoria de volume. SHELL v24)
 
@@ -761,6 +763,26 @@ Marcação por data em `ST.meta.shortDays`, expira em 30 dias, entra no backup.
 
 ### Verificação
 Testado em node no código real: calibração pelo histórico (50 min medidos → estimativa vira 50), o termo de déficit funcionando (mesmo exercício vale 2,00 com músculo zerado e 0,00 com ele cheio), as três proteções em 8 combinações (4 dias × 2 alvos), e o ciclo de UI (marcar, mostrar quanto libera, voltar pro Completo limpa).
+
+---
+
+## Estado `carga-alta` — o app nunca mandava baixar carga (2026-08-19.04)
+
+**Sintoma real:** travado há mais de um mês no crucifixo inverso, sem fechar 15 reps com 15kg, e o app repetindo "Meta: 15kg × 15" toda semana.
+
+**Causa.** `suggestFrom` tem três saídas e a terceira era um beco: `minRepsTop < rng.min` → `{kg:maxKg, reps:rng.min, why:"foca em chegar no mínimo"}`. Ou seja, **o app não tinha nenhum caminho que sugerisse reduzir carga** — abaixo do piso da faixa ele mandava insistir no mesmo peso indefinidamente. E `progressState` também não cobria: `tentando` só pega a sessão logo após subir carga, `travado-passo` só pega o topo da faixa, e o resto caía em `travado` ("confere sono e comida").
+
+**Novo estado `carga-alta`.** Dispara com 3+ sessões consecutivas abaixo do piso da faixa na mesma carga (ou maior). Sugere descer um passo de equipamento (`loadStepFor`) ou 10%, com a meta apontando pro piso da faixa.
+
+**Detalhe que quase me escapou:** não dá pra usar o contador `travadas` aqui. Com as reps oscilando 12→13→12→14, o topo sobe de vez em quando, `travadas` zera e o app classificava como **`progredindo`** — enquanto a pessoa estava parada abaixo do piso há 5 semanas. O sinal certo é ficar abaixo do piso na mesma carga, independente do vaivém de 1 rep. Um teste com esse cenário reprovou minha primeira versão da correção.
+
+**Segundo erro no caminho:** inseri o bloco depois do `if(travadas<2) return {k:'progredindo'}`, então ele nunca era alcançado justamente no caso que precisava tratar. Ordem correta em `progressState`: `tentando` → **`carga-alta`** → `travadas` → `progredindo` → `fadiga` → `travado-passo` → `mantendo` → `trocar` → `travado`.
+
+**Fundamento.** A faixa de reps é parte da prescrição: se a carga não permite alcançar o piso, ela está acima do que o exercício pede. Num isolador o custo é maior — carga excessiva vira impulso e trapézio no lugar do músculo-alvo.
+
+**Nota sobre o ombro posterior:** as séries do crucifixo inverso tinham acabado de subir de 3 para 5 (2026-08-19.02) num exercício onde ele já estava travado — mais volume numa carga que não fechava a faixa. Resolver a carga vem primeiro; o volume só rende depois disso.
+
+Verificado com 13 asserts no código real, incluindo comparação lado a lado com a versão anterior e 5 cenários que NÃO podem disparar o estado.
 
 ---
 

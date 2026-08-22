@@ -1715,7 +1715,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.03';
+const APP_VERSION = '2026-08-19.04';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -3069,6 +3069,27 @@ function progressState(id, e){
   // Carga nova e ainda abaixo do mínimo da faixa: é o esperado na dupla progressão.
   if(cur.kg>prev.kg && cur.reps<rng.min)
     return {k:'tentando', sug, msg:'', nota:`Carga nova. O trabalho agora é chegar em ${rng.min} reps antes de subir de novo.`};
+  /* PRESO ABAIXO DO PISO DA FAIXA = a carga está alta demais pro que o exercício pede.
+     Antes isso caía no ramo genérico do suggestFrom ("foca em chegar no mínimo") e o app
+     repetia a MESMA carga indefinidamente: quem não fecha 15 reps com 15kg há um mês
+     continuava vendo "15kg × 15" pra sempre, sem nunca ser mandado descer.
+     NÃO dá pra usar o contador `travadas` aqui: com as reps oscilando 12→13→12→14, o topo
+     sobe de vez em quando e `travadas` zera, então o app via "progredindo" enquanto a pessoa
+     estava parada abaixo do piso há semanas. O sinal certo é ficar ABAIXO do piso na mesma
+     carga, sessão após sessão, independente do vaivém de 1 rep. */
+  let abaixo=0;
+  for(let i=tops.length-1;i>=0;i--){
+    if(tops[i].reps < rng.min && tops[i].kg >= cur.kg) abaixo++; else break;
+  }
+  if(abaixo>=3){
+    const step=loadStepFor(id, e) || 0;
+    const novo = step ? Math.max(step, cur.kg-step) : Math.round(cur.kg*0.9*2)/2;
+    const pct = cur.kg ? Math.round((cur.kg-novo)/cur.kg*100) : 0;
+    return {k:'carga-alta',
+      sug:{kg:novo, reps:rng.min, why:'desce a carga pra entrar na faixa', de:cur.kg, inc:step},
+      msg:`${abaixo} sessões sem fechar ${rng.min} reps com ${fmtKg(cur.kg)}kg (última: ${cur.reps}).`,
+      nota:`A faixa ${e.r} faz parte da prescrição: se a carga não deixa chegar no piso dela, está acima do que o exercício pede — e num isolador isso vira impulso e trapézio em vez do músculo-alvo. Desce pra ${fmtKg(novo)}kg (${pct}% menos), fecha ${rng.min}-${rng.max} com controle, e sobe de novo a partir dali.`};
+  }
   let travadas=0;
   for(let i=tops.length-1;i>0;i--){ if(cmpTop(tops[i],tops[i-1])<=0) travadas++; else break; }
   if(travadas<2) return {k:'progredindo', sug, msg:''};   // 1 sessão parada é ruído normal
@@ -3832,7 +3853,7 @@ function renderDay(d){
       </div>`;
     } else if(st && st.k==='mantendo'){
       platBlock2 = `<div class="holding">${I.check2} ${esc(st.msg)}<span class="stnote">${esc(st.nota)}</span></div>`;
-    } else if(st && (st.k==='fadiga' || st.k==='travado-passo' || st.k==='travado')){
+    } else if(st && (st.k==='fadiga' || st.k==='travado-passo' || st.k==='travado' || st.k==='carga-alta')){
       platBlock2 = `<div class="plateau">${I.flame} ${esc(st.msg)}<span class="stnote">${esc(st.nota)}</span></div>`;
     } else if(st && st.nota){
       platBlock2 = `<div class="suggest" style="opacity:.85"><span class="why" style="margin:0">${esc(st.nota)}</span></div>`;
