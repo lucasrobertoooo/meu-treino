@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-08-19.05 (**Reordenação por prioridade declarada** — 1º peito, 2º braços, 3º largura, 4º inferiores. Peito 16→21 e braços 19→27 séries diretas, mesmo volume total. `MG_TIER` substitui o booleano `MG_PRIORITY`. SHELL v27)
+**Última atualização:** 2026-08-19.06 (**Blocos de ênfase** — peito/braços 12 semanas ↔ perna 8 semanas. Cada bloco redefine tiers E séries planejadas; o app conta as semanas e avisa a virada. SHELL v28)
+
+**Antes: 2026-08-19.05 (**Reordenação por prioridade declarada** — 1º peito, 2º braços, 3º largura, 4º inferiores. Peito 16→21 e braços 19→27 séries diretas, mesmo volume total. `MG_TIER` substitui o booleano `MG_PRIORITY`. SHELL v27)
 
 **Antes: 2026-08-19.04 (**Estado `carga-alta`** — o app nunca mandava BAIXAR carga: quem ficava abaixo do piso da faixa via "foca em chegar no mínimo" com a mesma carga pra sempre. SHELL v26)
 
@@ -819,6 +821,28 @@ Ranking novo do Lucas: **1º peito (muito), 2º braços, 3º largura geral, 4º 
 
 ### Verificação
 Comparação posicional automática antes/depois (o teste que garante que nenhum histórico gruda no exercício errado), `tierWeight` nos 4 níveis, o modo Essencial preservando peito e tríceps no dia A, os badges de tier na aba Corpo e os 7 renders.
+
+---
+
+## Blocos de ênfase (2026-08-19.06)
+
+**O problema que resolve.** Lucas quer crescer tudo, treinando 4x/semana. Espalhar volume entre todos deixa cada músculo abaixo do limiar de crescimento (~10 séries/semana — Schoenfeld, Ogborn & Krieger 2017). **As pernas dele já estavam nessa situação muito antes de qualquer priorização**: 5 séries de quadríceps e 5 de posterior nunca cresceram nada. Eu tinha apresentado o volume como uma pizza fixa, o que estava errado — hipertrofia é específica ao músculo; o que limita é recuperação e tempo de sessão, não uma cota. A saída correta com 4 dias é concentrar por bloco e manter o resto (manter custa bem menos volume que construir — Bickel et al 2011).
+
+Descartada a alternativa de espalhar perna nos 4 dias: exercício executado no fim de uma sessão de 25+ séries recebe estímulo ruim (Simão et al 2012), então seriam 10 min a mais por dia pra treinar perna cansado.
+
+### Como funciona
+`BLOCOS` define dois blocos, cada um com **tier** (ranking) e **sets** (séries planejadas):
+- **`peito_bracos`, 12 semanas** — peito 21, tríceps 13, bíceps 14; perna 8, core 6. É o que está escrito no `s:` do `WK`.
+- **`perna`, 8 semanas** — quadríceps 10, posterior 10, panturrilha 4; peito 14, braços 16. Sobrescreve as séries por `id` em `sets`.
+
+`exSets(e)` devolve as séries do bloco ativo; `tierOf(mg)` devolve o tier. Substituíram todas as leituras de `e.s` (ABCD — `HOME_SESSIONS` fica de fora) e o `MG_TIER` fixo. `MG_PRIORITY` virou derivado, recalculado por `recalcPrioridades()` — que precisa rodar **antes do 1º `render()`**, porque `render()` acontece antes de `boot()`.
+
+Estado em `ST.meta.bloco` + `ST.meta.blocoDesde`. Card no topo da aba Treinos mostra bloco, semana N/M, barra de progresso e botão de virar; quando vence, o card muda de cor e o botão fica em destaque. **Trocar de bloco não toca em `ST.logs`** — só nas séries planejadas e nos tiers.
+
+Efeito colateral desejado: o modo **Essencial** (sessão curta) passa a proteger o foco do bloco ativo. No bloco de perna, o Essencial de B mantém flexora e extensora.
+
+### Verificação
+27 asserts no código real: volumes dos dois blocos, inversão dos tiers, `exSets` aplicando overrides, contagem de semanas e detecção de vencimento nos dois blocos, `ST.logs` intacto após a troca (ida e volta), o Essencial seguindo o foco de cada bloco, e os 7 renders.
 
 ---
 
