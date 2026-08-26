@@ -441,6 +441,21 @@
   .curva{display:flex; align-items:center; gap:9px; margin:-4px 0 10px;}
   .cv-t{font-size:10.5px; color:var(--faint); font-weight:600;}
   .cv-t b{margin-left:5px; font-size:11.5px;}
+  .bwrate{
+    display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+    margin-top:10px; padding:9px 11px; border-radius:12px;
+    background:rgba(255,255,255,.03); border:1px solid var(--line);
+  }
+  .bwrate .bwr-v{font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.01em;}
+  .bwrate .bwr-v small{font-size:10.5px; font-weight:600; color:var(--muted); margin-left:2px;}
+  .bwrate .bwr-p{font-size:12px; font-weight:700; color:var(--muted); font-variant-numeric:tabular-nums;}
+  .bwrate .bwr-t{font-size:11.5px; font-weight:600; margin-left:auto;}
+  .bwrate.ok   .bwr-v, .bwrate.ok   .bwr-t{color:var(--ok);}
+  .bwrate.fast .bwr-v, .bwrate.fast .bwr-t{color:var(--push);}
+  .bwrate.slow .bwr-v, .bwrate.slow .bwr-t{color:var(--core);}
+  .bwrate.flat .bwr-v, .bwrate.flat .bwr-t{color:var(--muted);}
+  .bwrate.down .bwr-v, .bwrate.down .bwr-t{color:var(--push);}
+  .bwrate.none{font-size:11.5px; color:var(--faint); font-weight:500;}
   .addset{
     width:100%; margin-top:8px; padding:9px; border-radius:11px; cursor:pointer;
     display:flex; align-items:center; justify-content:center; gap:6px;
@@ -1770,7 +1785,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.08';
+const APP_VERSION = '2026-08-19.09';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -3220,8 +3235,33 @@ function bwTrend(days){
   win.sort((a,b)=> a.date<b.date ? -1 : 1);
   const n=Math.max(2, Math.round(win.length/3));
   const avg=arr=>arr.reduce((a,b)=>a+num(b.kg),0)/arr.length;
-  const semanas=Math.max(1, daysBetween(win[0].date, win[win.length-1].date)/7);
+  /* O divisor tem que ser a distância entre os CENTROS dos dois grupos, não o período
+     inteiro da janela: os grupos são médias, e o centro de cada um cai pra dentro das
+     pontas. Dividir pelo span total subestimava o ritmo em ~33% (4 pesagens semanais
+     subindo 0,36kg/sem viravam 0,24). Mesmo bug corrigido no app dela em 2026-08-19.01. */
+  const dia=b=>daysBetween(win[0].date, b.date);
+  const avgDia=arr=>arr.reduce((a,b)=>a+dia(b),0)/arr.length;
+  const semanas=Math.max(0.5, (avgDia(win.slice(-n)) - avgDia(win.slice(0,n)))/7);
   return (avg(win.slice(-n)) - avg(win.slice(0,n))) / semanas;
+}
+/* RITMO DE GANHO — portado do app dela, com a faixa invertida (lá é perda de gordura).
+   O card de peso mostrava só "delta desde a primeira pesagem", que só cresce e nunca
+   responde a pergunta que importa num superávit: estou ganhando no ritmo certo?
+   Faixa-alvo 0,25-0,5% do peso por semana: acima disso o excedente vira gordura sem
+   acelerar músculo (Garthe et al 2013). Precisa de 4+ pesagens em 28 dias. */
+function bwRateInfo(){
+  const kgSem = bwTrend(28);
+  if(kgSem===null) return null;
+  const ref = (ST.bw && ST.bw.length) ? num(ST.bw[ST.bw.length-1].kg) : 0;
+  if(!(ref>0)) return null;
+  const pct=(kgSem/ref)*100;          // positivo = ganhando
+  let k, txt;
+  if(pct>=0.25 && pct<=0.5)  { k='ok';   txt='no alvo'; }
+  else if(pct>0.5)           { k='fast'; txt='rápido — o excedente vira gordura'; }
+  else if(pct>0.05)          { k='slow'; txt='devagar pro alvo'; }
+  else if(pct>=-0.15)        { k='flat'; txt='parado — não está em superávit'; }
+  else                       { k='down'; txt='caindo'; }
+  return {kgSem, pct, k, txt};
 }
 function fmtStep(v){ return (Math.round(v*10)/10).toString().replace('.',','); }
 function progressState(id, e){
@@ -4912,6 +4952,13 @@ function renderCorpo(){
         <div><div class="l">Peso corporal</div><div class="v">${lastBW.kg}<small>kg</small></div></div>
         <div class="delta ${deltaClass}">${deltaSign}${deltaBW.toFixed(1)}kg em ${bws.length} pesagens</div>
       </div>
+      ${(()=>{ const r=bwRateInfo();
+        if(!r) return `<div class="bwrate none">Pesa 4x ou mais em 4 semanas e eu mostro teu ritmo aqui</div>`;
+        return `<div class="bwrate ${r.k}">
+          <span class="bwr-v">${r.kgSem>=0?'+':'−'}${Math.abs(r.kgSem).toFixed(2).replace('.',',')}<small>kg/sem</small></span>
+          <span class="bwr-p">${Math.abs(r.pct).toFixed(2).replace('.',',')}%</span>
+          <span class="bwr-t">${r.txt}</span>
+        </div>`; })()}
       <svg class="spark" viewBox="0 0 ${w} ${hh}" preserveAspectRatio="none">
         <polyline points="${pts}" fill="none" stroke="url(#sg)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
         <defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#5b9eff"/><stop offset="100%" stop-color="#7ab2ff"/></linearGradient></defs>

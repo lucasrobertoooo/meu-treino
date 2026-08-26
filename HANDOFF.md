@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-08-19.08 (**Curva de progresso por exercício** + **revisão de acessórios na virada de bloco** — fecha os 4 itens da auditoria de autonomia. SHELL v30)
+**Última atualização:** 2026-08-19.09 (**Ritmo de ganho na aba Corpo** — responde "estou em superávit?" — e **fix do bug do divisor** no `bwTrend`, que subestimava o ritmo em 33%. SHELL v31)
+
+**Antes: 2026-08-19.08 (**Curva de progresso por exercício** + **revisão de acessórios na virada de bloco** — fecha os 4 itens da auditoria de autonomia. SHELL v30)
 
 **Antes: 2026-08-19.07 (**Mesociclo com rampa de volume** + **deload por fadiga medida** em vez de calendário. O RIR coletado há meses virou decisão. SHELL v29)
 
@@ -905,6 +907,23 @@ Quando o bloco vence, o card lista os **isoladores que não progrediram dentro d
 
 ### Verificação
 28 asserts: os três comportamentos da métrica (reps subindo sobe / salto de carga com queda residual medida / mais carga sobe), a curva não desenhando com 2 sessões, a revisão pegando 2 parados e ignorando o composto e o que progrediu, sessões anteriores ao bloco não contando, e os 7 renders.
+
+---
+
+## Ritmo de ganho + bug do bwTrend (2026-08-19.09)
+
+**O bug (achado ao portar).** `bwTrend()` comparava a média dos primeiros N pontos com a dos últimos N, mas dividia pelo período **inteiro** da janela — e o centro de cada grupo cai pra dentro das pontas. Com 4 pesagens semanais subindo 0,30kg/sem, reportava **0,20** (33% a menos). Era o mesmo bug já corrigido no app dela em 2026-08-19.01; este app tinha a versão antiga. Divisor agora é a distância entre os centroides.
+
+Impacto real: `bwTrend` alimenta o estado `mantendo` da progressão (limiar -0,15), que ficava mais difícil de atingir — e teria contaminado o número novo da tela.
+
+**O card (portado do app dela, faixa invertida).** Lá é perda de gordura; aqui é ganho. O card de peso mostrava só "delta desde a primeira pesagem", que só cresce e nunca responde a pergunta de um superávit: *estou ganhando no ritmo certo?* Agora mostra **kg/semana + %/semana + veredito** contra a faixa 0,25-0,5% do peso por semana — acima disso o excedente vira gordura sem acelerar músculo (Garthe et al 2013).
+
+Estados: `no alvo` (verde) · `rápido — o excedente vira gordura` (vermelho) · `devagar pro alvo` (âmbar) · **`parado — não está em superávit`** (o mais acionável: é o diagnóstico de quem acha que está comendo mais e não está) · `caindo`.
+
+Precisa de 4+ pesagens em 28 dias; com menos, convida a pesar em vez de inventar número. Com zero pesagens o placeholder antigo continua.
+
+### Verificação
+15 asserts: o divisor antes/depois contra uma série de ritmo conhecido, as 5 faixas de classificação, as guardas de dado insuficiente (3 pesagens e zero), o texto exato renderizado (`+0,28kg/sem · 0,37% · no alvo`) e os 7 renders.
 
 ---
 
