@@ -386,6 +386,14 @@
     border-radius:10px; padding:7px 10px;
   }
   .skiptag svg{width:13px; height:13px; flex:none;}
+  .tierbadge{
+    display:inline-grid; place-items:center; width:15px; height:15px; margin-left:5px;
+    border-radius:5px; font-size:9.5px; font-weight:800; vertical-align:1px;
+    font-variant-numeric:tabular-nums; line-height:1;
+  }
+  .tierbadge.t1{background:var(--push); color:#fff;}
+  .tierbadge.t2{background:var(--core); color:#231a05;}
+  .tierbadge.t3{background:var(--glass-3); color:var(--ink2);}
   .addset{
     width:100%; margin-top:8px; padding:9px; border-radius:11px; cursor:pointer;
     display:flex; align-items:center; justify-content:center; gap:6px;
@@ -1715,7 +1723,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.04';
+const APP_VERSION = '2026-08-19.05';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -1753,48 +1761,45 @@ const I = {
 
 /* ============ DADOS ============ */
 const WK = {
-  A:{name:"Push 1", focus:"Ênfase Peito · core", type:"push", ex:[
+  A:{name:"Push 1", focus:"Peito · tríceps", type:"push", ex:[
     {id:"a_1", n:"Supino inclinado halter 30°", s:4, r:"6-10", t:"comp", mg:{peito_sup:1, triceps:0.5, ombro_ant:0.5}, cue:"Principal do peito superior. Desce bem alongado; pensa em <em>espremer o peito</em> e juntar os cotovelos, não em empurrar o peso. Excêntrica 3s."},
-    {id:"a_2", n:"Supino reto halter ou máquina", s:3, r:"8-12", t:"comp", mg:{peito_med:1, triceps:0.5, ombro_ant:0.5}, cue:"Peito médio/inferior. Mesmo foco: sente o peito puxar."},
-    {id:"a_3", n:"Crucifixo na polia baixa", s:3, r:"12-15", t:"iso", mg:{peito_sup:1, peito_med:0.5}, cue:"De baixo p/ cima. Punhos se encontram <em>acima da linha do peito</em>. Estica bem embaixo. Drop set na última."},
+    {id:"a_2", n:"Supino reto halter ou máquina", s:4, r:"8-12", t:"comp", mg:{peito_med:1, triceps:0.5, ombro_ant:0.5}, cue:"Peito médio/inferior. Mesmo foco: sente o peito puxar."},
+    {id:"a_3", n:"Crucifixo na polia baixa", s:4, r:"12-15", t:"iso", mg:{peito_sup:1, peito_med:0.5}, cue:"De baixo p/ cima. Punhos se encontram <em>acima da linha do peito</em>. Estica bem embaixo. Drop set na última."},
     {id:"a_4", n:"Elevação lateral com halter em pé (bilateral)", s:4, r:"12-20", t:"iso", mg:{ombro_lat:1}, cue:"Base clássica. <em>Bilateral em pé</em>: um halter em cada mão, ao lado do corpo. Sobe pelos cotovelos até altura do ombro, com o polegar levemente pra baixo (rotação neutra). Excêntrica controlada. Parciais no fim da última série. <em>Prioridade #1 — largura.</em>"},
-    {id:"a_5", n:"Tríceps francês / extensão acima da cabeça", s:3, r:"10-15", t:"iso", mg:{triceps:1}, cue:"Cabeça longa: braço alongado atrás da cabeça. Posição alongada = mais crescimento."},
+    {id:"a_5", n:"Tríceps francês / extensão acima da cabeça", s:4, r:"10-15", t:"iso", mg:{triceps:1}, cue:"Cabeça longa: braço alongado atrás da cabeça. Posição alongada = mais crescimento."},
     {id:"a_6", n:"Tríceps na polia (corda)", s:3, r:"12-15", t:"iso", mg:{triceps:1}, cue:"Drop set na última série."},
     // Core movido de B (2026-07-08.03) — ids mantidos (b_8/b_9) pra preservar overrides do usuário
     {id:"b_8", n:"Abdominal declinado com anilha", s:3, r:"10-15", t:"core", mg:{core:1}, cue:"Carregado. Anilha abraçada no peito; <em>enrola o tronco</em>. Sem dor na mão. Progride trocando a anilha."},
-    {id:"b_9", n:"Cadeira romana (joelho dobrado)", s:3, r:"10-15", t:"core", mg:{core:1}, cue:"Parte baixa. <em>Enrola a pelve p/ cima</em> (retroversão), não só levanta a perna. Desce devagar."},
   ]},
-  B:{name:"Pull 1", focus:"Costas · bíceps · perna", type:"pull", ex:[
+  B:{name:"Pull 1", focus:"Costas · bíceps · ombro posterior", type:"pull", ex:[
     {id:"b_1", n:"Puxada na polia (pegada aberta)", s:4, r:"8-12", t:"comp", mg:{costas:1, biceps:0.5}, cue:"Largura das costas. <em>Puxa com o cotovelo</em>, não com a mão."},
     {id:"b_2", n:"Remada sentada na polia ou máquina", s:3, r:"8-12", t:"comp", mg:{costas:1, biceps:0.5}, cue:"Espessura. Aperta as escápulas no fim."},
-    {id:"b_3", n:"Crucifixo inverso (peck deck/polia)", s:5, r:"15-20", t:"iso", mg:{ombro_post:1}, cue:"Deltoide posterior = ombro 3D + postura melhor."},
+    {id:"b_3", n:"Crucifixo inverso (peck deck/polia)", s:4, r:"15-20", t:"iso", mg:{ombro_post:1}, cue:"Deltoide posterior = ombro 3D + postura melhor."},
     {id:"b_4", n:"Elevação lateral na polia unilateral em pé", s:3, r:"12-20 por lado", t:"iso", mg:{ombro_lat:1}, cue:"<em>Unilateral.</em> Polia baixa; cabo preso ao punho do braço que trabalha, passando <em>na frente do corpo</em>. Braço começa alongado cruzando a barriga. Sobe pelo cotovelo até altura do ombro. Faz as 3 séries de um lado, depois do outro. <em>Log: registre 3 sets — cada set = 1 execução por lado</em> (mesma carga)."},
-    {id:"b_5", n:"Rosca inclinada com halter", s:3, r:"8-12", t:"iso", mg:{biceps:1}, cue:"Bíceps alongado (posição estendida = +crescimento). <em>Foca em sentir o bíceps.</em> Parciais no fim."},
-    {id:"b_6", n:"Mesa flexora", s:3, r:"10-15", t:"iso", mg:{posterior:1}, cue:"Posterior de coxa. Sem náusea."},
-    {id:"b_7", n:"Cadeira extensora", s:3, r:"12-15", t:"iso", mg:{quadriceps:1}, cue:"Quadríceps. Carga controlada."},
+    {id:"b_5", n:"Rosca inclinada com halter", s:5, r:"8-12", t:"iso", mg:{biceps:1}, cue:"Bíceps alongado (posição estendida = +crescimento). <em>Foca em sentir o bíceps.</em> Parciais no fim."},
+    {id:"b_6", n:"Mesa flexora", s:2, r:"10-15", t:"iso", mg:{posterior:1}, cue:"Posterior de coxa. Sem náusea."},
+    {id:"b_7", n:"Cadeira extensora", s:2, r:"12-15", t:"iso", mg:{quadriceps:1}, cue:"Quadríceps. Carga controlada."},
     {id:"b_10", n:"Panturrilha", s:3, r:"12-20", t:"iso", mg:{panturrilha:1}, cue:"Antes do cardio."},
   ]},
-  C:{name:"Push 2", focus:"Ênfase Ombro · core", type:"push", ex:[
+  C:{name:"Push 2", focus:"Ombro · peito · tríceps", type:"push", ex:[
     {id:"c_1", n:"Desenvolvimento sentado com halter", s:4, r:"6-10", t:"comp", mg:{ombro_ant:1, ombro_lat:0.5, triceps:0.5}, cue:"Ombro completo (anterior + lateral)."},
     {id:"c_2", n:"Elevação lateral com halter no banco inclinado 75°", s:4, r:"12-20", t:"iso", mg:{ombro_lat:1}, cue:"<em>Bilateral inclinado.</em> Banco a ~75°, tronco apoiado no encosto. Halteres começam colados na lateral do banco (posição alongada), sobem pelos cotovelos até altura do ombro. Ângulo diferente do em pé: dificulta no meio do movimento, alivia no topo. Excêntrica 3s. <em>Prioridade da largura.</em>"},
-    {id:"c_3", n:"Supino inclinado halter 30°", s:3, r:"8-12", t:"comp", mg:{peito_sup:1, triceps:0.5, ombro_ant:0.5}, cue:"2ª dose de peito superior. Espreme o peito."},
-    {id:"c_4", n:"Peck deck ou crucifixo máquina", s:3, r:"10-15", t:"iso", mg:{peito_med:1, peito_sup:0.5}, cue:"Contração e alongamento do peito. Pausa 1s no alongamento."},
+    {id:"c_3", n:"Supino inclinado halter 30°", s:4, r:"8-12", t:"comp", mg:{peito_sup:1, triceps:0.5, ombro_ant:0.5}, cue:"2ª dose de peito superior. Espreme o peito."},
+    {id:"c_4", n:"Peck deck ou crucifixo máquina", s:5, r:"10-15", t:"iso", mg:{peito_med:1, peito_sup:0.5}, cue:"Contração e alongamento do peito. Pausa 1s no alongamento."},
     {id:"c_5", n:"Extensão de tríceps acima da cabeça", s:3, r:"10-15", t:"iso", mg:{triceps:1}, cue:"Cabeça longa. Posição alongada."},
-    {id:"c_6", n:"Tríceps na polia", s:2, r:"12-15", t:"iso", mg:{triceps:1}, cue:"—"},
+    {id:"c_6", n:"Tríceps na polia", s:3, r:"12-15", t:"iso", mg:{triceps:1}, cue:"—"},
     // Core movido de D (2026-07-08.03) — ids mantidos (d_9/d_10) pra preservar overrides do usuário
     {id:"d_9", n:"Abdominal declinado com anilha", s:3, r:"10-15", t:"core", mg:{core:1}, cue:"Carregado. Anilha abraçada; enrola o tronco. Progride trocando a anilha."},
-    {id:"d_10", n:"Cadeira romana (joelho dobrado)", s:3, r:"10-15", t:"core", mg:{core:1}, cue:"Parte baixa. Retroversão de pelve, joelho dobrado. Controla a descida."},
   ]},
-  D:{name:"Pull 2", focus:"Costas · bíceps · perna", type:"pull", ex:[
+  D:{name:"Pull 2", focus:"Costas · bíceps · ombro posterior", type:"pull", ex:[
     {id:"d_1", n:"Puxada na polia (pegada neutra/fechada)", s:4, r:"8-12", t:"comp", mg:{costas:1, biceps:0.5}, cue:"Ângulo diferente do treino B."},
     {id:"d_2", n:"Remada na polia ou máquina", s:3, r:"8-12", t:"comp", mg:{costas:1, biceps:0.5}, cue:"Espessura."},
-    {id:"d_3", n:"Crucifixo inverso", s:5, r:"15-20", t:"iso", mg:{ombro_post:1}, cue:"Segunda dose da semana. <em>Deltoide posterior é largura vista de trás</em> — junto com o lateral é o que fecha o ombro em 3D. Puxa com o cotovelo, não com a mão; abre até a linha do ombro e volta devagar. Carga leve, faixa alta: é isolador, não precisa ser pesado."},
+    {id:"d_3", n:"Crucifixo inverso", s:4, r:"15-20", t:"iso", mg:{ombro_post:1}, cue:"Segunda dose da semana. <em>Deltoide posterior é largura vista de trás</em> — junto com o lateral é o que fecha o ombro em 3D. Puxa com o cotovelo, não com a mão; abre até a linha do ombro e volta devagar. Carga leve, faixa alta: é isolador, não precisa ser pesado."},
     {id:"d_4", n:"Elevação lateral polia unilateral cabo atrás do corpo (alongado)", s:3, r:"12-20 por lado", t:"iso", mg:{ombro_lat:1}, cue:"<em>Unilateral, cabo atrás.</em> Polia baixa do <em>mesmo lado</em> do braço que trabalha; cabo passa <em>por trás do corpo</em>. Braço começa cruzado atrás na diagonal (posição bem alongada — Wolf 2023: cresce mais). Sobe pelo cotovelo até altura do ombro. <em>Log: registre 3 sets — cada set = 1 execução por lado</em> (mesma carga)."},
-    {id:"d_5", n:"Rosca direta na polia ou halter", s:3, r:"10-15", t:"iso", mg:{biceps:1}, cue:"Sente o bíceps. Drop set na última."},
-    {id:"d_6", n:"Rosca martelo", s:2, r:"10-12", t:"iso", mg:{biceps:1}, cue:"Braquial = engrossa e alarga o braço."},
+    {id:"d_5", n:"Rosca direta na polia ou halter", s:5, r:"10-15", t:"iso", mg:{biceps:1}, cue:"Sente o bíceps. Drop set na última."},
+    {id:"d_6", n:"Rosca martelo", s:4, r:"10-12", t:"iso", mg:{biceps:1}, cue:"Braquial = engrossa e alarga o braço."},
     {id:"d_7", n:"Mesa flexora", s:2, r:"12-15", t:"iso", mg:{posterior:1}, cue:"Perna leve."},
     {id:"d_8", n:"Cadeira extensora", s:2, r:"12-15", t:"iso", mg:{quadriceps:1}, cue:"Perna leve."},
-    {id:"d_11", n:"Panturrilha", s:3, r:"12-20", t:"iso", mg:{panturrilha:1}, cue:"Antes do cardio."},
   ]},
 };
 
@@ -1809,11 +1814,14 @@ const MG_LABELS = {
   core:"Core",
 };
 const MG_ORDER = ["ombro_lat","peito_sup","biceps","triceps","costas","peito_med","ombro_post","ombro_ant","core","posterior","quadriceps","panturrilha"];
+/* Metas recalibradas pro ranking (2026-08-19). Tier 1 e 2 no topo da faixa produtiva,
+   tier 4 em nível de manutenção — manter músculo exige bem menos volume que construir
+   (Bickel et al 2011), então perna e core cedem espaço sem serem zerados. */
 const MG_TARGETS = {
-  peito_sup:12, peito_med:10, costas:14,
-  ombro_lat:18, ombro_ant:8, ombro_post:10,
-  triceps:12, biceps:14, quadriceps:8, posterior:8,
-  panturrilha:8, core:10,
+  peito_sup:12, peito_med:9,            // tier 1
+  triceps:13, biceps:14,                // tier 2
+  ombro_lat:14, costas:14, ombro_post:8, ombro_ant:4,   // tier 3
+  quadriceps:4, posterior:4, panturrilha:3, core:6,     // tier 4 (manutenção)
 };
 const MG_COLOR = {
   peito_sup:"#ff6b5c", peito_med:"#ff8a7c",
@@ -1826,7 +1834,20 @@ const MG_COLOR = {
 /* ★ na aba Corpo = o que o objetivo declarado exige ("grande, largo, peito e laterais").
    Estava marcando bíceps e tríceps — que recebem 33 séries/semana somados, contra 19 do peito —
    e deixava costas de fora, que é o outro motor da largura junto com o deltoide lateral. */
-const MG_PRIORITY = {ombro_lat:true, peito_sup:true, peito_med:true, costas:true};
+/* RANKING declarado pelo Lucas (2026-08-19): 1º peito, 2º braços, 3º largura, 4º inferiores.
+   Booleano não dava conta de ordenar quatro níveis — MG_TIER é a fonte, MG_PRIORITY vira
+   derivado (tiers 1-3) só pra não quebrar quem já lia ele. */
+const MG_TIER = {
+  peito_sup:1, peito_med:1,
+  triceps:2, biceps:2,
+  ombro_lat:3, costas:3, ombro_post:3, ombro_ant:3,
+  quadriceps:4, posterior:4, panturrilha:4, core:4,
+};
+const MG_TIER_LABEL = {1:'peito', 2:'braços', 3:'largura', 4:'manutenção'};
+const MG_PRIORITY = {};
+for(const [mg,t] of Object.entries(MG_TIER)) if(t<=3) MG_PRIORITY[mg]=true;
+// Peso do tier na pontuação: tier1=3, tier2=2, tier3=1, tier4=0
+function tierWeight(mg){ return Math.max(0, 4-(MG_TIER[mg]||4)); }
 
 /* Mapeamento exercício → foto. Prefere imagens locais (img/*.jpg) quando existem;
    fallback pro Free Exercise DB (yuhonas/free-exercise-db). */
@@ -3553,7 +3574,7 @@ function dayEstMin(d){
 
 /* Quanto vale manter cada exercício hoje. Ordem de decisão:
    (1) o que o corpo ainda NÃO recebeu esta semana (weeklyVolume vs MG_TARGETS),
-   (2) MG_PRIORITY (ombro lateral, peito superior, peito médio, costas),
+   (2) o TIER do músculo (1 peito > 2 braços > 3 largura > 4 manutenção),
    (3) composto pesa mais que isolador, core pesa menos. */
 function exValue(e){
   const vol=weeklyVolume();
@@ -3561,7 +3582,7 @@ function exValue(e){
   for(const [mg,w] of Object.entries(e.mg||{})){
     const meta=MG_TARGETS[mg]||0, feito=vol[mg]||0;
     const falta = meta>0 ? Math.max(0, Math.min(1,(meta-feito)/meta)) : 0.5;
-    sc += w*(falta*2 + (MG_PRIORITY[mg] ? 1.5 : 0));
+    sc += w*(falta*2 + tierWeight(mg));
   }
   if(e.t==='comp') sc+=1;
   if(e.t==='core') sc-=0.3;
@@ -3583,7 +3604,7 @@ function shortPlan(d, alvoMin){
 
   // um guardião por músculo prioritário presente hoje: o de maior valor
   const guard=new Set([0]);
-  for(const mg of Object.keys(MG_PRIORITY)){
+  for(const mg of Object.keys(MG_TIER).filter(m=>MG_TIER[m]<=2)){   // guarda peito e braços
     let melhor=-1, best=-Infinity;
     ex.forEach((e,i)=>{ if((e.mg||{})[mg]>=1){ const v=exValue(e); if(v>best){best=v; melhor=i;} } });
     if(melhor>=0) guard.add(melhor);
@@ -4681,10 +4702,11 @@ function renderCorpo(){
     const tgt = MG_TARGETS[mg];
     const pct = Math.min(100, (v/tgt)*100);
     const c = MG_COLOR[mg];
-    const isPrio = MG_PRIORITY[mg];
+    const tier = MG_TIER[mg]||4;
+    const isPrio = tier<=3;
     const status = v>=tgt ? 'ok' : (v>=tgt*0.7 ? 'ok' : 'low');
     h+=`<div class="vbar2">
-      <div class="vn ${isPrio?'prio':''}">${MG_LABELS[mg]}${isPrio?'<span class="star">★</span>':''}</div>
+      <div class="vn ${isPrio?'prio':''}">${MG_LABELS[mg]}${isPrio?`<span class="tierbadge t${tier}" title="${MG_TIER_LABEL[tier]}">${tier}</span>`:''}</div>
       <div class="track"><div class="fill" style="width:${pct}%;background:linear-gradient(90deg,${c}88,${c})"></div></div>
       <div class="vv"><b>${v.toFixed(v%1?1:0)}</b>/${tgt}</div>
     </div>`;

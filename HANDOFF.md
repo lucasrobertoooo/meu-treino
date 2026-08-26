@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-08-19.04 (**Estado `carga-alta`** — o app nunca mandava BAIXAR carga: quem ficava abaixo do piso da faixa via "foca em chegar no mínimo" com a mesma carga pra sempre. SHELL v26)
+**Última atualização:** 2026-08-19.05 (**Reordenação por prioridade declarada** — 1º peito, 2º braços, 3º largura, 4º inferiores. Peito 16→21 e braços 19→27 séries diretas, mesmo volume total. `MG_TIER` substitui o booleano `MG_PRIORITY`. SHELL v27)
+
+**Antes: 2026-08-19.04 (**Estado `carga-alta`** — o app nunca mandava BAIXAR carga: quem ficava abaixo do piso da faixa via "foca em chegar no mínimo" com a mesma carga pra sempre. SHELL v26)
 
 **Antes: 2026-08-19.03** (**Sessão curta** — "hoje só tenho X min": o app decide o que pular, protegendo o principal e as prioridades, com estimativa calibrada no ritmo real dele. SHELL v25)
 
@@ -783,6 +785,40 @@ Testado em node no código real: calibração pelo histórico (50 min medidos �
 **Nota sobre o ombro posterior:** as séries do crucifixo inverso tinham acabado de subir de 3 para 5 (2026-08-19.02) num exercício onde ele já estava travado — mais volume numa carga que não fechava a faixa. Resolver a carga vem primeiro; o volume só rende depois disso.
 
 Verificado com 13 asserts no código real, incluindo comparação lado a lado com a versão anterior e 5 cenários que NÃO podem disparar o estado.
+
+---
+
+## Reordenação por prioridade declarada (2026-08-19.05)
+
+Ranking novo do Lucas: **1º peito (muito), 2º braços, 3º largura geral, 4º inferiores**. Isto inverte parte da decisão de 2026-08-19.01, que tinha tirado braços das prioridades — decisão correta na época (a análise que a motivou estava com números inflados e foi retratada em .02), mas agora o ranking é declaração dele, não inferência minha.
+
+### O programa
+| músculo | antes | agora | tier |
+|---|---|---|---|
+| Peito (direto) | 16 | **21** | 1 |
+| Braços (direto) | 19 | **27** (tri 13 · bi 14) | 2 |
+| Ombro lateral | 14 (4x) | 14 (4x) | 3 |
+| Costas | 14 | 14 | 3 |
+| Ombro posterior | 10 | 8 | 3 |
+| Pernas | 16 | 8 (2x) | 4 |
+| Core | 12 | 6 | 4 |
+
+**Total: 105 séries/semana — exatamente o mesmo de antes.** Só mudou o endereço. Sessões seguem 68-75 min.
+
+### A restrição que definiu o desenho
+`ST.logs` é indexado por **POSIÇÃO** (`A_0`, `A_1`…), não pelo `id`. Qualquer inserção ou reordenação exigiria migração — foi o que quebrou quando o core mudou de dia em 2026-07-08.03. Duas versões da proposta (com exercícios novos e realocados) foram descartadas por isso.
+
+**A versão aplicada não desloca nenhuma posição:** só altera contagem de séries e remove o **último** exercício de A, C e D (`A_7` e `C_7` cadeira romana, `D_8` panturrilha). Verificado programaticamente comparando os ids posição a posição antes/depois: zero deslocamentos, migração desnecessária. O histórico dos três removidos continua em `ST.logs`, órfão mas intacto.
+
+### `MG_TIER` substitui o booleano
+`MG_PRIORITY` não ordenava quatro níveis. Agora `MG_TIER` = {peito:1, braços:2, largura:3, manutenção:4} é a fonte; `MG_PRIORITY` vira derivado (tiers 1-3) pra não quebrar quem já lia. `tierWeight(mg)` = 3/2/1/0 pondera:
+- **`exValue`** (sessão curta): substituiu `MG_PRIORITY ? 1.5 : 0`.
+- **Guardiões do modo Essencial**: passaram a proteger só tier 1-2 (peito e braços). Largura pode perder um exercício numa sessão apertada.
+- **Aba Corpo**: a ★ solta virou **badge numérico** com o tier (1 vermelho, 2 âmbar, 3 neutro; tier 4 sem badge).
+- `MG_TARGETS` recalibrado: tier 1-2 no topo da faixa produtiva, tier 4 em manutenção — manter músculo custa bem menos volume que construir (Bickel et al 2011).
+
+### Verificação
+Comparação posicional automática antes/depois (o teste que garante que nenhum histórico gruda no exercício errado), `tierWeight` nos 4 níveis, o modo Essencial preservando peito e tríceps no dia A, os badges de tier na aba Corpo e os 7 renders.
 
 ---
 
