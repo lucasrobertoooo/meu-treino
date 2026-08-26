@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-08-19.07 (**Mesociclo com rampa de volume** + **deload por fadiga medida** em vez de calendário. O RIR coletado há meses virou decisão. SHELL v29)
+**Última atualização:** 2026-08-19.08 (**Curva de progresso por exercício** + **revisão de acessórios na virada de bloco** — fecha os 4 itens da auditoria de autonomia. SHELL v30)
+
+**Antes: 2026-08-19.07 (**Mesociclo com rampa de volume** + **deload por fadiga medida** em vez de calendário. O RIR coletado há meses virou decisão. SHELL v29)
 
 **Antes: 2026-08-19.06 (**Blocos de ênfase** — peito/braços 12 semanas ↔ perna 8 semanas. Cada bloco redefine tiers E séries planejadas; o app conta as semanas e avisa a virada. SHELL v28)
 
@@ -878,8 +880,31 @@ Calendário saiu de cena: a semana 4 de cada mesociclo já é leve por construç
 30 asserts no código real: a rampa nas 8 semanas com o ciclo 1-2-3-4, o acúmulo subindo só o foco (nos dois blocos), fadiga alta vs. programa saudável vs. dado insuficiente, antecipar cortando o volume na hora com `ST.logs` intacto, e os 7 renders.
 
 ### Ainda em aberto (da mesma auditoria)
-- **Gráfico de e1RM por exercício** — o dado está em `ST.logs`, falta desenhar a curva.
-- **Troca de acessórios na virada de bloco** — hoje a troca só dispara por plateau; a virada de bloco é o momento natural e não está sendo usado.
+Resolvido em 2026-08-19.08 — ver seção acima.
+
+---
+
+## Curva de progresso e revisão de bloco (2026-08-19.08)
+
+Fecha os dois itens que faltavam da auditoria de autonomia.
+
+### Curva por exercício (`progressoScore` / `curvaProgresso`)
+Havia lista de PRs mas nenhuma curva: dava pra saber o melhor, não o caminho. Agora cada exercício mostra um sparkline das últimas 10 sessões + a variação percentual. Abaixo de 3 sessões não desenha — gráfico de 2 pontos engana.
+
+**A escolha da métrica foi o trabalho de verdade.** Três candidatas, duas quebram:
+- **e1RM Brzycki** (o que o app usa nos PRs) capa reps em 12. Nas faixas 12-20, que hoje são a maioria do programa, subir 13→15→17 reps dá valor **idêntico** — a curva sairia reta.
+- **Produto kg×reps** inverte na dupla progressão: 15kg×20 = 300 despenca pra 17,5kg×12 = 210, mostrando **30% de queda** exatamente quando ele progrediu de carga.
+- **Epley sem capa** (`kg × (1 + reps/30)`) sobe nos dois eixos e não quebra em rep alta. **Limite conhecido e medido:** no mesmo salto de carga marca ~2% de queda residual — os dois sets são praticamente equivalentes em qualquer fórmula de 1RM, então é ambiguidade real, não distorção; contra 30% do produto, é ruído, e a curva se recupera 2 reps depois.
+
+Fica **só no gráfico**: PR e detecção de plateau continuam no Brzycki, pra não existirem dois números concorrentes de "recorde".
+
+### Revisão na virada (`acessoriosParados`)
+A troca só disparava por plateau (plateau + deload feito + 6 semanas); o gatilho antigo de 12 semanas tinha sido removido por ficar aceso pra sempre, e com isso o app perdeu a noção de **tempo certo**. A virada de bloco é o momento natural — o programa já vai mudar de ênfase.
+
+Quando o bloco vence, o card lista os **isoladores que não progrediram dentro daquele bloco** (compara `sessionTop` da primeira sessão do bloco com a última, mínimo 3 sessões) com as alternativas do `EXERCISE_ALTERNATIVES`. **Compostos ficam de fora** — base não se troca por não ter subido 2kg. Só aparece com o bloco vencido: nada de banner permanente.
+
+### Verificação
+28 asserts: os três comportamentos da métrica (reps subindo sobe / salto de carga com queda residual medida / mais carga sobe), a curva não desenhando com 2 sessões, a revisão pegando 2 parados e ignorando o composto e o que progrediu, sessões anteriores ao bloco não contando, e os 7 renders.
 
 ---
 

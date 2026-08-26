@@ -418,12 +418,29 @@
   .bl-fase.f-acumulo b{color:var(--core);}
   .bl-fase.f-deload{background:rgba(91,158,255,.07); border-color:rgba(91,158,255,.22);}
   .bl-fase.f-deload b{color:var(--pull);}
+  .bl-rev{
+    margin-top:11px; padding:11px 12px; border-radius:12px;
+    background:rgba(255,255,255,.03); border:1px solid var(--line);
+  }
+  .bl-rev-h{
+    display:flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700;
+    color:var(--ink2); margin-bottom:8px; line-height:1.4;
+  }
+  .bl-rev-h svg{width:13px; height:13px; flex:none; color:var(--core);}
+  .bl-rev-i{font-size:12.5px; color:var(--ink2); padding:6px 0; border-top:1px solid var(--line);}
+  .bl-rev-i:first-of-type{border-top:none;}
+  .bl-rev-i small{color:var(--faint); font-size:10.5px; font-weight:600; margin-left:5px;}
+  .bl-rev-i span{display:block; font-size:11px; color:var(--muted); margin-top:2px; line-height:1.45;}
+  .bl-rev-f{font-size:10.5px; color:var(--faint); line-height:1.5; margin-top:8px; padding-top:8px; border-top:1px solid var(--line);}
   .bl-btn{
     width:100%; margin-top:11px; padding:10px; border-radius:12px; cursor:pointer; font-family:inherit;
     font-size:13px; font-weight:700; background:var(--core-grad); color:#231a05; border:none;
   }
   .bl-btn.ghost{background:none; border:1px solid var(--line-2); color:var(--muted); font-weight:600;}
   .bl-btn:active{opacity:.85;}
+  .curva{display:flex; align-items:center; gap:9px; margin:-4px 0 10px;}
+  .cv-t{font-size:10.5px; color:var(--faint); font-weight:600;}
+  .cv-t b{margin-left:5px; font-size:11.5px;}
   .addset{
     width:100%; margin-top:8px; padding:9px; border-radius:11px; cursor:pointer;
     display:flex; align-items:center; justify-content:center; gap:6px;
@@ -1753,7 +1770,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.07';
+const APP_VERSION = '2026-08-19.08';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -1941,6 +1958,32 @@ let MG_PRIORITY = {};
 function recalcPrioridades(){
   MG_PRIORITY = {};
   for(const [mg,t] of Object.entries(BLOCOS[blocoAtual()].tier||{})) if(t<=3) MG_PRIORITY[mg]=true;
+}
+/* ============ REVISÃO NA VIRADA DE BLOCO ============
+   A troca de exercício só disparava por plateau (plateau + deload feito + 6 semanas), e o
+   gatilho antigo de "12 semanas" tinha sido removido por ficar aceso pra sempre. Com isso o
+   app perdeu qualquer noção de TEMPO CERTO. A virada de bloco é o momento natural: o
+   programa já vai mudar de ênfase, então é quando rotacionar o que estagnou — sem banner
+   permanente incomodando no meio do caminho.
+   Só olha ISOLADORES: composto é a base, não se troca por não ter subido 2kg. */
+function acessoriosParados(){
+  const desde=blocoDesde(); if(!desde) return [];
+  const out=[];
+  for(const d of ['A','B','C','D']){
+    const ex=(WK[d]&&WK[d].ex)||[];
+    ex.forEach((e,i)=>{
+      if(e.t!=='iso') return;
+      const id=exId(d,i);
+      const h=progressSessions(id).filter(x=>sessionTop(x.sets) && x.date>=desde);
+      if(h.length<3) return;                     // pouco dado no bloco: não julga
+      const ini=sessionTop(h[0].sets), fim=sessionTop(h[h.length-1].sets);
+      if(cmpTop(fim,ini)<=0){
+        out.push({id, dia:d, nome:exName(e), sess:h.length,
+                  alts:(EXERCISE_ALTERNATIVES[e.n]||[]).slice(0,3)});
+      }
+    });
+  }
+  return out;
 }
 function trocarBloco(){
   const alvo = blocoAtual()==='peito_bracos' ? 'perna' : 'peito_bracos';
@@ -3739,6 +3782,33 @@ function setShortDay(d, min){
   saveK('meta'); render();
 }
 
+/* ============ CURVA DE PROGRESSO POR EXERCÍCIO ============
+   Havia lista de PRs, mas nenhuma curva: dava pra saber o melhor, não o caminho.
+
+   Por que NÃO uso o e1RM daqui: o Brzycki que o app usa pros PRs capa as reps em 12
+   (proposital — é conservador pra reivindicar recorde). Nas faixas 12-20, que hoje são a
+   maioria do programa, subir 13→15→17 reps dá e1RM idêntico e a curva sairia reta.
+   E um produto simples (kg × reps) inverte na dupla progressão: 15kg×20 = 300 cai pra
+   17,5kg×12 = 210, mostrando queda justo quando ele progrediu de carga.
+   Epley (kg × (1 + reps/30)) sem capa é o melhor dos três: sobe quando a carga sobe E
+   quando as reps sobem, e não quebra em rep alta.
+   LIMITE CONHECIDO: no salto de carga com queda grande de reps (15kg×20 → 17,5kg×12) ele
+   ainda marca ~2% de queda — os dois sets são praticamente equivalentes em qualquer fórmula
+   de 1RM, então isso é ambiguidade real, não bug. Contra os 30% de queda que o produto
+   kg×reps daria no mesmo caso, é ruído. A curva se recupera nas sessões seguintes.
+   Fica SÓ para o gráfico — PR e plateau continuam no Brzycki, pra não haver dois números
+   concorrentes de "recorde". */
+function progressoScore(sets){
+  const t=sessionTop(sets);
+  return t ? t.kg*(1+t.reps/30) : 0;
+}
+function curvaProgresso(id, max){
+  return progressSessions(id)
+    .filter(s=>sessionTop(s.sets))
+    .slice(-(max||10))
+    .map(s=>({date:s.date, val:progressoScore(s.sets)}));
+}
+
 /* ============ ÍNDICE DE FADIGA ============
    O RIR era gravado em toda série e só era lido pra diagnosticar UM exercício por vez.
    E o deload era por calendário — não sabia se você estava fadigado. Aqui o sinal é
@@ -3883,7 +3953,13 @@ function renderDays(){
     ${(()=>{ const f=faseMeso();
       return `<div class="bl-fase f-${f.k}"><b>${f.nome}</b> · semana ${mesoSemana()} de 4 do mesociclo<span>${esc(f.nota)}</span></div>`; })()}
     <div class="bl-r">${esc(bl.resumo)}</div>
-    ${blVenc ? `<button class="bl-btn" onclick="trocarBloco()">Bloco cumprido — virar pro de ${esc(blocoAtual()==='peito_bracos'?BLOCOS.perna.nome:BLOCOS.peito_bracos.nome)}</button>`
+    ${blVenc ? (()=>{ const par=acessoriosParados();
+        return (par.length ? `<div class="bl-rev">
+          <div class="bl-rev-h">${I.trend} ${par.length} acessório${par.length>1?'s':''} sem progredir neste bloco — hora natural de rotacionar</div>
+          ${par.map(x=>`<div class="bl-rev-i"><b>${esc(x.nome)}</b> <small>${x.dia} · ${x.sess} sessões</small>${x.alts.length?`<span>${x.alts.map(a=>esc(a)).join(' · ')}</span>`:''}</div>`).join('')}
+          <div class="bl-rev-f">Abra o exercício e use "Troquei" pra reiniciar a progressão sem perder histórico. Prefira a versão mais alongada (Wolf et al 2023).</div>
+        </div>` : '') +
+        `<button class="bl-btn" onclick="trocarBloco()">Bloco cumprido — virar pro de ${esc(blocoAtual()==='peito_bracos'?BLOCOS.perna.nome:BLOCOS.peito_bracos.nome)}</button>`; })()
              : `<button class="bl-btn ghost" onclick="trocarBloco()">Virar agora</button>`}
   </div>`;
   h+=`<div class="stats">
@@ -4106,6 +4182,11 @@ function renderDay(d){
       </div>
       <div class="log">
         <div class="last">${lastTxt}</div>
+        ${(()=>{ const c=curvaProgresso(id);
+          if(c.length<3) return '';
+          const d=c[c.length-1].val-c[0].val, pct=c[0].val>0?Math.round(d/c[0].val*100):0;
+          const cor=d>=0?'var(--ok)':'var(--push)';
+          return `<div class="curva">${miniSpark(c)}<span class="cv-t">${c.length} sessões<b style="color:${cor}">${d>=0?'+':''}${pct}%</b></span></div>`; })()}
         <div class="colhead r4"><span></span><span>kg</span><span>reps</span><span>RIR</span><span></span></div>
         ${rows}
         <button class="addset" onclick="addSet('${id}')">${I.plus}<span>Série extra${nset>planned?` · ${nset-planned} a mais`:''}</span></button>
