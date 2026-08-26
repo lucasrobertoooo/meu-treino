@@ -408,6 +408,16 @@
   .bl-bar{height:4px; border-radius:3px; background:rgba(255,255,255,.07); margin:9px 0 8px; overflow:hidden;}
   .bl-fill{height:100%; border-radius:3px; background:var(--core-grad);}
   .bl-r{font-size:11.5px; color:var(--muted); line-height:1.5;}
+  .bl-fase{
+    font-size:11.5px; color:var(--muted); line-height:1.5; margin:2px 0 8px;
+    padding:8px 10px; border-radius:10px; background:rgba(255,255,255,.03); border:1px solid var(--line);
+  }
+  .bl-fase b{color:var(--ink2);}
+  .bl-fase span{display:block; margin-top:2px; color:var(--faint);}
+  .bl-fase.f-acumulo{background:rgba(245,185,78,.07); border-color:rgba(245,185,78,.22);}
+  .bl-fase.f-acumulo b{color:var(--core);}
+  .bl-fase.f-deload{background:rgba(91,158,255,.07); border-color:rgba(91,158,255,.22);}
+  .bl-fase.f-deload b{color:var(--pull);}
   .bl-btn{
     width:100%; margin-top:11px; padding:10px; border-radius:12px; cursor:pointer; font-family:inherit;
     font-size:13px; font-weight:700; background:var(--core-grad); color:#231a05; border:none;
@@ -1743,7 +1753,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.06';
+const APP_VERSION = '2026-08-19.07';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -1888,11 +1898,42 @@ function blocoDesde(){ return (ST.meta && ST.meta.blocoDesde) || null; }
 function blocoSemana(){ const d=blocoDesde(); return d ? Math.floor(daysBetween(d, today())/7)+1 : 1; }
 function blocoVencido(){ return blocoSemana() > BLOCOS[blocoAtual()].semanas; }
 function tierOf(mg){ return (BLOCOS[blocoAtual()].tier || {})[mg] || 4; }
-// Séries planejadas do exercício NO BLOCO ATUAL (o WK guarda as do bloco de peito/braços)
+/* ============ MESOCICLO: rampa de volume dentro do bloco ============
+   O bloco definia séries FIXAS por 12 semanas — progressão de carga existia, de volume não.
+   Sobrecarga progressiva é a base do modelo; a rampa é o lado do volume. Mesociclo de 4
+   semanas dentro do bloco: 1-2 na base, 3 acumulando (+1 no que é foco), 4 em deload.
+   Ressalva honesta: que a rampa seja SUPERIOR a volume fixo alto tem base mais prática
+   (modelo MEV/MAV/MRV) que de ensaio controlado — sobrecarga progressiva é que é consenso. */
+function mesoSemana(){ return ((blocoSemana()-1) % 4) + 1; }   // 1..4
+function emDeload(){
+  const ate = ST.meta && ST.meta.deloadAte;
+  if(ate && daysBetween(today(), ate) >= 0) return true;        // deload antecipado por fadiga
+  return mesoSemana()===4;
+}
+function faseMeso(){
+  if(emDeload()) return {k:'deload', nome:'Deload', nota:'Semana leve. Séries cortadas pela metade — carga igual, sem chegar perto da falha.'};
+  const m=mesoSemana();
+  if(m<=2) return {k:'base', nome:'Base', nota:'Volume de base. É daqui que a rampa sobe.'};
+  return {k:'acumulo', nome:'Acúmulo', nota:'Semana mais pesada: uma série a mais em cada exercício do foco.'};
+}
+// Séries planejadas do exercício AGORA: bloco + fase do mesociclo
 function exSets(e){
   if(!e) return 3;
   const ov=BLOCOS[blocoAtual()].sets || {};
-  return (e.id && ov[e.id]) || parseInt(e.s) || 3;
+  const base = (e.id && ov[e.id]) || parseInt(e.s) || 3;
+  if(emDeload()) return Math.max(1, Math.round(base*0.5));      // deload corta tudo pela metade
+  if(mesoSemana()===3){
+    // acúmulo: +1 só nos músculos que são foco do bloco (tier 1-2)
+    const foco = Object.entries(e.mg||{}).some(([mg,w])=>w>=1 && tierOf(mg)<=2);
+    return foco ? base+1 : base;
+  }
+  return base;
+}
+function anteciparDeload(){
+  if(!confirm('Fazer a semana leve agora?\n\nAs séries caem pela metade por 7 dias. Serve pra descarregar fadiga acumulada — a carga continua a mesma, só não vá perto da falha.')) return;
+  if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
+  ST.meta.deloadAte = dateAdd(today(), 6);
+  saveK('meta'); render(); showToast('Semana leve começou', 'ok', 2400);
 }
 // Peso do tier na pontuação: 1=3, 2=2, 3=1, 4=0
 function tierWeight(mg){ return Math.max(0, 4-tierOf(mg)); }
@@ -3698,13 +3739,42 @@ function setShortDay(d, min){
   saveK('meta'); render();
 }
 
-function needsDeload(){
-  // a cada 5 semanas treinadas sem pausa
-  const last=ST.meta.lastDeloadWeek||0;
-  const cur=weeksTraining();
-  return cur>0 && (cur-last)>=5;
+/* ============ ÍNDICE DE FADIGA ============
+   O RIR era gravado em toda série e só era lido pra diagnosticar UM exercício por vez.
+   E o deload era por calendário — não sabia se você estava fadigado. Aqui o sinal é
+   coletivo: quantos exercícios do programa estão travados AO MESMO TEMPO e com que RIR.
+   Fadiga acumulada aparece como "vários travando junto, todos perto da falha", não como
+   "passaram 5 semanas". */
+function fadigaGlobal(){
+  let travados=0, comHist=0; const rirs=[];
+  for(const d of ['A','B','C','D']){
+    const ex=(WK[d]&&WK[d].ex)||[];
+    ex.forEach((e,i)=>{
+      if(e.t==='core') return;                       // core não é sinal de fadiga sistêmica
+      const h=progressSessions(exId(d,i)).filter(x=>sessionTop(x.sets));
+      if(h.length<3) return;
+      comHist++;
+      const t=h.slice(-3).map(x=>sessionTop(x.sets));
+      if(cmpTop(t[2],t[1])<=0 && cmpTop(t[2],t[0])<=0) travados++;
+      const r=sessionRIR(h[h.length-1].sets); if(r!=null) rirs.push(r);
+    });
+  }
+  if(comHist<4) return null;                         // dado insuficiente: não inventa diagnóstico
+  const pct=travados/comHist;
+  const rirMed=rirs.length ? rirs.reduce((a,b)=>a+b,0)/rirs.length : null;
+  return {travados, comHist, pct, rirMed,
+          alta: pct>=0.5 && (rirMed==null || rirMed<=1.5)};
 }
-function markDeloadDone(){ ST.meta.lastDeloadWeek = weeksTraining(); saveK('meta'); }
+/* Deload deixou de ser calendário: a semana 4 de cada mesociclo já é leve por construção
+   (ver exSets). Isto aqui é só o gatilho de ANTECIPAR quando a fadiga chega antes. */
+function needsDeload(){
+  if(emDeload()) return null;
+  if(mesoSemana()>=4) return null;
+  const f=fadigaGlobal();
+  if(f && f.alta) return f;
+  return null;
+}
+function markDeloadDone(){ ST.meta.lastDeloadWeek = weeksTraining(); ST.meta.deloadAte=null; saveK('meta'); }
 // Próximo treino sugerido baseado no último feito (ciclo ABCD)
 function suggestedNextDay(){
   const seq=["A","B","C","D"];
@@ -3792,13 +3862,14 @@ function renderDays(){
   const deload=needsDeload();
   let h=``;
   if(deload){
+    const rirTxt = deload.rirMed!=null ? ` com RIR médio ${fmtStep(deload.rirMed)}` : '';
     h+=`<div class="deload-alert">
       <div class="ic">${I.flame}</div>
       <div class="meta">
-        <div class="t">Semana de DELOAD recomendada</div>
-        <div class="f">Reduza carga -20% ou volume -50% essa semana. Volta forte semana que vem.</div>
+        <div class="t">Fadiga acumulada</div>
+        <div class="f">${deload.travados} de ${deload.comHist} exercícios travados ao mesmo tempo${rirTxt}. Isso é fadiga, não falta de esforço — vale antecipar a semana leve.</div>
       </div>
-      <button onclick="markDeloadDone(); render();">Feito</button>
+      <button onclick="anteciparDeload()">Semana leve</button>
     </div>`;
   }
   const bl=BLOCOS[blocoAtual()], blSem=blocoSemana(), blVenc=blocoVencido();
@@ -3809,6 +3880,8 @@ function renderDays(){
     </div>
     <div class="bl-n">${esc(bl.nome)}</div>
     <div class="bl-bar"><div class="bl-fill" style="width:${Math.min(100, blSem/bl.semanas*100)}%"></div></div>
+    ${(()=>{ const f=faseMeso();
+      return `<div class="bl-fase f-${f.k}"><b>${f.nome}</b> · semana ${mesoSemana()} de 4 do mesociclo<span>${esc(f.nota)}</span></div>`; })()}
     <div class="bl-r">${esc(bl.resumo)}</div>
     ${blVenc ? `<button class="bl-btn" onclick="trocarBloco()">Bloco cumprido — virar pro de ${esc(blocoAtual()==='peito_bracos'?BLOCOS.perna.nome:BLOCOS.peito_bracos.nome)}</button>`
              : `<button class="bl-btn ghost" onclick="trocarBloco()">Virar agora</button>`}

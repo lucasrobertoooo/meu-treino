@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-08-19.06 (**Blocos de ênfase** — peito/braços 12 semanas ↔ perna 8 semanas. Cada bloco redefine tiers E séries planejadas; o app conta as semanas e avisa a virada. SHELL v28)
+**Última atualização:** 2026-08-19.07 (**Mesociclo com rampa de volume** + **deload por fadiga medida** em vez de calendário. O RIR coletado há meses virou decisão. SHELL v29)
+
+**Antes: 2026-08-19.06 (**Blocos de ênfase** — peito/braços 12 semanas ↔ perna 8 semanas. Cada bloco redefine tiers E séries planejadas; o app conta as semanas e avisa a virada. SHELL v28)
 
 **Antes: 2026-08-19.05 (**Reordenação por prioridade declarada** — 1º peito, 2º braços, 3º largura, 4º inferiores. Peito 16→21 e braços 19→27 séries diretas, mesmo volume total. `MG_TIER` substitui o booleano `MG_PRIORITY`. SHELL v27)
 
@@ -843,6 +845,41 @@ Efeito colateral desejado: o modo **Essencial** (sessão curta) passa a proteger
 
 ### Verificação
 27 asserts no código real: volumes dos dois blocos, inversão dos tiers, `exSets` aplicando overrides, contagem de semanas e detecção de vencimento nos dois blocos, `ST.logs` intacto após a troca (ida e volta), o Essencial seguindo o foco de cada bloco, e os 7 renders.
+
+---
+
+## Mesociclo e fadiga medida (2026-08-19.07)
+
+Duas lacunas que a auditoria achou: o app tinha progressão de **carga** mas nenhuma de **volume**, e o deload era por **calendário** enquanto o RIR era coletado em toda série e quase não lido.
+
+### Rampa de volume (`mesoSemana` / `faseMeso` / `exSets`)
+O bloco fixava as séries por 12 semanas. Agora, dentro do bloco, roda um mesociclo de 4 semanas:
+
+| Semana do meso | Fase | Peito (bloco 1) | Total |
+|---|---|---|---|
+| 1-2 | Base | 21 | 105 |
+| 3 | Acúmulo | **26** | 117 |
+| 4 | Deload | **11** | 59 |
+
+O **+1 do acúmulo só entra nos músculos que são foco do bloco** (tier 1-2) — no bloco de perna, quem sobe é extensora/flexora e o supino fica em manutenção. O deload corta tudo pela metade. Tudo passa por `exSets()`, que já era o ponto único.
+
+*Ressalva honesta:* sobrecarga progressiva é consenso; que a **rampa** seja superior a volume fixo alto tem base mais prática (modelo MEV/MAV/MRV) que de ensaio controlado.
+
+### Deload por sinal (`fadigaGlobal` / `needsDeload` / `anteciparDeload`)
+Antes: `needsDeload()` avisava a cada 5 semanas, sem olhar nada; `autoDetectDeload()` só percebia que uma semana leve tinha acontecido. E o RIR de cada série alimentava só o diagnóstico de **um** exercício.
+
+Agora `fadigaGlobal()` olha o programa inteiro: quantos exercícios estão travados **ao mesmo tempo** (3 sessões sem progredir, por `cmpTop`) e o RIR médio das últimas sessões. Fadiga alta = **≥50% travados** e RIR médio ≤1,5. Core fica de fora (não é sinal de fadiga sistêmica) e abaixo de 4 exercícios com histórico devolve `null` em vez de inventar diagnóstico.
+
+O alerta deixou de ser genérico: agora diz **"6 de 6 exercícios travados ao mesmo tempo com RIR médio 0,5"** e o botão vira **"Semana leve"**, que marca `ST.meta.deloadAte` por 7 dias e corta as séries na hora.
+
+Calendário saiu de cena: a semana 4 de cada mesociclo já é leve por construção, então `needsDeload()` virou só o gatilho de **antecipar** — e não dispara se você já está em semana de deload.
+
+### Verificação
+30 asserts no código real: a rampa nas 8 semanas com o ciclo 1-2-3-4, o acúmulo subindo só o foco (nos dois blocos), fadiga alta vs. programa saudável vs. dado insuficiente, antecipar cortando o volume na hora com `ST.logs` intacto, e os 7 renders.
+
+### Ainda em aberto (da mesma auditoria)
+- **Gráfico de e1RM por exercício** — o dado está em `ST.logs`, falta desenhar a curva.
+- **Troca de acessórios na virada de bloco** — hoje a troca só dispara por plateau; a virada de bloco é o momento natural e não está sendo usado.
 
 ---
 
