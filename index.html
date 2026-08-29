@@ -456,6 +456,27 @@
   .bwrate.flat .bwr-v, .bwrate.flat .bwr-t{color:var(--muted);}
   .bwrate.down .bwr-v, .bwrate.down .bwr-t{color:var(--push);}
   .bwrate.none{font-size:11.5px; color:var(--faint); font-weight:500;}
+  .setrow.extra{grid-template-columns:28px 1fr 1fr 38px 26px;}
+  .setrow.extra .sn{color:var(--core); font-style:italic;}
+  .setrow.extra .num{border-style:dashed;}
+  .rmset{
+    width:26px; height:26px; padding:0; border-radius:8px; cursor:pointer;
+    background:none; border:1px solid var(--line-2); color:var(--muted);
+    font-size:15px; line-height:1; font-family:inherit;
+  }
+  .rmset:active{background:var(--glass-2);}
+  .xtra{
+    font-size:10px; font-weight:700; color:var(--core);
+    background:rgba(245,185,78,.12); border-radius:6px; padding:1px 5px; margin-left:3px;
+  }
+  .openweb{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+    width:100%; margin:6px 0 2px; padding:12px; border-radius:14px;
+    text-decoration:none; font-size:13.5px; font-weight:600;
+    background:var(--glass-2); border:1px solid var(--line-2); color:var(--ink);
+  }
+  .openweb:active{opacity:.82;}
+  .openweb small{font-size:10.5px; color:var(--faint); font-weight:500;}
   .addset{
     width:100%; margin-top:8px; padding:9px; border-radius:11px; cursor:pointer;
     display:flex; align-items:center; justify-content:center; gap:6px;
@@ -1785,7 +1806,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.09';
+const APP_VERSION = '2026-08-19.10';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -4162,12 +4183,14 @@ function renderDay(d){
     for(let k=0;k<nset;k++){
       const tv=tod&&tod.sets[k]?tod.sets[k]:{};
       const lv=last&&last.sets[k]?last.sets[k]:{};
-      rows+=`<div class="setrow r4">
+      const isExtra = k>=planned;
+      rows+=`<div class="setrow r4${isExtra?' extra':''}">
         <div class="sn">${k+1}</div>
         <input class="num" inputmode="decimal" placeholder="${lv.kg||'kg'}" value="${tv.kg||''}" data-id="${id}" data-k="${k}" data-f="kg" oninput="onLog(this)">
         <input class="num" inputmode="numeric" placeholder="${lv.reps||'reps'}" value="${tv.reps||''}" data-id="${id}" data-k="${k}" data-f="reps" oninput="onLog(this)">
         <input class="num rir" inputmode="numeric" placeholder="${lv.rir!=null&&lv.rir!==''?lv.rir:'RIR'}" value="${tv.rir!=null?tv.rir:''}" data-id="${id}" data-k="${k}" data-f="rir" oninput="onLog(this)" maxlength="1">
         <div class="chk ${tv.done?'on':''}" onclick="toggleDone('${id}',${k},this)">${I.check}</div>
+        ${isExtra?`<button class="rmset" onclick="removeSet('${id}',${k})" title="Remover série extra" aria-label="Remover série extra">×</button>`:''}
       </div>`;
     }
     const yt=`https://www.youtube.com/results?search_query=`+encodeURIComponent(nm+" execução técnica academia");
@@ -4202,7 +4225,7 @@ function renderDay(d){
       <div class="body">
         ${pular?`<div class="skiptag">${I.moon} Pular hoje · libera ~${Math.round(exMinutes(e)*paceFactor(d))} min</div>`:''}
         <div class="target">
-          <span class="met"><b>${exSets(e)}</b> séries</span>
+          <span class="met"><b>${planned}</b> séries${nset>planned?` <span class="xtra">+${nset-planned} extra</span>`:''}</span>
           <span class="dot"></span>
           <span class="met"><b>${e.r}</b> reps</span>
           <span class="dot"></span>
@@ -4264,6 +4287,30 @@ function onLog(inp){ const id=inp.dataset.id; upsertToday(id, collect(id)); flas
 /* Série extra além do planejado (drop set, série a mais). Fica salva na sessão do dia e
    conta no volume semanal como qualquer outra. collect() antes de anexar preserva o que já
    estava digitado e ainda não foi salvo. */
+/* Remove uma série EXTRA (além do recomendado da fase). Antes só dava pra adicionar: um
+   toque sem querer no "Série extra" ficava lá pra sempre, e não havia como distinguir o
+   planejado da sobra. Confirma só quando a série já tem registro. */
+function removeSet(id, k){
+  const tod=todaySession(id);
+  const stored=(tod&&Array.isArray(tod.sets))?tod.sets:[];
+  const fromDom=collect(id);
+  const sets = fromDom.length>=stored.length ? fromDom : stored.slice();
+  if(k<0 || k>=sets.length) return;
+  const st=sets[k]||{};
+  const temDado = (String(st.kg||'').trim()!=='') || (String(st.reps||'').trim()!=='') || st.done;
+  if(temDado && !confirm('Essa série tem registro. Remover mesmo assim?')) return;
+  sets.splice(k,1);
+  upsertToday(id, sets);
+  render();
+}
+/* Abre o app no navegador pra forçar atualização. O service worker serve uma cópia offline,
+   então o PWA instalado pode ficar preso numa versão antiga. Precisa ser um <a> real com
+   target=_blank: em PWA standalone o iOS bloqueia location.href pra sair do app.
+   O carimbo de tempo evita que o próprio navegador devolva o HTML do cache. */
+function abrirNoNavegador(a){
+  try{ a.href = a.dataset.url + '?r=' + Date.now(); }catch(e){}
+  return true;
+}
 function addSet(id){
   const tod=todaySession(id);
   const stored=(tod&&Array.isArray(tod.sets))?tod.sets:[];
@@ -5491,6 +5538,12 @@ function renderMais(){
       <label class="btn-like">Importar fotos/dados<input type="file" accept="application/json,.json" style="display:none" onchange="importPhotos(this)"></label>
     </div>
   </div>
+  <h2 class="sec">Atualizar o app</h2>
+  <div class="infocard">
+    <p>O app guarda uma cópia offline de si mesmo, então às vezes continua numa versão antiga. Abrir no navegador busca o arquivo novo direto do servidor.</p>
+    <a class="openweb" href="https://lucasrobertoooo.github.io/meu-treino/" data-url="https://lucasrobertoooo.github.io/meu-treino/" target="_blank" rel="noopener" onclick="return abrirNoNavegador(this)">Abrir no navegador<small>depois: feche o app e reabra pelo ícone</small></a>
+  </div>
+
   <div class="foot">Adicione à Tela de Início no iPhone: Compartilhar → "Adicionar à Tela de Início".<br>Feito sob medida pro teu ABCD Push/Pull.<br><span style="color:var(--faint);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px">versão ${APP_VERSION}</span></div>`;
   app.innerHTML=h;
 }

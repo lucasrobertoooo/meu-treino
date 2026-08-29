@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-08-19.09 (**Ritmo de ganho na aba Corpo** — responde "estou em superávit?" — e **fix do bug do divisor** no `bwTrend`, que subestimava o ritmo em 33%. SHELL v31)
+**Última atualização:** 2026-08-19.10 (**Séries extras visíveis e removíveis** + **botão de abrir no navegador** pra forçar atualização. SHELL v32)
+
+**Antes: 2026-08-19.09 (**Ritmo de ganho na aba Corpo** — responde "estou em superávit?" — e **fix do bug do divisor** no `bwTrend`, que subestimava o ritmo em 33%. SHELL v31)
 
 **Antes: 2026-08-19.08 (**Curva de progresso por exercício** + **revisão de acessórios na virada de bloco** — fecha os 4 itens da auditoria de autonomia. SHELL v30)
 
@@ -924,6 +926,23 @@ Precisa de 4+ pesagens em 28 dias; com menos, convida a pesar em vez de inventar
 
 ### Verificação
 15 asserts: o divisor antes/depois contra uma série de ritmo conhecido, as 5 faixas de classificação, as guardas de dado insuficiente (3 pesagens e zero), o texto exato renderizado (`+0,28kg/sem · 0,37% · no alvo`) e os 7 renders.
+
+---
+
+## Séries extras + abrir no navegador (2026-08-19.10)
+
+**O problema.** O "Série extra" só adicionava: um toque sem querer ficava lá pra sempre, sem como remover. E não dava pra saber, olhando a tela, se as linhas eram o recomendado da fase ou sobra.
+
+- **Cabeçalho** passou a mostrar o **recomendado da fase atual** (`planned`, já com a rampa do mesociclo aplicada) e, quando há sobra, um selo âmbar **`+N extra`**.
+- **Linhas extras** ganham a classe `.extra`: número em âmbar itálico, bordas tracejadas nos campos e um **botão ×** que só existe nelas (a grade vira `28px 1fr 1fr 38px 26px` só nessa linha).
+- **`removeSet(id,k)`**: mesma blindagem do `addSet` (usa o DOM pra pegar o não-salvo, mas nunca encolhe o que já está gravado). Confirma só quando a série tem registro; ignora índice inválido.
+
+**Bug que eu introduzi e os testes pegaram:** a primeira tentativa de substituir o cabeçalho acertou o `renderHomeDay` em vez do `renderDay` — e lá `planned` não existe, o que quebraria a tela de sessões de casa com `ReferenceError`. Passou despercebido porque a bateria não renderizava o home day. **A bateria agora renderiza.**
+
+**Botão "Abrir no navegador"** (aba Mais, seção "Atualizar o app"): o service worker serve uma cópia offline, então o PWA instalado pode ficar preso numa versão antiga. Precisa ser um `<a target="_blank">` real — em standalone o iOS bloqueia `location.href` pra sair do app (mesma lição do deep-link do Atalhos, § 2026-07-02). `abrirNoNavegador()` carimba `?r=<timestamp>` no clique pra o próprio navegador não devolver o HTML do cache.
+
+### Verificação
+28 asserts nos dois apps: cabeçalho mostrando o recomendado da fase (4 na base, 5 no acúmulo), exatamente as N extras marcadas, botão só nelas, selo atualizando ao remover, séries registradas sobrevivendo, índice inválido sem efeito — **e `renderHomeDay` renderizando sem erro**, que era o furo.
 
 ---
 
