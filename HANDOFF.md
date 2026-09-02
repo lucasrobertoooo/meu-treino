@@ -1048,8 +1048,15 @@ Duas rotas novas, reusando o KV e o `SHARED_TOKEN` que já existiam pro push:
 
 Devolve um relatório do que entrou (X sessões, Y pesagens...) em vez de dizer "restaurado" sem prova. É idempotente: restaurar 2× não duplica.
 
+### Os dois apps podem dividir o mesmo Worker
+Se ambos apontarem pro mesmo Worker, dividem também o `SHARED_TOKEN` — então separar por token não resolveria. **A separação é por app**: o cliente manda `?app=meutreino` / `?app=treinoela` e o Worker guarda em `bk:<app>:<id>`. O valor é sanitizado (`[^a-z0-9_-]` fora, 24 chars) porque vira chave de KV; sem o parâmetro cai em `default`.
+
+**Bug pego no teste:** o id do snapshot era `Date.now()` puro. Dois envios no mesmo milissegundo recebiam o mesmo id, e a rotação apagava o corpo de um snapshot que o índice ainda listava — índice com 5 entradas e zero arquivos. Agora o id leva sufixo aleatório, e a rotação só apaga id que não ficou na lista mantida.
+
 ### Verificação
 24 asserts com um Worker falso: envio, janela de 6h, fusão preservando a sessão local, exercício que só existia na nuvem, `meta` intacto, dupla restauração sem duplicar, rede caída, token errado.
+
+Mais 14 asserts rodando o **Worker de verdade** (o mesmo arquivo que vai pro Cloudflare) com KV falso: dois apps no mesmo Worker com o mesmo token sem contaminação, rotação isolada por app, nenhuma chave órfã, path traversal no `?app=`, e 401 sem token.
 
 ---
 

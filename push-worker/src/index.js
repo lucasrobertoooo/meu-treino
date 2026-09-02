@@ -7,6 +7,15 @@ const ALLOWED_ORIGIN = 'https://lucasrobertoooo.github.io';
 
 const SNAP_MAX = 5;   // quantos snapshots de backup o worker guarda
 
+/* Os dois apps (dele e dela) podem apontar pro MESMO worker — e ai compartilhariam o
+   SHARED_TOKEN, entao separar por token nao resolveria. A separacao e por app, mandado
+   pelo cliente em ?app=. Sanitizado: vira chave de KV, nao aceito nada alem de a-z0-9-_. */
+function nsApp(url) {
+  const raw = (url.searchParams.get('app') || 'default').toLowerCase();
+  const limpo = raw.replace(/[^a-z0-9_-]/g, '').slice(0, 24);
+  return limpo || 'default';
+}
+
 function cors(extra = {}) {
   return {
     'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
@@ -200,25 +209,33 @@ export default {
         const body = await req.text();
         if (!body || body.length < 2) return new Response('Empty', { status: 400, headers: cors() });
         if (body.length > 4 * 1024 * 1024) return new Response('Too large', { status: 413, headers: cors() });
+        const ns = nsApp(url);
         const now = Date.now();
-        const idx = JSON.parse((await env.KV.get('bk:index')) || '[]');
-        const id = String(now);
-        await env.KV.put('bk:' + id, body);
+        const idx = JSON.parse((await env.KV.get(`bk:${ns}:index`)) || '[]');
+        /* Sufixo aleatorio: com id = Date.now() puro, dois envios no MESMO milissegundo
+           recebiam o mesmo id, e a rotacao apagava o corpo de um snapshot que o indice
+           ainda listava — indice com 5 entradas e zero arquivos. Pego testando. */
+        const id = `${now}-${Math.random().toString(36).slice(2, 8)}`;
+        await env.KV.put(`bk:${ns}:${id}`, body);
         idx.unshift({ id, at: now, bytes: body.length });
-        const velhos = idx.slice(SNAP_MAX);
-        for (const v of velhos) await env.KV.delete('bk:' + v.id);
         const novo = idx.slice(0, SNAP_MAX);
-        await env.KV.put('bk:index', JSON.stringify(novo));
-        return Response.json({ ok: true, id, guardados: novo.length }, { headers: cors() });
+        /* So apaga id que NAO ficou na lista mantida: guarda contra id repetido. */
+        const mantidos = new Set(novo.map((v) => v.id));
+        for (const v of idx.slice(SNAP_MAX)) {
+          if (!mantidos.has(v.id)) await env.KV.delete(`bk:${ns}:${v.id}`);
+        }
+        await env.KV.put(`bk:${ns}:index`, JSON.stringify(novo));
+        return Response.json({ ok: true, id, app: ns, guardados: novo.length }, { headers: cors() });
       }
 
       if (url.pathname === '/backup' && req.method === 'GET') {
+        const ns = nsApp(url);
         const id = url.searchParams.get('id');
         if (!id) {
-          const idx = JSON.parse((await env.KV.get('bk:index')) || '[]');
-          return Response.json({ snapshots: idx }, { headers: cors() });
+          const idx = JSON.parse((await env.KV.get(`bk:${ns}:index`)) || '[]');
+          return Response.json({ app: ns, snapshots: idx }, { headers: cors() });
         }
-        const body = await env.KV.get('bk:' + id);
+        const body = await env.KV.get(`bk:${ns}:${id}`);
         if (!body) return new Response('Not Found', { status: 404, headers: cors() });
         return new Response(body, { headers: { ...cors(), 'Content-Type': 'application/json' } });
       }

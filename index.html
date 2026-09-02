@@ -1898,7 +1898,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.19';
+const APP_VERSION = '2026-08-19.20';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -5872,13 +5872,21 @@ function renderMais(){
    de instalação limpa. */
 function nuvemPronta(){ return !!(ST.meta && ST.meta.workerUrl && ST.meta.workerToken); }
 function nuvemHeaders(){ return {'Authorization':'Bearer '+ST.meta.workerToken, 'Content-Type':'application/json'}; }
+/* Os dois apps podem apontar pro MESMO worker. Compartilhando o worker, compartilham o
+   SHARED_TOKEN — então separar por token não resolveria. O worker separa por ?app=, e cada
+   app manda o seu. Sem isso, o backup de um sobrescreveria o do outro. */
+const NUVEM_APP='meutreino';
+function nuvemUrl(extra){
+  const base=String(ST.meta.workerUrl||'').replace(/\/+$/,'');
+  return base+'/backup?app='+NUVEM_APP+(extra||'');
+}
 
 async function enviarNuvem(silencioso){
   if(!nuvemPronta()){ if(!silencioso) showToast('Configure o Worker na aba Mais','warn',3000); return false; }
   try{
     const full={_v:1, _at:new Date().toISOString()};
     for(const k of Object.keys(LS)) full[k]=ST[k];
-    const r=await fetch(ST.meta.workerUrl+'/backup', {method:'PUT', headers:nuvemHeaders(), body:JSON.stringify(full)});
+    const r=await fetch(nuvemUrl(), {method:'PUT', headers:nuvemHeaders(), body:JSON.stringify(full)});
     if(!r.ok) throw new Error('HTTP '+r.status);
     ST.meta.nuvemAt=Date.now(); ST.meta.lastBackupAt=Date.now();   // conta como backup: silencia o lembrete
     saveK('meta');
@@ -5902,7 +5910,7 @@ async function enviarNuvemAuto(){
   await enviarNuvem(true);
 }
 async function listarNuvem(){
-  const r=await fetch(ST.meta.workerUrl+'/backup', {headers:nuvemHeaders(), cache:'no-store'});
+  const r=await fetch(nuvemUrl(), {headers:nuvemHeaders(), cache:'no-store'});
   if(!r.ok) throw new Error('HTTP '+r.status);
   return (await r.json()).snapshots || [];
 }
@@ -5959,7 +5967,7 @@ async function restaurarNuvem(){
     if(esc===null) return;
     const idx=parseInt(esc,10)-1;
     if(!(idx>=0 && idx<snaps.length)){ showToast('Número inválido','warn',2400); return; }
-    const r=await fetch(ST.meta.workerUrl+'/backup?id='+encodeURIComponent(snaps[idx].id), {headers:nuvemHeaders(), cache:'no-store'});
+    const r=await fetch(nuvemUrl('&id='+encodeURIComponent(snaps[idx].id)), {headers:nuvemHeaders(), cache:'no-store'});
     if(!r.ok) throw new Error('HTTP '+r.status);
     const o=await r.json();
     if(!confirm('Vou FUNDIR esse backup no que já está aqui.\n\nNada do aparelho é apagado — só entra o que falta. Seguir?')) return;
