@@ -1339,6 +1339,8 @@
     /* Estava no topo, cobrindo o título da tela. Vai pro rodapé, acima do FAB (94+56px). */
     position:fixed; bottom:calc(158px + env(safe-area-inset-bottom,0px));
     left:50%; transform:translateX(-50%); max-width:min(300px, calc(100vw - 40px));
+    /* Aviso nunca bloqueia toque: sem isto ele cobria o botão embaixo dele. */
+    pointer-events:none;
     background:rgba(28,28,32,.94); color:var(--ink);
     padding:11px 18px; border-radius:14px;
     border:1px solid var(--line-2);
@@ -1863,7 +1865,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.14';
+const APP_VERSION = '2026-08-19.15';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
