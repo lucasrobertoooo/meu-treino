@@ -1899,7 +1899,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.22';
+const APP_VERSION = '2026-08-19.23';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -5465,6 +5465,35 @@ function renderCorpo(){
 
 // séries de uma medida (só datas que têm o valor), ascendente
 // Campos de medida = base (MEASURE_FIELDS) + customizados do usuário (ST.meta.customMeasures)
+/* Medida importada com campo que o app não conhece ficava GRAVADA E INVISÍVEL: não aparecia
+   na lista, não entrava no gráfico, não comparava. Foi o que aconteceu com "Costas 102,5" —
+   o valor estava lá desde julho e nunca apareceu, porque "costas" não é campo padrão nem
+   veio como customizado no arquivo. Agora todo campo desconhecido vira campo customizado na
+   hora, com rótulo legível. Nada importado pode ficar mudo. */
+function rotuloDeCampo(k){
+  const s=String(k).replace(/[_-]+/g,' ').trim();
+  return s ? s.charAt(0).toUpperCase()+s.slice(1) : k;
+}
+function registrarCamposDesconhecidos(lista){
+  if(!Array.isArray(lista) || !lista.length) return 0;
+  if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
+  if(!Array.isArray(ST.meta.customMeasures)) ST.meta.customMeasures=[];
+  const conhecidos=new Set(allMeasureFields().map(f=>f[0]));
+  const ignorar=new Set(['date','id','_at','nota','obs','peso','kg']);
+  let n=0;
+  for(const m of lista){
+    if(!m || typeof m!=='object') continue;
+    for(const k of Object.keys(m)){
+      if(ignorar.has(k) || conhecidos.has(k)) continue;
+      const v=m[k];
+      if(v==null || v==='' || !isFinite(num(v))) continue;
+      ST.meta.customMeasures.push({key:k, label:rotuloDeCampo(k)});
+      conhecidos.add(k); n++;
+    }
+  }
+  if(n) saveK('meta');
+  return n;
+}
 function allMeasureFields(){
   const custom=((ST.meta&&ST.meta.customMeasures)||[]).map(c=>[c.key, c.label, false, true]); // 4º = isCustom
   return MEASURE_FIELDS.concat(custom);
@@ -5987,6 +6016,7 @@ function fundirBackup(o){
     if(!ST.exmeta) ST.exmeta={};
     for(const id of Object.keys(o.exmeta)) if(ST.exmeta[id]===undefined){ ST.exmeta[id]=o.exmeta[id]; rel.campos++; }
   }
+  rel.campos += registrarCamposDesconhecidos(ST.measures);   // idem na restauração da nuvem
   // meta NÃO é fundido: são preferências do aparelho (worker, token, bloco, foco).
   for(const k of Object.keys(LS)) saveK(k);
   return rel;
@@ -6132,6 +6162,7 @@ function importPhotos(input){
           nMeas++;
         }
         ST.measures.sort((a,b)=>a.date<b.date?-1:1);
+        nCustom += registrarCamposDesconhecidos(o.measures);   // nada importado fica invisível
       }
       // 3) fotos (pixel no IDB + metadado; por id, sem duplicar)
       const arr=Array.isArray(o.photos)?o.photos:[];
@@ -6599,6 +6630,9 @@ async function boot(){
   setTimeout(()=>{ try{ enviarNuvemAuto(); }catch(e){} }, 4000);   // backup automático, em segundo plano
 }
 migrateLogsStableId();   // chaves posicionais viram id estável (uma vez)
+/* Resgata medida já gravada com campo desconhecido — o "Costas 102,5" importado em julho
+   estava no storage e nunca apareceu na tela. Idempotente: só cria campo que falta. */
+try{ if(registrarCamposDesconhecidos(ST.measures)) render(); }catch(_){}
 recalcPrioridades();   // antes do 1º render
 try{ registrarDeloadEmCurso(); }catch(_){}   // a semana leve marca a si mesma: MG_PRIORITY depende do bloco ativo
 setTimer(90);

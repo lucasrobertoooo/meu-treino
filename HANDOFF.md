@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-08-19.22 (**Volta de pausa** — o app não manda mais subir carga depois de meses parado. Backup separado por app. SHELL v44)
+**Última atualização:** 2026-08-19.23 (**Resolvido o bug de julho**: medida importada com campo desconhecido ficava gravada e invisível. SHELL v45)
+
+**Antes: 2026-08-19.22 (**Volta de pausa** — o app não manda mais subir carga depois de meses parado. Backup separado por app. SHELL v44)
 
 **Antes: 2026-08-19.19 (**Backup automático na nuvem** — restauração FUNDE, não substitui. SHELL v41)
 
@@ -1095,6 +1097,19 @@ Pausa de 8 meses · virada de ano (dez→jan) · 10 sessões travadas seguidas (
 
 ### Backup separado por app
 Os dois apps apontam pro mesmo Worker — e compartilhando Worker compartilham o `SHARED_TOKEN`, então separar por token não resolveria. A separação é por `?app=`, guardando em `bk:<app>:<id>`. **Bug pego no teste:** o id do snapshot era `Date.now()` puro; dois envios no mesmo milissegundo recebiam o mesmo id e a rotação apagava o corpo de um snapshot que o índice ainda listava — índice com 5 entradas e zero arquivos.
+
+---
+
+## Medida invisível — o bug de julho, resolvido (2026-08-19.23)
+
+**A queixa original (2026-07-27):** "o app está na versão 2026-07-27.03 mas não está mostrando nenhuma das fotos e nem as medidas". Nunca foi diagnosticado.
+
+**Diagnóstico:** as fotos SEMPRE funcionaram — reproduzi o import no harness e as 8 renderizam como `<img>`. O problema era outro e mais sutil: das seis medidas importadas, **"Costas 102,5" nunca apareceu**. `MEASURE_FIELDS` tem 8 campos padrão e "costas" não é um deles; o arquivo trouxe só "bunda" como campo customizado. Resultado: o valor foi gravado em `ST.measures` e ficou **invisível pra sempre** — não listava, não entrava no gráfico, não comparava.
+
+**Correção:** `registrarCamposDesconhecidos(lista)` transforma todo campo numérico desconhecido em campo customizado, com rótulo legível (`costas` → `Costas`). Ignora `date`, `id`, `_at`, `nota`, `obs` e valor não-numérico. Roda em três pontos: no import de medidas, na restauração da nuvem, e **no boot** — este último resgata o dado que já está invisível no aparelho desde julho.
+
+### Verificação
+20 asserts nos dois apps com os números reais que ele importou: campo resgatado, rótulo legível, 102,5 renderizando, idempotente no 2º boot, e sem inventar campo a partir de texto ou metadado.
 
 ---
 
