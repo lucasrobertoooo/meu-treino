@@ -477,6 +477,35 @@
   }
   .openweb:active{opacity:.82;}
   .openweb small{font-size:10.5px; color:var(--faint); font-weight:500;}
+  /* ==== CARD DO EXERCÍCIO REORDENADO ==== */
+  .exhead{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:9px;}
+  .exname{font-size:18px; font-weight:800; color:var(--ink); letter-spacing:-.015em; line-height:1.2; flex:1 1 auto; min-width:0;}
+  .pr-inline{
+    display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:800;
+    color:#231a05; background:var(--core-grad); border-radius:6px; padding:2px 6px; flex:none;
+  }
+  .photo.semtarja{border-radius:var(--r-md); overflow:hidden;}
+  .photo.semtarja .ovr{display:none;}
+  .restbig{
+    width:100%; margin:10px 0 0; padding:13px; border-radius:13px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit;
+    font-size:14px; font-weight:700; color:var(--core);
+    background:rgba(245,185,78,.09); border:1px solid rgba(245,185,78,.28);
+  }
+  .restbig:active{opacity:.8;}
+  .restbig svg{width:17px; height:17px;}
+  .exmore{
+    width:100%; margin-top:8px; padding:10px; border-radius:12px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:7px; font-family:inherit;
+    font-size:12.5px; font-weight:600; color:var(--muted);
+    background:none; border:1px solid var(--line);
+  }
+  .exmore svg{width:13px; height:13px;}
+  .exmore i{font-style:normal; font-size:9px; opacity:.7;}
+  .exmore.aberto{color:var(--ink2); border-color:var(--line-2);}
+  .exdet{margin-top:10px; display:flex; flex-direction:column; gap:9px;}
+  .exbtns2{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .fab.rolando{opacity:.16; transform:scale(.82);}
   .addset{
     width:100%; margin-top:8px; padding:9px; border-radius:11px; cursor:pointer;
     display:flex; align-items:center; justify-content:center; gap:6px;
@@ -1806,7 +1835,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.11';
+const APP_VERSION = '2026-08-19.12';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -4190,7 +4219,6 @@ function renderDay(d){
 
     // PR badge (sessão de hoje)
     const todayPR = tod && isPRSession(id, tod.sets);
-    const prBadge = todayPR ? `<div class="pr-badge">${I.trophy.replace('width="18" height="18"','width="11" height="11"')} PR!</div>` : '';
 
     let rows="";
     for(let k=0;k<nset;k++){
@@ -4216,26 +4244,25 @@ function renderDay(d){
       return `<div class="cue" style="margin-top:8px;font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:6px"><span style="display:inline-flex;color:#ffd178">${I.bolt}</span><span><b style="color:#fff">Aquecimento:</b> ${w1}kg × 8 · ${w2}kg × 5 (antes de começar)</span></div>`;
     })() : '';
     const photoBlock = url
-      ? `<div class="photo">
-           ${prBadge}
+      ? `<div class="photo semtarja">
            <img src="${url}" alt="${esc(nm)}" loading="lazy" decoding="async" onload="this.classList.add('loaded')" onerror="this.parentElement.classList.add('noimg'); this.remove();">
-           <div class="ovr">
-             <div class="name">${esc(nm)}</div>
-             <div class="pill ${pillC}">${pillT}</div>
-           </div>
          </div>`
-      : `<div class="photo noimg">
-           ${prBadge}
+      : `<div class="photo noimg semtarja">
            <div class="ph-fallback">Sem foto disponível</div>
-           <div class="ovr">
-             <div class="name">${esc(nm)}</div>
-             <div class="pill ${pillC}">${pillT}</div>
-           </div>
          </div>`;
 
+    /* ORDEM DO CARD (2026-08-19.12): o que se usa DURANTE a série vem primeiro — nome, meta,
+       campos. Foto, técnica, vídeo e editar são material de consulta e ficam num "Como fazer"
+       recolhido. Antes a foto sozinha comia 370px antes de qualquer coisa acionável, e a Meta
+       aparecia depois de 3 blocos de leitura: ~8 telas de rolagem por sessão, medidas. */
+    const detAberto = exDetalhes.has(id);
     h+=`<div class="ex${pular?' skipped':''}">
-      ${photoBlock}
       <div class="body">
+        <div class="exhead">
+          <div class="exname">${esc(nm)}</div>
+          <div class="pill ${pillC}">${pillT}</div>
+          ${todayPR?`<span class="pr-inline">${I.trophy.replace('width="18" height="18"','width="11" height="11"')} PR</span>`:''}
+        </div>
         ${pular?`<div class="skiptag">${I.moon} Pular hoje · libera ~${Math.round(exMinutes(e)*paceFactor(d))} min</div>`:''}
         <div class="target">
           <span class="met"><b>${planned}</b> séries${nset>planned?` <span class="xtra">+${nset-planned} extra</span>`:''}</span>
@@ -4244,17 +4271,10 @@ function renderDay(d){
           <span class="dot"></span>
           <span class="met"><b>${Math.floor(restS/60)}:${String(restS%60).padStart(2,'0')}</b> descanso</span>
         </div>
-        ${cue&&cue!=="—"?`<div class="cue">${exOverride(e).cue?esc(cue):cue}</div>`:""}
-        ${note&&note.trim()?`<div class="exnote">${I.pencil}<span>${esc(note)}</span></div>`:""}
-        ${warmup}
         ${skipBanner}
         ${sugBlock}
         ${platBlock2}
-        <div class="exbtns">
-          <a class="xb" href="${yt}" target="_blank" rel="noopener">${I.play}<span>Vídeo</span></a>
-          <button class="xb rest" onclick="openTimer(${restS})">${I.timer}<span>Descanso ${Math.floor(restS/60)}:${String(restS%60).padStart(2,'0')}</span></button>
-          <button class="xb" onclick="openExEdit('${e.id}')">${I.pencil}<span>Editar</span></button>
-        </div>
+        ${warmup}
       </div>
       <div class="log">
         <div class="last">${lastTxt}</div>
@@ -4270,6 +4290,19 @@ function renderDay(d){
         <input class="logcmt" type="text" maxlength="200" placeholder="Comentário do dia (outra máquina, variação, dor...)" value="${esc(todCmt)}" data-cid="${id}" oninput="onComment(this)">
         ${(()=>{ const pc=commentsFor(id,'log'); return pc.length?`<details class="cmthist"><summary>${I.hist} Comentários anteriores (${pc.length})</summary>${pc.map(c=>`<div class="cmth-row"><span class="cmth-d">${esc(c.date.slice(5).replace('-','/'))}</span><span class="cmth-t">${esc(c.cmt)}</span></div>`).join('')}</details>`:''; })()}
       </div>
+      <button class="restbig" onclick="openTimer(${restS})">${I.timer}<span>Descanso ${Math.floor(restS/60)}:${String(restS%60).padStart(2,'0')}</span></button>
+      <button class="exmore${detAberto?' aberto':''}" onclick="toggleDetalhes('${id}')">
+        ${I.play}<span>Como fazer</span><i>${detAberto?'▲':'▼'}</i>
+      </button>
+      ${detAberto?`<div class="exdet">
+        ${photoBlock}
+        ${cue&&cue!=="—"?`<div class="cue">${exOverride(e).cue?esc(cue):cue}</div>`:""}
+        ${note&&note.trim()?`<div class="exnote">${I.pencil}<span>${esc(note)}</span></div>`:""}
+        <div class="exbtns2">
+          <a class="xb" href="${yt}" target="_blank" rel="noopener">${I.play}<span>Vídeo</span></a>
+          <button class="xb" onclick="openExEdit('${e.id}')">${I.pencil}<span>Editar</span></button>
+        </div>
+      </div>`:''}
     </div>`;
   });
   app.innerHTML=h;
@@ -4323,6 +4356,24 @@ function removeSet(id, k){
 function abrirNoNavegador(a){
   try{ a.href = a.dataset.url + '?r=' + Date.now(); }catch(e){}
   return true;
+}
+/* Estado do "Como fazer": em variável, não em <details>. O app chama render() ao marcar
+   série, e um <details> nativo perderia o aberto a cada toque. */
+let exDetalhes = new Set();
+/* O FAB é fixed e passava por cima do conteúdo — cobria o botão Editar de exercícios no
+   meio da lista. Não dá pra escondê-lo durante o treino (o menu tem "Iniciar treino" e
+   "Timer avulso"), então ele sai da frente enquanto a pessoa rola e volta ao parar. */
+let _fabT=null;
+function fabAoRolar(){
+  const f=document.querySelector('.fab-main'); if(!f) return;
+  f.classList.add('rolando');
+  clearTimeout(_fabT);
+  _fabT=setTimeout(()=>f.classList.remove('rolando'), 600);
+}
+try{ window.addEventListener('scroll', fabAoRolar, {passive:true}); }catch(e){}
+function toggleDetalhes(id){
+  exDetalhes.has(id) ? exDetalhes.delete(id) : exDetalhes.add(id);
+  render();
 }
 function addSet(id){
   const tod=todaySession(id);
