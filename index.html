@@ -1890,7 +1890,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.16';
+const APP_VERSION = '2026-08-19.17';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -1932,7 +1932,7 @@ const WK = {
     {id:"a_1", n:"Supino inclinado halter 30°", s:4, r:"6-10", t:"comp", mg:{peito_sup:1, triceps:0.5, ombro_ant:0.5}, cue:"Principal do peito superior. Desce bem alongado; pensa em <em>espremer o peito</em> e juntar os cotovelos, não em empurrar o peso. Excêntrica 3s."},
     {id:"a_2", n:"Supino reto halter ou máquina", s:4, r:"8-12", t:"comp", mg:{peito_med:1, triceps:0.5, ombro_ant:0.5}, cue:"Peito médio/inferior. Mesmo foco: sente o peito puxar."},
     {id:"a_3", n:"Crucifixo na polia baixa", s:4, r:"12-15", t:"iso", mg:{peito_sup:1, peito_med:0.5}, cue:"De baixo p/ cima. Punhos se encontram <em>acima da linha do peito</em>. Estica bem embaixo. Drop set na última."},
-    {id:"a_4", n:"Elevação lateral com halter em pé (bilateral)", s:4, r:"12-20", t:"iso", mg:{ombro_lat:1}, cue:"Base clássica. <em>Bilateral em pé</em>: um halter em cada mão, ao lado do corpo. Sobe pelos cotovelos até altura do ombro, com o polegar levemente pra baixo (rotação neutra). Excêntrica controlada. Parciais no fim da última série. <em>Prioridade #1 — largura.</em>"},
+    {id:"a_4", n:"Elevação lateral com halter em pé (bilateral)", s:4, r:"12-16", t:"iso", mg:{ombro_lat:1}, cue:"Base clássica. <em>Bilateral em pé</em>: um halter em cada mão, ao lado do corpo. Sobe pelos cotovelos até altura do ombro, com o polegar levemente pra baixo (rotação neutra). Excêntrica controlada. Parciais no fim da última série. <em>Prioridade #1 — largura.</em>"},
     {id:"a_5", n:"Tríceps francês / extensão acima da cabeça", s:4, r:"10-15", t:"iso", mg:{triceps:1}, cue:"Cabeça longa: braço alongado atrás da cabeça. Posição alongada = mais crescimento."},
     {id:"a_6", n:"Tríceps na polia (corda)", s:3, r:"12-15", t:"iso", mg:{triceps:1}, cue:"Drop set na última série."},
     // Core movido de B (2026-07-08.03) — ids mantidos (b_8/b_9) pra preservar overrides do usuário
@@ -1942,15 +1942,15 @@ const WK = {
     {id:"b_1", n:"Puxada na polia (pegada aberta)", s:4, r:"8-12", t:"comp", mg:{costas:1, biceps:0.5}, cue:"Largura das costas. <em>Puxa com o cotovelo</em>, não com a mão."},
     {id:"b_2", n:"Remada sentada na polia ou máquina", s:3, r:"8-12", t:"comp", mg:{costas:1, biceps:0.5}, cue:"Espessura. Aperta as escápulas no fim."},
     {id:"b_3", n:"Crucifixo inverso (peck deck/polia)", s:4, r:"15-20", t:"iso", mg:{ombro_post:1}, cue:"Deltoide posterior = ombro 3D + postura melhor."},
-    {id:"b_4", n:"Elevação lateral na polia unilateral em pé", s:3, r:"12-20 por lado", t:"iso", mg:{ombro_lat:1}, cue:"<em>Unilateral.</em> Polia baixa; cabo preso ao punho do braço que trabalha, passando <em>na frente do corpo</em>. Braço começa alongado cruzando a barriga. Sobe pelo cotovelo até altura do ombro. Faz as 3 séries de um lado, depois do outro. <em>Log: registre 3 sets — cada set = 1 execução por lado</em> (mesma carga)."},
+    {id:"b_4", n:"Elevação lateral na polia unilateral em pé", s:3, r:"12-16 por lado", t:"iso", mg:{ombro_lat:1}, cue:"<em>Unilateral.</em> Polia baixa; cabo preso ao punho do braço que trabalha, passando <em>na frente do corpo</em>. Braço começa alongado cruzando a barriga. Sobe pelo cotovelo até altura do ombro. Faz as 3 séries de um lado, depois do outro. <em>Log: registre 3 sets — cada set = 1 execução por lado</em> (mesma carga)."},
     {id:"b_5", n:"Rosca inclinada com halter", s:5, r:"8-12", t:"iso", mg:{biceps:1}, cue:"Bíceps alongado (posição estendida = +crescimento). <em>Foca em sentir o bíceps.</em> Parciais no fim."},
     {id:"b_6", n:"Mesa flexora", s:2, r:"10-15", t:"iso", mg:{posterior:1}, cue:"Posterior de coxa. Sem náusea."},
     {id:"b_7", n:"Cadeira extensora", s:2, r:"12-15", t:"iso", mg:{quadriceps:1}, cue:"Quadríceps. Carga controlada."},
-    {id:"b_10", n:"Panturrilha", s:3, r:"12-20", t:"iso", mg:{panturrilha:1}, cue:"Antes do cardio."},
+    {id:"b_10", n:"Panturrilha", s:3, r:"12-16", t:"iso", mg:{panturrilha:1}, cue:"Antes do cardio."},
   ]},
   C:{name:"Push 2", focus:"Ombro · peito · tríceps", type:"push", ex:[
     {id:"c_1", n:"Desenvolvimento sentado com halter", s:4, r:"6-10", t:"comp", mg:{ombro_ant:1, ombro_lat:0.5, triceps:0.5}, cue:"Ombro completo (anterior + lateral)."},
-    {id:"c_2", n:"Elevação lateral com halter no banco inclinado 75°", s:4, r:"12-20", t:"iso", mg:{ombro_lat:1}, cue:"<em>Bilateral inclinado.</em> Banco a ~75°, tronco apoiado no encosto. Halteres começam colados na lateral do banco (posição alongada), sobem pelos cotovelos até altura do ombro. Ângulo diferente do em pé: dificulta no meio do movimento, alivia no topo. Excêntrica 3s. <em>Prioridade da largura.</em>"},
+    {id:"c_2", n:"Elevação lateral com halter no banco inclinado 75°", s:4, r:"12-16", t:"iso", mg:{ombro_lat:1}, cue:"<em>Bilateral inclinado.</em> Banco a ~75°, tronco apoiado no encosto. Halteres começam colados na lateral do banco (posição alongada), sobem pelos cotovelos até altura do ombro. Ângulo diferente do em pé: dificulta no meio do movimento, alivia no topo. Excêntrica 3s. <em>Prioridade da largura.</em>"},
     {id:"c_3", n:"Supino inclinado halter 30°", s:4, r:"8-12", t:"comp", mg:{peito_sup:1, triceps:0.5, ombro_ant:0.5}, cue:"2ª dose de peito superior. Espreme o peito."},
     {id:"c_4", n:"Peck deck ou crucifixo máquina", s:5, r:"10-15", t:"iso", mg:{peito_med:1, peito_sup:0.5}, cue:"Contração e alongamento do peito. Pausa 1s no alongamento."},
     {id:"c_5", n:"Extensão de tríceps acima da cabeça", s:3, r:"10-15", t:"iso", mg:{triceps:1}, cue:"Cabeça longa. Posição alongada."},
@@ -1962,7 +1962,7 @@ const WK = {
     {id:"d_1", n:"Puxada na polia (pegada neutra/fechada)", s:4, r:"8-12", t:"comp", mg:{costas:1, biceps:0.5}, cue:"Ângulo diferente do treino B."},
     {id:"d_2", n:"Remada na polia ou máquina", s:3, r:"8-12", t:"comp", mg:{costas:1, biceps:0.5}, cue:"Espessura."},
     {id:"d_3", n:"Crucifixo inverso", s:4, r:"15-20", t:"iso", mg:{ombro_post:1}, cue:"Segunda dose da semana. <em>Deltoide posterior é largura vista de trás</em> — junto com o lateral é o que fecha o ombro em 3D. Puxa com o cotovelo, não com a mão; abre até a linha do ombro e volta devagar. Carga leve, faixa alta: é isolador, não precisa ser pesado."},
-    {id:"d_4", n:"Elevação lateral polia unilateral cabo atrás do corpo (alongado)", s:3, r:"12-20 por lado", t:"iso", mg:{ombro_lat:1}, cue:"<em>Unilateral, cabo atrás.</em> Polia baixa do <em>mesmo lado</em> do braço que trabalha; cabo passa <em>por trás do corpo</em>. Braço começa cruzado atrás na diagonal (posição bem alongada — Wolf 2023: cresce mais). Sobe pelo cotovelo até altura do ombro. <em>Log: registre 3 sets — cada set = 1 execução por lado</em> (mesma carga)."},
+    {id:"d_4", n:"Elevação lateral polia unilateral cabo atrás do corpo (alongado)", s:3, r:"12-16 por lado", t:"iso", mg:{ombro_lat:1}, cue:"<em>Unilateral, cabo atrás.</em> Polia baixa do <em>mesmo lado</em> do braço que trabalha; cabo passa <em>por trás do corpo</em>. Braço começa cruzado atrás na diagonal (posição bem alongada — Wolf 2023: cresce mais). Sobe pelo cotovelo até altura do ombro. <em>Log: registre 3 sets — cada set = 1 execução por lado</em> (mesma carga)."},
     {id:"d_5", n:"Rosca direta na polia ou halter", s:5, r:"10-15", t:"iso", mg:{biceps:1}, cue:"Sente o bíceps. Drop set na última."},
     {id:"d_6", n:"Rosca martelo", s:4, r:"10-12", t:"iso", mg:{biceps:1}, cue:"Braquial = engrossa e alarga o braço."},
     {id:"d_7", n:"Mesa flexora", s:2, r:"12-15", t:"iso", mg:{posterior:1}, cue:"Perna leve."},
