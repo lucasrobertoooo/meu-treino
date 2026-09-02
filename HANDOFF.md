@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-08-19.14 (**Auditoria completa**: consistência das regras entre os dois apps, card do exercício reordenado e autorregulação por recuperação subjetiva. SHELL v36)
+**Última atualização:** 2026-08-19.18 (**Logs por id estável**, foco configurável, faixas 12-16 e peito abrindo o dia C. SHELL v40)
+
+**Antes: 2026-08-19.14 (**Auditoria completa**: consistência das regras entre os dois apps, card do exercício reordenado e autorregulação por recuperação subjetiva. SHELL v36)
 
 **Antes: 2026-08-19.10 (**Séries extras visíveis e removíveis** + **botão de abrir no navegador** pra forçar atualização. SHELL v32)
 
@@ -980,6 +982,40 @@ Uma pergunta ao concluir o treino, três toques: **Ainda pesado · Normal · Lev
 
 ### Verificação
 48 asserts nos dois apps, mais verificação visual no app publicado com service worker limpo.
+
+---
+
+## Auditoria de treino e chave estável (2026-08-19.15 a .18)
+
+### Logs por id estável — a mudança estrutural
+`exId` era `day+"_"+i`, puramente posicional. **Por isso toda mudança de programa até aqui teve que ser "no fim da lista"**: inserir ou mover qualquer coisa no meio grudaria o histórico no exercício errado. O app dela já usava id estável desde sempre; agora os dois usam.
+
+- `exId` consulta `WK[day].ex[i].id`; o fallback posicional segue valendo pras sessões de casa, que não têm id.
+- `migrateLogsStableId()` renomeia `A_0` → `a_1` etc, uma vez, e leva junto `ST.meta.swapAt` e `swapSnooze`, que também são keyed por `exId`.
+- Chave sem exercício correspondente fica **intacta** — histórico órfão não some.
+
+**Bug que o teste pegou:** a primeira versão perguntava "quem está na posição 0 do dia C hoje?" — e como o dia C foi reordenado na mesma versão, mandava o histórico do desenvolvimento pro supino. Agora usa um **mapa congelado** (`LAYOUT_ANTIGO`) do layout que gerou aquelas chaves. **Qualquer reordenação futura precisa desse cuidado se ainda houver usuário em chave antiga** — hoje não há mais, a migração já rodou.
+
+### Faixas 12-20 → 12-16
+A progressão dupla soma +1 rep/sessão e cada exercício aparece 1×/semana, então a **largura da faixa é literalmente quantas semanas até subir carga**:
+
+| Faixa | Semanas/ciclo | Ciclos em 12 semanas |
+|---|---|---|
+| 12-20 | 8 | 1,1 |
+| 12-16 | 4 | 2,3 |
+
+Cinco exercícios estavam em 12-20: **as quatro elevações laterais** (largura, prioridade 3) e a panturrilha. O que ele pediu pra crescer progredia mais devagar que tudo. E 8 semanas atravessa dois mesociclos, desalinhado do ciclo de 4. Evidência que permite estreitar sem custo: hipertrofia é equivalente numa faixa ampla de reps desde que perto da falha (Schoenfeld/Grgic/Ogborn/Krieger 2017; Lasevicius 2018). Média do programa: 4,7 → 4,0 semanas.
+
+### Ordem do dia C
+Peito (tier 1) era o **terceiro** exercício, atrás do desenvolvimento de ombro (tier 3). Por Simão et al 2012 o slot fresco estava indo pro grupo menos importante. Agora: supino inclinado → elevação lateral → desenvolvimento → peck deck → tríceps ×2 → abdominal.
+
+### Foco configurável (`focoAtivo` / `setFocoGrupo` / `renderFocoEditor`)
+O foco era código: aqui, `BLOCOS[bloco].tier` com dois blocos fixos. Agora vive em `ST.meta.foco`, com tela na aba Mais — cada grupo gira entre FOCO → apoio → manutenção → nada. Teto de 3 em foco e apoio; manutenção sem teto (é o oposto de prioridade, e o padrão do bloco já traz 4 ali).
+
+**Alcance honesto:** o foco muda quem recebe o +1 do acúmulo, quem o Essencial protege, o peso na pontuação e os selos da aba Corpo. Não reescreve o programa. Trocar de bloco limpa o foco custom, porque o bloco novo traz o próprio padrão.
+
+### Volume e frequência — conferidos, estão certos
+Os 12 grupos batem a meta exatamente, e peito/costas/bíceps/tríceps treinam 2×/semana (Schoenfeld, Ogborn & Krieger 2016).
 
 ---
 
