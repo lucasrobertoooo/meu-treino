@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-08-19.10 (**Séries extras visíveis e removíveis** + **botão de abrir no navegador** pra forçar atualização. SHELL v32)
+**Última atualização:** 2026-08-19.14 (**Auditoria completa**: consistência das regras entre os dois apps, card do exercício reordenado e autorregulação por recuperação subjetiva. SHELL v36)
+
+**Antes: 2026-08-19.10 (**Séries extras visíveis e removíveis** + **botão de abrir no navegador** pra forçar atualização. SHELL v32)
 
 **Antes: 2026-08-19.09 (**Ritmo de ganho na aba Corpo** — responde "estou em superávit?" — e **fix do bug do divisor** no `bwTrend`, que subestimava o ritmo em 33%. SHELL v31)
 
@@ -943,6 +945,41 @@ Precisa de 4+ pesagens em 28 dias; com menos, convida a pesar em vez de inventar
 
 ### Verificação
 28 asserts nos dois apps: cabeçalho mostrando o recomendado da fase (4 na base, 5 no acúmulo), exatamente as N extras marcadas, botão só nelas, selo atualizando ao remover, séries registradas sobrevivendo, índice inválido sem efeito — **e `renderHomeDay` renderizando sem erro**, que era o furo.
+
+---
+
+## Auditoria completa: regras, UI e autorregulação (2026-08-19.11 a .14)
+
+### Regras — o que a comparação função a função achou
+O núcleo (`progressState`) já era **idêntico** nos dois apps: mesmos 9 estados, mesma ordem, mesmos limiares. Os problemas estavam na periferia:
+
+- **3 furos na fronteira de troca (app dela).** `detectPlateau`, `weeksOnExercise` e `inferLoadStep` liam `ST.logs` direto. Depois de "Troquei", o app seguia vendo o histórico do exercício antigo. Corrigido: as três passam por `progressSessions`.
+- **Deload órfão (os dois apps).** Ao trocar o botão "Feito" por "Semana leve", `markDeloadDone` ficou sem chamador. `lastDeloadWeek` só era gravado pelo `autoDetectDeload` (exige queda a ≤60%; o corte do mesociclo dá 56% aqui e 61% lá), e `shouldSwapExercise` exige deload feito — **a sugestão de trocar exercício podia nunca disparar**. Corrigido com `registrarDeloadEmCurso()`: a semana leve se registra sozinha.
+
+### Evidência consultada
+- Robinson et al 2024 (meta-regressão, proximidade da falha): hipertrofia sobe conforme as séries chegam perto da falha; força quase não muda. Confirma o uso de RIR como sinal. https://pubmed.ncbi.nlm.nih.gov/38970765/
+- Estudo com 303.494 séries: Brzycki e Epley degradam acima de ~10 reps. **Valida a decisão já tomada** de não usar e1RM pra detectar platô (o app usa comparação de topo por dupla progressão). https://arxiv.org/pdf/2603.17495
+- RP Hypertrophy, referência da categoria: autorregula volume por feedback subjetivo. Era a única lacuna metodológica real.
+
+### UI/UX — medido no navegador, não estimado
+Card do exercício reordenado (meta e campos antes do material de consulta), botão de descanso proeminente, "Como fazer" recolhido, FAB sai da frente ao rolar, toast tirado de cima do título, fase do mesociclo deixou de ser box-dentro-de-box.
+
+**Rolagem por sessão: 8,1 → 6,3 telas (dele) e 7,9 → 5,3 (dela).**
+
+Falso alarme registrado: cheguei a reportar "26 de 30 fotos quebradas" no app dela. **Estava errado** — são `loading="lazy"` e eu medi antes de entrarem na viewport.
+
+### Autorregulação por recuperação (`REC_OPT` / `recuperacaoRuim` / `recCard`)
+Uma pergunta ao concluir o treino, três toques: **Ainda pesado · Normal · Leve**. Guardado em `ST.meta.rec` por data — sem chave de storage nova, sem migração.
+
+**Deliberadamente assimétrico: o feedback só SEGURA volume, nunca adiciona além do planejado.** A evidência de que sub-recuperação atrapalha adaptação é mais firme que a de subir volume por sensação boa. A rampa é o teto; o feedback é freio.
+
+- 2+ "ainda pesado" em 9 dias → **suprime o +1 da semana de acúmulo** (117→105 aqui, 88→82 lá)
+- 1 resposta ruim isolada não freia (não reage a dia ruim)
+- "Leve" não adiciona série nenhuma
+- `fadigaGlobal` fica mais sensível quando a recuperação está ruim: limiar cai de 50% para 35% de exercícios travados
+
+### Verificação
+48 asserts nos dois apps, mais verificação visual no app publicado com service worker limpo.
 
 ---
 
