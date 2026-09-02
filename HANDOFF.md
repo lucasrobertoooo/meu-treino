@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-08-19.19 (**Backup automático na nuvem** — restauração FUNDE, não substitui. SHELL v41)
+**Última atualização:** 2026-08-19.22 (**Volta de pausa** — o app não manda mais subir carga depois de meses parado. Backup separado por app. SHELL v44)
+
+**Antes: 2026-08-19.19 (**Backup automático na nuvem** — restauração FUNDE, não substitui. SHELL v41)
 
 **Antes: 2026-08-19.18 (**Logs por id estável**, foco configurável, faixas 12-16 e peito abrindo o dia C. SHELL v40)
 
@@ -1057,6 +1059,42 @@ Se ambos apontarem pro mesmo Worker, dividem também o `SHARED_TOKEN` — então
 24 asserts com um Worker falso: envio, janela de 6h, fusão preservando a sessão local, exercício que só existia na nuvem, `meta` intacto, dupla restauração sem duplicar, rede caída, token errado.
 
 Mais 14 asserts rodando o **Worker de verdade** (o mesmo arquivo que vai pro Cloudflare) com KV falso: dois apps no mesmo Worker com o mesmo token sem contaminação, rotação isolada por app, nenhuma chave órfã, path traversal no `?app=`, e 401 sem token.
+
+---
+
+## Auditoria de longo prazo (2026-08-19.20 a .22)
+
+Três frentes: integridade estática da informação, simulação de 12 meses e casos-limite.
+
+### O achado que mais importava: volta de pausa
+Depois de **300 dias parado**, o app dizia `progredindo` e sugeria **subir** a carga em relação à última sessão — de quase um ano antes. Conselho errado e com risco.
+
+`fatorVolta(id)` olha os dias desde a última sessão válida daquele exercício:
+
+| Parado | O que faz |
+|---|---|
+| ≤ 14 dias | nada muda |
+| 15-28 | repete a carga, piso da faixa |
+| 29-90 | −10% |
+| 90+ | −25% |
+
+Vira o estado `volta`, que tem prioridade sobre todos os outros (só perde pro `inicio`) e renderiza um aviso azul no card. Some sozinho na primeira sessão registrada.
+
+*Ressalva honesta, também no código:* força se mantém bem até ~2-3 semanas e cai de forma relevante depois (revisões de destreinamento, ex. McMaster et al 2013), mas **as porcentagens são orientação prática, não número de ensaio controlado**. A direção é que está estabelecida.
+
+### Integridade da informação
+- **Chave órfã** em `EXERCISE_ALTERNATIVES` ("Cadeira romana") apontava pra exercício removido do programa. Limpa.
+- **Bloco de perna** (nunca usado ainda): panturrilha era tier 2 (apoio) com **4 séries — menos que core, que é tier 4**. Num bloco de PERNA isso é contradição. Passou pra 6.
+- Conferido e limpo: 0 exercícios sem `cue`, 0 sem alternativa, 0 grupo muscular inválido, 0 id duplicado, 0 faixa malformada, 0 override apontando pra id inexistente.
+
+### Simulação de 12 meses (1.560 sessões)
+282 kB — cabe folgado no limite de 4MB do backup. `mesoSemana` segue em 1..4 depois de 52 semanas, `exSets` sempre finito entre 1 e 12, `progressState` sem exceção em nenhum exercício, toda sugestão dentro da faixa, curva sem valor inválido, todas as telas renderizam.
+
+### Casos-limite que resistiram
+Pausa de 8 meses · virada de ano (dez→jan) · 10 sessões travadas seguidas (vira `fadiga`, não `progredindo`) · dado sujo (sessão vazia, kg zero, reps em texto, data inválida) · **data futura** (relógio errado) sem virar semana negativa.
+
+### Backup separado por app
+Os dois apps apontam pro mesmo Worker — e compartilhando Worker compartilham o `SHARED_TOKEN`, então separar por token não resolveria. A separação é por `?app=`, guardando em `bk:<app>:<id>`. **Bug pego no teste:** o id do snapshot era `Date.now()` puro; dois envios no mesmo milissegundo recebiam o mesmo id e a rotação apagava o corpo de um snapshot que o índice ainda listava — índice com 5 entradas e zero arquivos.
 
 ---
 
