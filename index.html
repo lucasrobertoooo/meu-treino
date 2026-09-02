@@ -408,15 +408,14 @@
   .bl-bar{height:4px; border-radius:3px; background:rgba(255,255,255,.07); margin:9px 0 8px; overflow:hidden;}
   .bl-fill{height:100%; border-radius:3px; background:var(--core-grad);}
   .bl-r{font-size:11.5px; color:var(--muted); line-height:1.5;}
+  /* Era um box dentro do box do bloco. Virou linha: mesma informação, sem moldura aninhada. */
   .bl-fase{
-    font-size:11.5px; color:var(--muted); line-height:1.5; margin:2px 0 8px;
-    padding:8px 10px; border-radius:10px; background:rgba(255,255,255,.03); border:1px solid var(--line);
+    font-size:11.5px; color:var(--muted); line-height:1.5;
+    margin:2px 0 9px; padding:7px 0 0; border-top:1px solid var(--line);
   }
   .bl-fase b{color:var(--ink2);}
   .bl-fase span{display:block; margin-top:2px; color:var(--faint);}
-  .bl-fase.f-acumulo{background:rgba(245,185,78,.07); border-color:rgba(245,185,78,.22);}
   .bl-fase.f-acumulo b{color:var(--core);}
-  .bl-fase.f-deload{background:rgba(91,158,255,.07); border-color:rgba(91,158,255,.22);}
   .bl-fase.f-deload b{color:var(--pull);}
   .bl-rev{
     margin-top:11px; padding:11px 12px; border-radius:12px;
@@ -477,6 +476,33 @@
   }
   .openweb:active{opacity:.82;}
   .openweb small{font-size:10.5px; color:var(--faint); font-weight:500;}
+  /* ==== RECUPERAÇÃO SUBJETIVA ==== */
+  .reccard{
+    background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-lg);
+    padding:14px; margin:14px 0 4px; box-shadow:var(--shadow-1);
+  }
+  .rc-l{font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); font-weight:700;}
+  .rc-h{font-size:11.5px; color:var(--muted); line-height:1.5; margin:5px 0 11px;}
+  .rc-opts{display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px;}
+  .rc-o{
+    padding:10px 6px; border-radius:11px; cursor:pointer; font-family:inherit; text-align:center;
+    background:var(--glass-2); border:1px solid var(--line-2); color:var(--ink);
+    display:flex; flex-direction:column; gap:2px;
+  }
+  .rc-o b{font-size:12px; font-weight:700; line-height:1.2;}
+  .rc-o span{font-size:9.5px; color:var(--faint); font-weight:500; line-height:1.3;}
+  .rc-o:active{opacity:.8;}
+  .reccard.feito{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .reccard.feito .rc-l{flex:1 1 100%;}
+  .rc-v{font-size:15px; font-weight:800; color:var(--ink); flex:1;}
+  .rc-freio{
+    font-size:10px; font-weight:700; color:var(--core); vertical-align:2px;
+    background:rgba(245,185,78,.12); border-radius:6px; padding:2px 6px; margin-left:4px;
+  }
+  .rc-undo{
+    background:none; border:1px solid var(--line-2); border-radius:9px; cursor:pointer;
+    color:var(--muted); font-family:inherit; font-size:11.5px; font-weight:600; padding:6px 12px;
+  }
   /* ==== CARD DO EXERCÍCIO REORDENADO ==== */
   .lastd{white-space:nowrap;}   /* a data quebrava no meio: "(08-" / "26):" */
   .exhead{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:9px;}
@@ -1310,8 +1336,9 @@
 
   /* ============ TOAST + A2HS BANNER + TIMER DONE ============ */
   .toast{
-    position:fixed; top:calc(env(safe-area-inset-top,0px) + 14px);
-    left:50%; transform:translateX(-50%);
+    /* Estava no topo, cobrindo o título da tela. Vai pro rodapé, acima do FAB (94+56px). */
+    position:fixed; bottom:calc(158px + env(safe-area-inset-bottom,0px));
+    left:50%; transform:translateX(-50%); max-width:min(300px, calc(100vw - 40px));
     background:rgba(28,28,32,.94); color:var(--ink);
     padding:11px 18px; border-radius:14px;
     border:1px solid var(--line-2);
@@ -1836,7 +1863,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.13';
+const APP_VERSION = '2026-08-19.14';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -2000,12 +2027,68 @@ function faseMeso(){
   return {k:'acumulo', nome:'Acúmulo', nota:'Semana mais pesada: uma série a mais em cada exercício do foco.'};
 }
 // Séries planejadas do exercício AGORA: bloco + fase do mesociclo
+/* ============ RECUPERAÇÃO SUBJETIVA (autorregulação de volume) ============
+   Lacuna apontada na auditoria contra a referência da categoria (RP Hypertrophy): a rampa do
+   mesociclo subia volume em cronograma fixo, sem perguntar como o corpo respondeu.
+
+   Escolha deliberada de ser ASSIMÉTRICO: o feedback só SEGURA volume, nunca adiciona além do
+   planejado. Motivo honesto — a evidência de que sub-recuperação atrapalha adaptação é bem
+   mais firme que a de subir volume por sensação boa. A rampa continua sendo o teto; o
+   feedback é um freio.
+
+   Uma pergunta por treino concluído, três toques possíveis. Guardado em ST.meta.rec por data
+   (sem chave de storage nova, sem migração). */
+const REC_OPT = [
+  {k:'pesado', rot:'Ainda pesado', sub:'dolorido ou sem força'},
+  {k:'ok',     rot:'Normal',       sub:'recuperei bem'},
+  {k:'leve',   rot:'Leve',         sub:'sobrou gás'},
+];
+function recDe(data){ return (ST.meta && ST.meta.rec && ST.meta.rec[data]) || null; }
+function setRec(v){
+  if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
+  if(!ST.meta.rec) ST.meta.rec={};
+  if(ST.meta.rec[today()]===v) delete ST.meta.rec[today()]; else ST.meta.rec[today()]=v;
+  saveK('meta'); render();
+}
+function recRecentes(dias){
+  const r=(ST.meta && ST.meta.rec) || {}, out=[];
+  for(const [d,v] of Object.entries(r)){
+    const dif=daysBetween(d, today());
+    if(dif>=0 && dif<(dias||9)) out.push(v);
+  }
+  return out;
+}
+/* Recuperação ruim = 2+ "ainda pesado" nos últimos 9 dias (cobre um mesociclo de treino
+   4x/semana sem depender de qual dia ela respondeu). Exige 2 pra não reagir a um dia ruim. */
+function recuperacaoRuim(){
+  const r=recRecentes(9);
+  return r.length>=2 && r.filter(v=>v==='pesado').length>=2;
+}
+function recCard(){
+  const hoje=recDe(today());
+  if(hoje){
+    const o=REC_OPT.find(x=>x.k===hoje)||{rot:hoje};
+    const freio = hoje==='pesado' && recuperacaoRuim();
+    return `<div class="reccard feito">
+      <div class="rc-l">Recuperação de hoje</div>
+      <div class="rc-v">${esc(o.rot)}${freio?` <span class="rc-freio">volume segurado</span>`:''}</div>
+      <button class="rc-undo" onclick="setRec('${hoje}')">mudar</button>
+    </div>`;
+  }
+  return `<div class="reccard">
+    <div class="rc-l">Como você chegou hoje?</div>
+    <div class="rc-h">Comparado ao último treino igual. Serve pra segurar volume quando você não está recuperando.</div>
+    <div class="rc-opts">
+      ${REC_OPT.map(o=>`<button class="rc-o rc-${o.k}" onclick="setRec('${o.k}')"><b>${esc(o.rot)}</b><span>${esc(o.sub)}</span></button>`).join('')}
+    </div>
+  </div>`;
+}
 function exSets(e){
   if(!e) return 3;
   const ov=BLOCOS[blocoAtual()].sets || {};
   const base = (e.id && ov[e.id]) || parseInt(e.s) || 3;
   if(emDeload()) return Math.max(1, Math.round(base*0.5));      // deload corta tudo pela metade
-  if(mesoSemana()===3){
+  if(mesoSemana()===3 && !recuperacaoRuim()){   // o freio da recuperação segura o +1
     // acúmulo: +1 só nos músculos que são foco do bloco (tier 1-2)
     const foco = Object.entries(e.mg||{}).some(([mg,w])=>w>=1 && tierOf(mg)<=2);
     return foco ? base+1 : base;
@@ -3923,8 +4006,12 @@ function fadigaGlobal(){
   if(comHist<4) return null;                         // dado insuficiente: não inventa diagnóstico
   const pct=travados/comHist;
   const rirMed=rirs.length ? rirs.reduce((a,b)=>a+b,0)/rirs.length : null;
-  return {travados, comHist, pct, rirMed,
-          alta: pct>=0.5 && (rirMed==null || rirMed<=1.5)};
+  /* Com recuperação subjetiva ruim, menos exercícios travados já bastam: o sinal objetivo
+     (travar) e o subjetivo (chegar pesado) apontando junto é evidência mais forte que
+     qualquer um sozinho. */
+  const limiar = recuperacaoRuim() ? 0.35 : 0.5;
+  return {travados, comHist, pct, rirMed, recRuim:recuperacaoRuim(),
+          alta: pct>=limiar && (rirMed==null || rirMed<=1.5)};
 }
 /* Deload deixou de ser calendário: a semana 4 de cada mesociclo já é leve por construção
    (ver exSets). Isto aqui é só o gatilho de ANTECIPAR quando a fadiga chega antes. */
@@ -4306,6 +4393,8 @@ function renderDay(d){
       </div>`:''}
     </div>`;
   });
+  // pergunta de recuperação: só depois do treino concluído, uma vez por dia
+  if(isWorkoutComplete(d)) h+=recCard();
   app.innerHTML=h;
 }
 
