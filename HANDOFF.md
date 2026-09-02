@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-08-19.23 (**Resolvido o bug de julho**: medida importada com campo desconhecido ficava gravada e invisível. SHELL v45)
+**Última atualização:** 2026-08-19.24 (auditoria de código: 6 funções mortas removidas. SHELL v46)
+
+**Antes: 2026-08-19.23 (**Resolvido o bug de julho**: medida importada com campo desconhecido ficava gravada e invisível. SHELL v45)
 
 **Antes: 2026-08-19.22 (**Volta de pausa** — o app não manda mais subir carga depois de meses parado. Backup separado por app. SHELL v44)
 
@@ -1110,6 +1112,20 @@ Os dois apps apontam pro mesmo Worker — e compartilhando Worker compartilham o
 
 ### Verificação
 20 asserts nos dois apps com os números reais que ele importou: campo resgatado, rótulo legível, 102,5 renderizando, idempotente no 2º boot, e sem inventar campo a partir de texto ou metadado.
+
+---
+
+## Auditoria de código (2026-08-19.24)
+
+Só estrutura, sem tocar em treino nem UX.
+
+**Limpo aqui:** 6 funções definidas e nunca referenciadas — `toggleSessionPauseResume`, `plannedWeeklyVolume`, `exHasOverride`, `markDeloadDone`, `pdbAllKeys`, `dayEstMin`. O `markDeloadDone` era resíduo meu: ficou órfão quando troquei o botão "Feito" do alerta de deload por "Semana leve". Pausar/encerrar sessão continuam acessíveis pelo despachante `act`, que é quem os botões usam — as duas funções removidas eram duplicatas superadas.
+
+**Verificado e limpo:** 0 função definida duas vezes, 0 handler `onclick` apontando pra função inexistente, 0 chave de storage sem uso, 0 `saveK` com chave inexistente.
+
+**Divergência entre os dois apps:** das 231 funções de mesmo nome, 151 são idênticas e 80 divergem. Amostradas as do motor de decisão — as diferenças são legítimas (guarda de cardio, programa editável, âncora de bloco) ou só prefixo de storage.
+
+*Nota sobre o método:* a primeira versão do analisador deu vários falsos positivos — a regex de definição ignorava `async function`, e a remoção de comentários `//` corrompia linhas com URL dentro de string. Toda remoção foi confirmada por contagem de referências no arquivo bruto antes de apagar.
 
 ---
 

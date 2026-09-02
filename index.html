@@ -1899,7 +1899,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.23';
+const APP_VERSION = '2026-08-19.24';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -2623,7 +2623,6 @@ function pdbOpen(){
 function pdbPut(id, dataUrl){ return pdbOpen().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(PDB_STORE,'readwrite'); tx.objectStore(PDB_STORE).put(dataUrl, id); tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error); tx.onabort=()=>rej(tx.error||new Error('abort')); })); }
 function pdbGet(id){ return pdbOpen().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(PDB_STORE,'readonly'); const r=tx.objectStore(PDB_STORE).get(id); r.onsuccess=()=>res(r.result||null); r.onerror=()=>rej(r.error); })); }
 function pdbDel(id){ return pdbOpen().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(PDB_STORE,'readwrite'); tx.objectStore(PDB_STORE).delete(id); tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error); })); }
-function pdbAllKeys(){ return pdbOpen().then(db=>new Promise((res,rej)=>{ const r=db.transaction(PDB_STORE,'readonly').objectStore(PDB_STORE).getAllKeys(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error); })); }
 
 function nextPhotoId(){ ST.meta.photoSeq=(ST.meta.photoSeq||0)+1; return 'p'+ST.meta.photoSeq; }
 
@@ -2799,11 +2798,6 @@ function manualStartSession(){
   // Determina qual treino: openDay (se tem treino aberto) > suggestedNextDay
   const wkId = (typeof openDay==='string' && openDay) ? openDay : suggestedNextDay();
   startSession(wkId);
-}
-function toggleSessionPauseResume(){
-  if(!isSessionActive()) return;
-  if(isSessionPaused()) resumeSession();
-  else pauseSession();
 }
 function manualEndSession(){
   if(!isSessionActive()) return;
@@ -3097,7 +3091,6 @@ function exOverride(e){ return (e && e.id && ST.exmeta[e.id]) || {}; }
 function exName(e){ const o=exOverride(e); return (o.n!=null && o.n!=='') ? o.n : e.n; }
 function exCue(e){ const o=exOverride(e); return (o.cue!=null && o.cue!=='') ? o.cue : e.cue; }
 function exNote(e){ const o=exOverride(e); return (o.note!=null) ? o.note : ''; }
-function exHasOverride(e){ const o=exOverride(e); return !!(o.n || o.cue || (o.note && o.note.trim())); }
 function saveExMeta(id, patch){
   if(!id) return;
   const cur = ST.exmeta[id] || {};
@@ -3917,19 +3910,6 @@ function weeklyVolume(){
   return out;
 }
 // Programada por semana (sem precisar marcar) — usada como referência teórica
-function plannedWeeklyVolume(){
-  const out={};
-  for(const mg of Object.keys(MG_LABELS)) out[mg]=0;
-  for(const d of Object.keys(WK)){
-    for(const ex of WK[d].ex){
-      if(!ex.mg) continue;
-      for(const [mg,w] of Object.entries(ex.mg)){
-        out[mg] = (out[mg]||0) + (ex.s||0) * w;
-      }
-    }
-  }
-  return out;
-}
 
 /* ============ STREAK, SEMANA, DELOAD ============ */
 function workoutDates(){
@@ -4058,10 +4038,6 @@ function paceFactor(d){
   const modelo=(WK[d]?WK[d].ex:[]).reduce((a,e)=>a+exMinutes(e),0);
   if(!(modelo>0) || !(real>0)) return 1;
   return Math.min(1.8, Math.max(0.6, real/modelo));
-}
-function dayEstMin(d){
-  const f=paceFactor(d);
-  return Math.round((WK[d]?WK[d].ex:[]).reduce((a,e)=>a+exMinutes(e),0)*f);
 }
 
 /* Quanto vale manter cada exercício hoje. Ordem de decisão:
@@ -4208,7 +4184,6 @@ function registrarDeloadEmCurso(){
     if(sem>0 && (ST.meta.lastDeloadWeek||0) < sem){ ST.meta.lastDeloadWeek=sem; saveK('meta'); }
   }catch(e){}
 }
-function markDeloadDone(){ ST.meta.lastDeloadWeek = weeksTraining(); ST.meta.deloadAte=null; saveK('meta'); }
 // Próximo treino sugerido baseado no último feito (ciclo ABCD)
 function suggestedNextDay(){
   const seq=["A","B","C","D"];
