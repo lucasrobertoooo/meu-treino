@@ -509,6 +509,7 @@
     font-family:inherit; font-size:12px; font-weight:600;
   }
   .fe-nota{font-size:11px; color:var(--faint); margin-top:9px;}
+  .plateau.volta{background:rgba(91,158,255,.08); border-color:rgba(91,158,255,.28);}
   /* ==== RECUPERAÇÃO SUBJETIVA ==== */
   .reccard{
     background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-lg);
@@ -1898,7 +1899,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.21';
+const APP_VERSION = '2026-08-19.22';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -2031,8 +2032,10 @@ const BLOCOS = {
     resumo:'Quadríceps e posterior no volume de crescimento. Peito, braços e largura mantidos.',
     tier:{quadriceps:1,posterior:1, panturrilha:2, ombro_lat:3,costas:3,peito_sup:3,peito_med:3,
           triceps:4,biceps:4,ombro_post:4,ombro_ant:4,core:4},
+    /* b_10 (panturrilha) era 4: menos que core, que e tier 4. Panturrilha e tier 2 aqui
+       (apoio) — num bloco de PERNA ela nao pode ficar abaixo da manutencao de core. 6. */
     sets:{a_1:3,a_2:3,a_3:2,a_4:3,a_5:2,a_6:2,
-          b_1:3,b_2:3,b_3:3,b_4:2,b_5:3,b_6:5,b_7:5,b_10:4,
+          b_1:3,b_2:3,b_3:3,b_4:2,b_5:3,b_6:5,b_7:5,b_10:6,
           c_1:3,c_2:3,c_3:3,c_4:3,c_5:2,c_6:2,
           d_1:3,d_2:3,d_3:3,d_4:2,d_5:3,d_6:2,d_7:5,d_8:5},
   },
@@ -3440,11 +3443,41 @@ function refSession(id){
   if(ult.length>1 && cont[cont.length-1] < tipico*0.6) return ult[ult.length-2];
   return ult[ult.length-1];
 }
+/* ============ VOLTA DE PAUSA ============
+   Achado na auditoria de longo prazo: depois de 300 dias parado o app dizia "progredindo" e
+   mandava SUBIR a carga em relação à última sessão — de quase um ano atrás. Conselho errado e
+   com risco de lesão.
+
+   Força se mantém bem até ~2-3 semanas de inatividade e cai de forma relevante depois disso
+   (revisões de destreinamento, ex. McMaster et al 2013). Ressalva honesta: as porcentagens
+   abaixo são orientação PRÁTICA de retorno, não número de ensaio controlado. A direção é que
+   está bem estabelecida — e reconstruir é mais rápido que construir. */
+function diasParado(id){
+  const h=progressSessions(id).filter(s=>hasValidDone(s.sets));
+  if(!h.length) return null;
+  const d=daysBetween(h[h.length-1].date, today());
+  return d>=0 ? d : 0;                       // data futura (relógio errado) não vira negativo
+}
+function fatorVolta(id){
+  const d=diasParado(id);
+  if(d==null || d<=14) return null;          // até 2 semanas: nada muda
+  if(d<=28)  return {f:1.00, d, txt:'quase um mês parado', nota:'Repete a carga da última vez e fica no piso da faixa. Só sobe quando fechar a faixa de novo.'};
+  if(d<=90)  return {f:0.90, d, txt:Math.round(d/7)+' semanas parado', nota:'Cortei ~10% da carga pra reentrada. Você recupera rápido — em 2-3 semanas costuma estar de volta ao que era.'};
+  return       {f:0.75, d, txt:Math.round(d/30)+' meses parado', nota:'Cortei ~25% da carga. Reconstruir é bem mais rápido que construir da primeira vez, mas começar no peso antigo é como se machuca.'};
+}
 function suggestNext(id, e){
   if(!e) return null;
   const ref=refSession(id);
   if(!ref) return null;
-  return suggestFrom(ref.sets, e, id);
+  const base=suggestFrom(ref.sets, e, id);
+  if(!base) return null;
+  const v=fatorVolta(id);
+  if(!v) return base;
+  // reentrada: nunca sobe. Corta a carga e volta pro piso da faixa.
+  const rng=parseRange(e.r);
+  const passo=loadStepFor(id, e) || 2.5;
+  const alvo=Math.max(passo, Math.round((num(ref && sessionTop(ref.sets) ? sessionTop(ref.sets).kg : base.kg)*v.f)/passo)*passo);
+  return {kg:alvo, reps:rng.min, why:'volta de pausa · '+v.txt, de:base.de, inc:base.inc, volta:v};
 }
 /* "Top set" da sessão: maior carga e, entre as séries nessa carga, a melhor rep.
    Mede progresso do MESMO jeito que suggestNext prescreve (dupla progressão). Necessário
@@ -3544,6 +3577,10 @@ function progressState(id, e){
   const sug=suggestNext(id, e);
   const h=progressSessions(id).filter(s=>sessionTop(s.sets));
   if(h.length<2) return {k:'inicio', sug, msg:'', nota:'Duas sessões registradas e eu já começo a sugerir carga.'};
+  /* Volta de pausa vem antes de tudo: comparar com uma sessão de meses atrás produziria
+     "progredindo" e mandaria subir carga que já não existe. */
+  const _v=fatorVolta(id);
+  if(_v) return {k:'volta', sug, msg:'Você ficou '+_v.txt+'.', nota:_v.nota};
   const rng=parseRange(e.r);
   const tops=h.map(s=>sessionTop(s.sets));
   const cur=tops[tops.length-1], prev=tops[tops.length-2];
@@ -3732,11 +3769,6 @@ const EXERCISE_ALTERNATIVES = {
     "Crunch na polia alta (lastra)",
     "Abdominal na máquina",
     "Abdominal infra com elástico",
-  ],
-  "Cadeira romana (joelho dobrado)":[
-    "Elevação de pernas suspenso (joelho dobrado)",
-    "Abdominal infra na cadeira",
-    "Reverse crunch no banco declinado",
   ],
   "Panturrilha":[
     "Panturrilha em pé na máquina",
@@ -4428,6 +4460,8 @@ function renderDay(d){
       </div>`;
     } else if(st && st.k==='mantendo'){
       platBlock2 = `<div class="holding">${I.check2} ${esc(st.msg)}<span class="stnote">${esc(st.nota)}</span></div>`;
+    } else if(st && st.k==='volta'){
+      platBlock2 = `<div class="plateau volta">${I.hist} ${esc(st.msg)}<span class="stnote">${esc(st.nota)}</span></div>`;
     } else if(st && (st.k==='fadiga' || st.k==='travado-passo' || st.k==='travado' || st.k==='carga-alta')){
       platBlock2 = `<div class="plateau">${I.flame} ${esc(st.msg)}<span class="stnote">${esc(st.nota)}</span></div>`;
     } else if(st && st.nota){
