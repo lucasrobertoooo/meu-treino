@@ -2,7 +2,11 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-08-19.24 (auditoria de código: 6 funções mortas removidas. SHELL v46)
+**Última atualização:** 2026-09-02.01 (versão volta a ser a DATA REAL. SHELL v47)
+
+**Convenção de versão:** `APP_VERSION` é a data do dia em que a mudança foi feita + sequencial. Ficou travada em `2026-08-19` por 14 dias de trabalho — exatamente a confusão que o Lucas reclamou em julho ("que versão é essa? pq não é a data?"). O app dela já tinha voltado pro padrão; agora os dois batem.
+
+**Antes: 2026-08-19.24 (auditoria de código: 6 funções mortas removidas. SHELL v46)
 
 **Antes: 2026-08-19.23 (**Resolvido o bug de julho**: medida importada com campo desconhecido ficava gravada e invisível. SHELL v45)
 
