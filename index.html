@@ -476,6 +476,31 @@
   }
   .openweb:active{opacity:.82;}
   .openweb small{font-size:10.5px; color:var(--faint); font-weight:500;}
+  /* ==== EDITOR DE FOCO ==== */
+  .focoed{margin-top:4px;}
+  .fe-h{font-size:11.5px; color:var(--muted); line-height:1.55; margin-bottom:11px;}
+  .fe-h b{color:var(--ink2);}
+  .fe-grid{display:grid; grid-template-columns:1fr 1fr; gap:7px;}
+  .fe-i{
+    padding:10px; border-radius:11px; cursor:pointer; font-family:inherit; text-align:left;
+    background:var(--glass-2); border:1px solid var(--line); color:var(--ink);
+    display:flex; flex-direction:column; gap:1px;
+  }
+  .fe-i b{font-size:12.5px; font-weight:700; line-height:1.2;}
+  .fe-i span{font-size:9.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--faint);}
+  .fe-i:active{opacity:.8;}
+  .fe-i.fe-f{border-color:rgba(245,185,78,.45); background:rgba(245,185,78,.09);}
+  .fe-i.fe-f span{color:var(--core);}
+  .fe-i.fe-a{border-color:var(--line-2);}
+  .fe-i.fe-a span{color:var(--ink2);}
+  .fe-i.fe-manut{opacity:.55;}
+  .fe-i.fe-fora{opacity:.4;}
+  .fe-reset{
+    width:100%; margin-top:10px; padding:10px; border-radius:11px; cursor:pointer;
+    background:none; border:1px solid var(--line-2); color:var(--muted);
+    font-family:inherit; font-size:12px; font-weight:600;
+  }
+  .fe-nota{font-size:11px; color:var(--faint); margin-top:9px;}
   /* ==== RECUPERAÇÃO SUBJETIVA ==== */
   .reccard{
     background:var(--glass); border:1px solid var(--line-2); border-radius:var(--r-lg);
@@ -1865,7 +1890,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.15';
+const APP_VERSION = '2026-08-19.16';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -2009,7 +2034,75 @@ function blocoAtual(){ const b=ST.meta && ST.meta.bloco; return BLOCOS[b] ? b : 
 function blocoDesde(){ return (ST.meta && ST.meta.blocoDesde) || null; }
 function blocoSemana(){ const d=blocoDesde(); return d ? Math.floor(daysBetween(d, today())/7)+1 : 1; }
 function blocoVencido(){ return blocoSemana() > BLOCOS[blocoAtual()].semanas; }
-function tierOf(mg){ return (BLOCOS[blocoAtual()].tier || {})[mg] || 4; }
+/* Padrão = o bloco ativo. O editor de foco sobrescreve quando o usuário quiser. */
+function focoPadrao(){
+  const t=BLOCOS[blocoAtual()].tier || {};
+  const por=n=>Object.keys(t).filter(mg=>t[mg]===n);
+  return {f:por(1), a:por(2), manut:por(4)};
+}
+/* ============ FOCO CONFIGURÁVEL ============
+   Até aqui o foco era código: BLOCOS[bloco].tier, dois blocos fixos.
+   Se o objetivo mudasse, só editando o arquivo. Agora vive em ST.meta.foco e tem tela.
+
+   O que o foco muda de fato (sendo honesto sobre o alcance): quem recebe o +1 na semana de
+   acúmulo, quem o modo Essencial protege quando falta tempo, o peso na pontuação de
+   equilíbrio e os selos da aba Corpo. NÃO reescreve o programa — trocar exercício continua
+   sendo escolha de quem treina. */
+const FOCO_MAX = 3;
+function focoCfg(){
+  const f = ST.meta && ST.meta.foco;
+  if(f && Array.isArray(f.f)) return {f:f.f.slice(0,FOCO_MAX), a:(f.a||[]).slice(0,FOCO_MAX), manut:(f.manut||[]).slice()};
+  return null;   // sem config: cai no padrão do app
+}
+function focoAtivo(){ return focoCfg() || focoPadrao(); }
+function tierOf(mg){
+  const c=focoAtivo();
+  if(c.f.includes(mg)) return 1;
+  if(c.a.includes(mg)) return 2;
+  return (c.manut && c.manut.includes(mg)) ? 4 : 3;
+}
+function setFocoGrupo(camada, mg){
+  if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
+  const base=focoAtivo();
+  const cfg={ f:base.f.slice(), a:base.a.slice(), manut:(base.manut||[]).slice() };
+  // um grupo só pode estar numa camada: tira das outras antes
+  for(const k of ['f','a','manut']) cfg[k]=cfg[k].filter(x=>x!==mg);
+  if(camada!=='fora'){
+    // o teto vale só pra foco e apoio: manutenção é o oposto de prioridade, não faz sentido limitar
+    if((camada==='f' || camada==='a') && cfg[camada].length>=FOCO_MAX){
+      showToast('Máximo de '+FOCO_MAX+' em '+(camada==='f'?'foco':'apoio'),'warn',2600);
+      return;
+    }
+    cfg[camada].push(mg);
+  }
+  ST.meta.foco=cfg; saveK('meta'); recalcPrioridades(); render();
+}
+function resetFoco(){
+  if(!confirm('Voltar o foco pro padrão do programa?')) return;
+  if(ST.meta) delete ST.meta.foco;
+  saveK('meta'); recalcPrioridades(); render();
+  showToast('Foco de volta ao padrão','ok',2200);
+}
+function renderFocoEditor(){
+  const c=focoAtivo(), custom=!!focoCfg();
+  const camada=mg=> c.f.includes(mg)?'f' : c.a.includes(mg)?'a' : (c.manut||[]).includes(mg)?'manut' : 'fora';
+  const prox={f:'a', a:'manut', manut:'fora', fora:'f'};
+  const rot={f:'FOCO', a:'apoio', manut:'manutenção', fora:'—'};
+  return `<div class="focoed">
+    <div class="fe-h">Toque num grupo pra girar entre <b>foco</b> → apoio → manutenção → nada.
+      Foco e apoio ganham série a mais na semana de acúmulo e são os últimos a sair quando o tempo aperta.</div>
+    <div class="fe-grid">
+      ${MG_ORDER.filter(mg=>MG_LABELS[mg] && mg!=='cardio').map(mg=>{
+        const k=camada(mg);
+        return `<button class="fe-i fe-${k}" onclick="setFocoGrupo('${prox[k]}','${mg}')">
+          <b>${esc(MG_LABELS[mg])}</b><span>${rot[k]}</span></button>`;
+      }).join('')}
+    </div>
+    ${custom?`<button class="fe-reset" onclick="resetFoco()">Voltar ao padrão do programa</button>`
+            :`<div class="fe-nota">Usando o padrão do programa.</div>`}
+  </div>`;
+}
+
 /* ============ MESOCICLO: rampa de volume dentro do bloco ============
    O bloco definia séries FIXAS por 12 semanas — progressão de carga existia, de volume não.
    Sobrecarga progressiva é a base do modelo; a rampa é o lado do volume. Mesociclo de 4
@@ -2141,6 +2234,7 @@ function trocarBloco(){
   if(!confirm(`Virar pro bloco de ${BLOCOS[alvo].nome}?\n\n${BLOCOS[alvo].resumo}\n\nO histórico não muda — só as séries planejadas e as prioridades.`)) return;
   if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
   ST.meta.bloco=alvo; ST.meta.blocoDesde=today();
+  delete ST.meta.foco;   // o bloco novo traz o próprio padrão de foco
   saveK('meta'); recalcPrioridades(); render();
   showToast('Bloco de '+BLOCOS[alvo].nome+' começou', 'ok', 2600);
 }
@@ -5694,6 +5788,11 @@ function renderMais(){
       <label class="btn-like">Importar fotos/dados<input type="file" accept="application/json,.json" style="display:none" onchange="importPhotos(this)"></label>
     </div>
   </div>
+  <h2 class="sec">Foco do treino</h2>
+  <div class="infocard">
+    ${renderFocoEditor()}
+  </div>
+
   <h2 class="sec">Atualizar o app</h2>
   <div class="infocard">
     <p>O app guarda uma cópia offline de si mesmo, então às vezes continua numa versão antiga. Abrir no navegador busca o arquivo novo direto do servidor.</p>
