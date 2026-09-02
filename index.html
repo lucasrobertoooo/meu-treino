@@ -1890,7 +1890,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.17';
+const APP_VERSION = '2026-08-19.18';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -1949,9 +1949,9 @@ const WK = {
     {id:"b_10", n:"Panturrilha", s:3, r:"12-16", t:"iso", mg:{panturrilha:1}, cue:"Antes do cardio."},
   ]},
   C:{name:"Push 2", focus:"Ombro · peito · tríceps", type:"push", ex:[
-    {id:"c_1", n:"Desenvolvimento sentado com halter", s:4, r:"6-10", t:"comp", mg:{ombro_ant:1, ombro_lat:0.5, triceps:0.5}, cue:"Ombro completo (anterior + lateral)."},
-    {id:"c_2", n:"Elevação lateral com halter no banco inclinado 75°", s:4, r:"12-16", t:"iso", mg:{ombro_lat:1}, cue:"<em>Bilateral inclinado.</em> Banco a ~75°, tronco apoiado no encosto. Halteres começam colados na lateral do banco (posição alongada), sobem pelos cotovelos até altura do ombro. Ângulo diferente do em pé: dificulta no meio do movimento, alivia no topo. Excêntrica 3s. <em>Prioridade da largura.</em>"},
     {id:"c_3", n:"Supino inclinado halter 30°", s:4, r:"8-12", t:"comp", mg:{peito_sup:1, triceps:0.5, ombro_ant:0.5}, cue:"2ª dose de peito superior. Espreme o peito."},
+    {id:"c_2", n:"Elevação lateral com halter no banco inclinado 75°", s:4, r:"12-16", t:"iso", mg:{ombro_lat:1}, cue:"<em>Bilateral inclinado.</em> Banco a ~75°, tronco apoiado no encosto. Halteres começam colados na lateral do banco (posição alongada), sobem pelos cotovelos até altura do ombro. Ângulo diferente do em pé: dificulta no meio do movimento, alivia no topo. Excêntrica 3s. <em>Prioridade da largura.</em>"},
+    {id:"c_1", n:"Desenvolvimento sentado com halter", s:4, r:"6-10", t:"comp", mg:{ombro_ant:1, ombro_lat:0.5, triceps:0.5}, cue:"Ombro completo (anterior + lateral)."},
     {id:"c_4", n:"Peck deck ou crucifixo máquina", s:5, r:"10-15", t:"iso", mg:{peito_med:1, peito_sup:0.5}, cue:"Contração e alongamento do peito. Pausa 1s no alongamento."},
     {id:"c_5", n:"Extensão de tríceps acima da cabeça", s:3, r:"10-15", t:"iso", mg:{triceps:1}, cue:"Cabeça longa. Posição alongada."},
     {id:"c_6", n:"Tríceps na polia", s:3, r:"12-15", t:"iso", mg:{triceps:1}, cue:"—"},
@@ -3038,7 +3038,44 @@ function checkBackupReminder(){
 function today(){ return localISO(); }
 function dateAdd(iso, days){ const d=new Date(iso+'T12:00:00'); d.setDate(d.getDate()+days); return localISO(d); }
 function daysBetween(a,b){ const da=new Date(a+'T12:00:00'), db=new Date(b+'T12:00:00'); return Math.round((db-da)/86400000); }
-function exId(day,i){ return day+"_"+i; }
+/* ============ CHAVE DOS LOGS: ID ESTÁVEL ============
+   Era `day+"_"+i` — posicional. Qualquer inserção ou reordenação no programa fazia o
+   histórico grudar no exercício errado, e por isso as mudanças de programa até aqui tiveram
+   que ser sempre "no fim da lista". O app dela já usava id estável; agora os dois usam.
+   O fallback posicional continua pras sessões de casa, que não têm id. */
+function exId(day,i){
+  const dd=WK[day]; const ex=dd && dd.ex && dd.ex[i];
+  return (ex && ex.id) ? ex.id : (day+"_"+i);
+}
+/* Renomeia as chaves antigas (A_0, B_3...) pro id do exercício que ocupava a posição.
+   Roda uma vez. Chave cujo exercício saiu do programa fica intacta — o histórico órfão
+   continua no storage e no backup, só não alimenta mais sugestão. */
+function migrateLogsStableId(){
+  if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
+  if(ST.meta._logsV2) return;
+  ST.meta._logsV2=true;
+  /* Mapa CONGELADO do layout que gerou essas chaves. NÃO dá pra derivar do WK atual: o dia C
+     foi reordenado na mesma versão, então perguntar "quem está na posição 0 hoje?" devolveria
+     o supino para uma chave C_0 que na verdade era o desenvolvimento. Pego isso testando. */
+  const LAYOUT_ANTIGO={
+    A_0:"a_1",A_1:"a_2",A_2:"a_3",A_3:"a_4",A_4:"a_5",A_5:"a_6",A_6:"b_8",
+    B_0:"b_1",B_1:"b_2",B_2:"b_3",B_3:"b_4",B_4:"b_5",B_5:"b_6",B_6:"b_7",B_7:"b_10",
+    C_0:"c_1",C_1:"c_2",C_2:"c_3",C_3:"c_4",C_4:"c_5",C_5:"c_6",C_6:"d_9",
+    D_0:"d_1",D_1:"d_2",D_2:"d_3",D_3:"d_4",D_4:"d_5",D_5:"d_6",D_6:"d_7",D_7:"d_8",
+  };
+  const remap={};
+  for(const key of Object.keys(ST.logs||{})){
+    const alvo=LAYOUT_ANTIGO[key];
+    if(alvo && alvo!==key && !ST.logs[alvo]) remap[key]=alvo;
+  }
+  for(const o of Object.keys(remap)){ ST.logs[remap[o]]=ST.logs[o]; delete ST.logs[o]; }
+  /* ST.meta.swapAt e swapSnooze também são keyed por exId: acompanham o remap. */
+  for(const campo of ['swapAt','swapSnooze']){
+    const m=ST.meta[campo]; if(!m) continue;
+    for(const o of Object.keys(remap)) if(m[o]!==undefined && m[remap[o]]===undefined){ m[remap[o]]=m[o]; delete m[o]; }
+  }
+  try{ saveK('logs'); saveK('meta'); }catch(e){}
+}
 
 /* ============ OVERRIDES DE EXERCÍCIO (edição do usuário, isolado em ST.exmeta) ============
    Ancorado pelo id ESTÁVEL do exercício (e.id no WK/HOME_SESSIONS), não pela posição.
@@ -6389,6 +6426,7 @@ async function boot(){
   // 5. Backup reminder semanal (delay 1.5s pra não competir com outros toasts no boot)
   setTimeout(checkBackupReminder, 1500);
 }
+migrateLogsStableId();   // chaves posicionais viram id estável (uma vez)
 recalcPrioridades();   // antes do 1º render
 try{ registrarDeloadEmCurso(); }catch(_){}   // a semana leve marca a si mesma: MG_PRIORITY depende do bloco ativo
 setTimer(90);
