@@ -1806,7 +1806,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.10';
+const APP_VERSION = '2026-08-19.11';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -1986,7 +1986,7 @@ function anteciparDeload(){
   if(!confirm('Fazer a semana leve agora?\n\nAs séries caem pela metade por 7 dias. Serve pra descarregar fadiga acumulada — a carga continua a mesma, só não vá perto da falha.')) return;
   if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
   ST.meta.deloadAte = dateAdd(today(), 6);
-  saveK('meta'); render(); showToast('Semana leve começou', 'ok', 2400);
+  saveK('meta'); registrarDeloadEmCurso(); render(); showToast('Semana leve começou', 'ok', 2400);
 }
 // Peso do tier na pontuação: 1=3, 2=2, 3=1, 4=0
 function tierWeight(mg){ return Math.max(0, 4-tierOf(mg)); }
@@ -3904,6 +3904,19 @@ function needsDeload(){
   const f=fadigaGlobal();
   if(f && f.alta) return f;
   return null;
+}
+/* O deload agora ACONTECE POR DESENHO (semana 4 do mesociclo ou antecipado por fadiga), não
+   por detecção. Mas `lastDeloadWeek` só era gravado pelo autoDetectDeload, que exige o volume
+   cair a <=60% da média — e o corte do mesociclo dá 61% (dela) / 56% (dele). Resultado: o
+   marcador podia nunca ser gravado, e como `shouldSwapExercise` exige deload feito, a sugestão
+   de trocar exercício nunca disparava. Aqui a semana leve se registra sozinha. */
+function registrarDeloadEmCurso(){
+  try{
+    if(!emDeload()) return;
+    if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
+    const sem=weeksTraining();
+    if(sem>0 && (ST.meta.lastDeloadWeek||0) < sem){ ST.meta.lastDeloadWeek=sem; saveK('meta'); }
+  }catch(e){}
 }
 function markDeloadDone(){ ST.meta.lastDeloadWeek = weeksTraining(); ST.meta.deloadAte=null; saveK('meta'); }
 // Próximo treino sugerido baseado no último feito (ciclo ABCD)
@@ -6134,7 +6147,8 @@ async function boot(){
   // 5. Backup reminder semanal (delay 1.5s pra não competir com outros toasts no boot)
   setTimeout(checkBackupReminder, 1500);
 }
-recalcPrioridades();   // antes do 1º render: MG_PRIORITY depende do bloco ativo
+recalcPrioridades();   // antes do 1º render
+try{ registrarDeloadEmCurso(); }catch(_){}   // a semana leve marca a si mesma: MG_PRIORITY depende do bloco ativo
 setTimer(90);
 try{ autoDetectDeload(); }catch(_){}   // semana leve se marca sozinha, sem depender de botão
 render();
