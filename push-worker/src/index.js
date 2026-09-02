@@ -105,6 +105,10 @@ async function makeVapidJWT(env, audience) {
 
 // ============ Send push ============
 // Tickle-only push (sem payload). O Service Worker do app trata título/body fixo.
+/* Ate esse horizonte o /schedule espera e dispara no segundo certo (descanso curto).
+   Acima disso fica so com o cron, que basta para alarme distante. */
+const PRECISO_MS = 4 * 60 * 1000;
+
 async function sendPushOne(env, subscription) {
   const audience = new URL(subscription.endpoint).origin;
   const { jwt, sigLen, claims } = await makeVapidJWT(env, audience);
@@ -176,8 +180,30 @@ export default {
         }
         const id = crypto.randomUUID();
         const ttl = Math.max(120, Math.floor((fireAt - Date.now()) / 1000) + 300);
-        await env.KV.put(`pending:${fireAt}:${hash}:${id}`, JSON.stringify({ hash }), { expirationTtl: ttl });
-        return Response.json({ id, willFireAt: fireAt }, { headers: cors() });
+        const key = `pending:${fireAt}:${hash}:${id}`;
+        await env.KV.put(key, JSON.stringify({ hash }), { expirationTtl: ttl });
+        /* O cron so roda de minuto em minuto: sozinho ele entrega um descanso de 90s com
+           ~30s de atraso medio, o que torna o aviso inutil. Pra alarme curto o proprio
+           /schedule espera o tempo exato em waitUntil e dispara na hora; o cron continua
+           como rede de seguranca (se a instancia morrer, a chave sobra e ele pega depois).
+           Quem disparar primeiro apaga a chave, entao nao ha envio duplicado. */
+        const delta = fireAt - Date.now();
+        if (delta > 0 && delta <= PRECISO_MS) {
+          ctx.waitUntil((async () => {
+            await new Promise((r) => setTimeout(r, delta));
+            const ainda = await env.KV.get(key, 'json');
+            if (!ainda) return;                       // cron ja entregou
+            await env.KV.delete(key);                 // trava antes de enviar
+            const sub = await env.KV.get(`sub:${hash}`, 'json');
+            if (!sub) return;
+            try { await sendPushOne(env, sub); }
+            catch (e) {
+              console.error('push preciso falhou:', e.message);
+              if (e.status === 404 || e.status === 410) await env.KV.delete(`sub:${hash}`);
+            }
+          })());
+        }
+        return Response.json({ id, willFireAt: fireAt, preciso: delta > 0 && delta <= PRECISO_MS }, { headers: cors() });
       }
 
       if (url.pathname === '/cancel' && req.method === 'POST') {
@@ -265,6 +291,12 @@ export default {
         const fireAt = parseInt(parts[1]);
         if (fireAt <= now) {
           const data = await env.KV.get(k.name, 'json');
+          /* Apaga ANTES de enviar (mesmo protocolo do disparo preciso em /schedule):
+             a chave e a trava, entao os dois caminhos nunca enviam o mesmo alarme.
+             Se ainda escapar, o `tag` do service worker substitui a notificacao
+             em vez de empilhar — o pior caso e visualmente inofensivo. */
+          await env.KV.delete(k.name);
+          deleted++;
           if (data?.hash) {
             const sub = await env.KV.get(`sub:${data.hash}`, 'json');
             if (sub) {
@@ -279,8 +311,6 @@ export default {
               }
             }
           }
-          await env.KV.delete(k.name);
-          deleted++;
         }
       }
       cursor = list.cursor;
