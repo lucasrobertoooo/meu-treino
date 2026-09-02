@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-08-19.18 (**Logs por id estável**, foco configurável, faixas 12-16 e peito abrindo o dia C. SHELL v40)
+**Última atualização:** 2026-08-19.19 (**Backup automático na nuvem** — restauração FUNDE, não substitui. SHELL v41)
+
+**Antes: 2026-08-19.18 (**Logs por id estável**, foco configurável, faixas 12-16 e peito abrindo o dia C. SHELL v40)
 
 **Antes: 2026-08-19.14 (**Auditoria completa**: consistência das regras entre os dois apps, card do exercício reordenado e autorregulação por recuperação subjetiva. SHELL v36)
 
@@ -1016,6 +1018,38 @@ O foco era código: aqui, `BLOCOS[bloco].tier` com dois blocos fixos. Agora vive
 
 ### Volume e frequência — conferidos, estão certos
 Os 12 grupos batem a meta exatamente, e peito/costas/bíceps/tríceps treinam 2×/semana (Schoenfeld, Ogborn & Krieger 2016).
+
+---
+
+## Backup na nuvem (2026-08-19.19)
+
+**O problema.** O Lucas perdeu histórico duas vezes. A exportação manual existe, mas depende de lembrar de tocar num botão — e esse histórico agora alimenta **toda** a inteligência do app: progressão, plateau, fadiga, curva, ritmo de peso.
+
+**Não é sync multi-device.** Cada app roda num aparelho só. É backup automático + restauração.
+
+### Worker (`push-worker/src/index.js`)
+Duas rotas novas, reusando o KV e o `SHARED_TOKEN` que já existiam pro push:
+- `PUT /backup` — grava um snapshot. Guarda os **5 últimos** (`SNAP_MAX`), não só o último: se um estado ruim for enviado, ainda dá pra voltar. Limite de 4MB.
+- `GET /backup` — sem `?id`, lista os snapshots; com `?id`, devolve um.
+
+### App
+- `enviarNuvemAuto()` roda 4s depois do boot, **no máximo 1× a cada 6h**, e só se houver treino registrado hoje (ou se nunca houve backup). Erro de rede é engolido — a próxima abertura tenta de novo.
+- Conta como backup: silencia o lembrete de exportar.
+- Seção na aba Mais com data do último envio e os botões **Enviar agora** / **Restaurar**.
+
+### A restauração FUNDE, não substitui
+`importData` (colar backup) continua substituindo tudo — serve pra instalação limpa. Mas restaurar da nuvem usa `fundirBackup()`: **nada do aparelho é apagado, só entra o que falta**. Uma cópia da nuvem mais velha que o local não pode comer sessão nova.
+
+- `logs`: união por exercício, depois por data
+- `bw` / `measures` / `photometa`: união por `id` ou `date`
+- `sleep` / `protein` / `suppl` / `cardio` / `freelog`: só preenche data ausente
+- `exmeta`: local vence, remoto preenche buraco
+- **`meta` não é fundido** — são preferências do aparelho (worker, token, bloco, foco)
+
+Devolve um relatório do que entrou (X sessões, Y pesagens...) em vez de dizer "restaurado" sem prova. É idempotente: restaurar 2× não duplica.
+
+### Verificação
+24 asserts com um Worker falso: envio, janela de 6h, fusão preservando a sessão local, exercício que só existia na nuvem, `meta` intacto, dupla restauração sem duplicar, rede caída, token errado.
 
 ---
 

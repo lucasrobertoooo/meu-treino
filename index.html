@@ -476,6 +476,14 @@
   }
   .openweb:active{opacity:.82;}
   .openweb small{font-size:10.5px; color:var(--faint); font-weight:500;}
+  .nuvem-st{font-size:11.5px; color:var(--faint); margin:8px 0 10px;}
+  .nuvem-btns{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .nvb{
+    padding:11px; border-radius:12px; cursor:pointer; font-family:inherit;
+    font-size:13px; font-weight:700; background:var(--core-grad); color:#231a05; border:none;
+  }
+  .nvb.ghost{background:none; border:1px solid var(--line-2); color:var(--muted); font-weight:600;}
+  .nvb:active{opacity:.85;}
   /* ==== EDITOR DE FOCO ==== */
   .focoed{margin-top:4px;}
   .fe-h{font-size:11.5px; color:var(--muted); line-height:1.55; margin-bottom:11px;}
@@ -1890,7 +1898,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-08-19.18';
+const APP_VERSION = '2026-08-19.19';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -5825,6 +5833,18 @@ function renderMais(){
       <label class="btn-like">Importar fotos/dados<input type="file" accept="application/json,.json" style="display:none" onchange="importPhotos(this)"></label>
     </div>
   </div>
+  <h2 class="sec">Backup na nuvem</h2>
+  <div class="infocard">
+    ${nuvemPronta()
+      ? `<p>Envia sozinho no máximo 1× a cada 6h, quando há treino do dia. O Worker guarda os 5 últimos.</p>
+         <div class="nuvem-st">${(ST.meta&&ST.meta.nuvemAt) ? 'Último envio: '+new Date(ST.meta.nuvemAt).toLocaleString('pt-BR') : 'Nunca enviado'}</div>
+         <div class="nuvem-btns">
+           <button class="nvb" onclick="enviarNuvem()">Enviar agora</button>
+           <button class="nvb ghost" onclick="restaurarNuvem()">Restaurar</button>
+         </div>`
+      : `<p>Configure o Worker (logo abaixo, em Notificações) e o backup automático liga sozinho. Sem isso, o histórico vive só neste aparelho.</p>`}
+  </div>
+
   <h2 class="sec">Foco do treino</h2>
   <div class="infocard">
     ${renderFocoEditor()}
@@ -5840,6 +5860,115 @@ function renderMais(){
   app.innerHTML=h;
 }
 
+/* ============ BACKUP NA NUVEM ============
+   O Lucas perdeu histórico duas vezes. Exportação manual existe, mas depende de lembrar de
+   tocar num botão — e o histórico agora alimenta TODA a inteligência do app (progressão,
+   plateau, fadiga, curva). Reusa o Worker do push, que já tem KV e token.
+
+   NÃO é sync multi-device: cada app roda num aparelho só. É backup automático + restauração.
+
+   A restauração FUNDE por padrão em vez de substituir: uma cópia da nuvem mais velha que o
+   local não pode apagar sessão nova. Substituir continua existindo (importData), pro caso
+   de instalação limpa. */
+function nuvemPronta(){ return !!(ST.meta && ST.meta.workerUrl && ST.meta.workerToken); }
+function nuvemHeaders(){ return {'Authorization':'Bearer '+ST.meta.workerToken, 'Content-Type':'application/json'}; }
+
+async function enviarNuvem(silencioso){
+  if(!nuvemPronta()){ if(!silencioso) showToast('Configure o Worker na aba Mais','warn',3000); return false; }
+  try{
+    const full={_v:1, _at:new Date().toISOString()};
+    for(const k of Object.keys(LS)) full[k]=ST[k];
+    const r=await fetch(ST.meta.workerUrl+'/backup', {method:'PUT', headers:nuvemHeaders(), body:JSON.stringify(full)});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    ST.meta.nuvemAt=Date.now(); ST.meta.lastBackupAt=Date.now();   // conta como backup: silencia o lembrete
+    saveK('meta');
+    if(!silencioso){ showToast('Enviado pra nuvem','ok',2200); render(); }
+    return true;
+  }catch(e){
+    if(!silencioso) showToast('Falhou: '+e.message,'warn',3400);
+    return false;
+  }
+}
+/* Envia sozinho no máximo 1x a cada 6h, e só se houver treino registrado hoje. Roda em
+   background: se a rede falhar, não incomoda — a próxima abertura tenta de novo. */
+async function enviarNuvemAuto(){
+  if(!nuvemPronta()) return;
+  const ult=(ST.meta && ST.meta.nuvemAt)||0;
+  if(Date.now()-ult < 6*3600*1000) return;
+  const t=today();
+  let temHoje=false;
+  for(const id of Object.keys(ST.logs||{})) if((ST.logs[id]||[]).some(x=>x&&x.date===t)){ temHoje=true; break; }
+  if(!temHoje && ult) return;                       // nada novo hoje e já existe backup
+  await enviarNuvem(true);
+}
+async function listarNuvem(){
+  const r=await fetch(ST.meta.workerUrl+'/backup', {headers:nuvemHeaders(), cache:'no-store'});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return (await r.json()).snapshots || [];
+}
+/* Funde o remoto no local. Nada é sobrescrito: só entra o que falta.
+   Devolve um relatório do que entrou, pra não dizer "restaurado" sem prova. */
+function fundirBackup(o){
+  const rel={sessoes:0, exercicios:0, pesagens:0, medidas:0, fotos:0, campos:0};
+  if(!o || typeof o!=='object') throw new Error('formato inválido');
+  // logs: união por exercício, depois por data
+  if(o.logs && typeof o.logs==='object'){
+    for(const id of Object.keys(o.logs)){
+      const rem=o.logs[id]; if(!Array.isArray(rem)) continue;
+      if(!ST.logs[id]){ ST.logs[id]=[]; rel.exercicios++; }
+      const temData=new Set(ST.logs[id].map(x=>x&&x.date));
+      for(const sess of rem){
+        if(sess && sess.date && !temData.has(sess.date)){ ST.logs[id].push(sess); temData.add(sess.date); rel.sessoes++; }
+      }
+      ST.logs[id].sort((a,b)=> a.date<b.date?-1:1);
+    }
+  }
+  // listas por data
+  for(const [k,campo] of [['bw','pesagens'],['measures','medidas'],['photometa','fotos']]){
+    if(!Array.isArray(o[k])) continue;
+    if(!Array.isArray(ST[k])) ST[k]=[];
+    const tem=new Set(ST[k].map(x=>x && (x.id || x.date)));
+    for(const it of o[k]){
+      const ch=it && (it.id || it.date);
+      if(ch && !tem.has(ch)){ ST[k].push(it); tem.add(ch); rel[campo]++; }
+    }
+    ST[k].sort((a,b)=> (a.date||'')<(b.date||'') ? -1 : 1);
+  }
+  // mapas por data (sleep, protein, suppl, cardio, freelog): só preenche o que falta
+  for(const k of ['sleep','protein','suppl','cardio','freelog']){
+    if(!o[k] || typeof o[k]!=='object') continue;
+    if(!ST[k] || typeof ST[k]!=='object') ST[k]={};
+    for(const d of Object.keys(o[k])) if(ST[k][d]===undefined){ ST[k][d]=o[k][d]; rel.campos++; }
+  }
+  // exmeta (edições de exercício): local vence, remoto preenche buraco
+  if(o.exmeta && typeof o.exmeta==='object'){
+    if(!ST.exmeta) ST.exmeta={};
+    for(const id of Object.keys(o.exmeta)) if(ST.exmeta[id]===undefined){ ST.exmeta[id]=o.exmeta[id]; rel.campos++; }
+  }
+  // meta NÃO é fundido: são preferências do aparelho (worker, token, bloco, foco).
+  for(const k of Object.keys(LS)) saveK(k);
+  return rel;
+}
+async function restaurarNuvem(){
+  if(!nuvemPronta()){ showToast('Configure o Worker na aba Mais','warn',3000); return; }
+  try{
+    const snaps=await listarNuvem();
+    if(!snaps.length){ alert('Nenhum backup na nuvem ainda. Toque em "Enviar agora".'); return; }
+    const lista=snaps.map((x,i)=>`${i+1}. ${new Date(x.at).toLocaleString('pt-BR')} (${Math.round(x.bytes/1024)}kB)`).join('\n');
+    const esc=prompt('Qual backup restaurar?\n\n'+lista+'\n\nDigite o número (1 = mais recente):','1');
+    if(esc===null) return;
+    const idx=parseInt(esc,10)-1;
+    if(!(idx>=0 && idx<snaps.length)){ showToast('Número inválido','warn',2400); return; }
+    const r=await fetch(ST.meta.workerUrl+'/backup?id='+encodeURIComponent(snaps[idx].id), {headers:nuvemHeaders(), cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const o=await r.json();
+    if(!confirm('Vou FUNDIR esse backup no que já está aqui.\n\nNada do aparelho é apagado — só entra o que falta. Seguir?')) return;
+    const rel=fundirBackup(o);
+    render();
+    alert('Restaurado.\n\n'+rel.sessoes+' sessões novas\n'+rel.exercicios+' exercícios novos\n'
+      +rel.pesagens+' pesagens\n'+rel.medidas+' medições\n'+rel.fotos+' fotos\n'+rel.campos+' outros registros');
+  }catch(e){ alert('Falhou: '+e.message); }
+}
 async function exportData(){
   const t=document.getElementById('exp'); t.classList.remove('hidden');
   const full={_v:1, _at:new Date().toISOString()};
@@ -6425,6 +6554,7 @@ async function boot(){
   maybeShowA2HSBanner();
   // 5. Backup reminder semanal (delay 1.5s pra não competir com outros toasts no boot)
   setTimeout(checkBackupReminder, 1500);
+  setTimeout(()=>{ try{ enviarNuvemAuto(); }catch(e){} }, 4000);   // backup automático, em segundo plano
 }
 migrateLogsStableId();   // chaves posicionais viram id estável (uma vez)
 recalcPrioridades();   // antes do 1º render

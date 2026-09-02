@@ -5,6 +5,8 @@
 
 const ALLOWED_ORIGIN = 'https://lucasrobertoooo.github.io';
 
+const SNAP_MAX = 5;   // quantos snapshots de backup o worker guarda
+
 function cors(extra = {}) {
   return {
     'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
@@ -184,6 +186,41 @@ export default {
           cursor = list.cursor;
         } while (cursor);
         return Response.json({ ok: true, deleted }, { headers: cors() });
+      }
+
+      /* ===== BACKUP NA NUVEM =====
+         O objetivo aqui NAO e sync multi-device: cada app roda num aparelho so. E sobreviver
+         a reinstalacao do PWA e a limpeza de storage do navegador — o Lucas ja perdeu
+         historico duas vezes, e agora esse historico alimenta toda a inteligencia do app
+         (progressao, plateau, fadiga, curva).
+
+         Guarda os ultimos SNAP_MAX snapshots, nao so o ultimo: se um estado ruim for enviado,
+         ainda da pra voltar num anterior. Chave por token (um usuario por worker). */
+      if (url.pathname === '/backup' && req.method === 'PUT') {
+        const body = await req.text();
+        if (!body || body.length < 2) return new Response('Empty', { status: 400, headers: cors() });
+        if (body.length > 4 * 1024 * 1024) return new Response('Too large', { status: 413, headers: cors() });
+        const now = Date.now();
+        const idx = JSON.parse((await env.KV.get('bk:index')) || '[]');
+        const id = String(now);
+        await env.KV.put('bk:' + id, body);
+        idx.unshift({ id, at: now, bytes: body.length });
+        const velhos = idx.slice(SNAP_MAX);
+        for (const v of velhos) await env.KV.delete('bk:' + v.id);
+        const novo = idx.slice(0, SNAP_MAX);
+        await env.KV.put('bk:index', JSON.stringify(novo));
+        return Response.json({ ok: true, id, guardados: novo.length }, { headers: cors() });
+      }
+
+      if (url.pathname === '/backup' && req.method === 'GET') {
+        const id = url.searchParams.get('id');
+        if (!id) {
+          const idx = JSON.parse((await env.KV.get('bk:index')) || '[]');
+          return Response.json({ snapshots: idx }, { headers: cors() });
+        }
+        const body = await env.KV.get('bk:' + id);
+        if (!body) return new Response('Not Found', { status: 404, headers: cors() });
+        return new Response(body, { headers: { ...cors(), 'Content-Type': 'application/json' } });
       }
 
       if (url.pathname === '/test' && req.method === 'POST') {
