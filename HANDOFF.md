@@ -1184,9 +1184,9 @@ Não sumiram por bug: eu tinha movido a foto inteira pro "Como fazer" recolhido 
 
 Ele está certo. Em 2026-08-19.12 eu movi a foto inteira pro "Como fazer" recolhido porque medi ~8 telas de rolagem por sessão e decidi que 370px por exercício era caro demais. **Ele nunca pediu isso.** Eu contei na resposta daquele dia, mas contar depois não é combinar antes — e a troca (reconhecimento visual imediato por menos rolagem) era escolha dele, não minha. Quando ele reclamou, eu ainda inventei uma terceira coisa (miniatura de 56px) em vez de devolver o que existia.
 
-**Revertido:** foto grande no topo do card, com a tarja de nome + tipo e o selo de PR, exatamente como era. Miniatura, cabeçalho duplicado e o CSS de // saíram.
+**Revertido:** foto grande no topo do card, com a tarja de nome + tipo e o selo de PR, exatamente como era. Miniatura, cabeçalho duplicado e o CSS de `exthumb` / `pr-inline` / `semtarja` saíram.
 
-**Mantido** (ele não reclamou, e resolvem problema real): Meta antes dos campos de registro, botão de descanso grande, e "Como fazer" guardando técnica/vídeo/editar. Se ele quiser esses de volta ao original também, é só pedir — o commit  tem o card inteiro como era.
+**Mantido** (ele não reclamou, e resolvem problema real): Meta antes dos campos de registro, botão de descanso grande, e "Como fazer" guardando técnica/vídeo/editar. Se ele quiser esses de volta ao original também, é só pedir — o commit `b75a2d1^` tem o card inteiro como era.
 
 **Regra pra mim:** mudança de layout que o usuário não pediu se pergunta antes, não se anuncia depois.
 
