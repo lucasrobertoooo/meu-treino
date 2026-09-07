@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-09-02.03 ("Abrir no navegador" não funcionava no PWA; virou **Atualizar agora**, que resolve dentro do app. SHELL v49)
+**Última atualização:** 2026-09-02.04 (foto grande de volta no topo do card — revertida uma mudança que eu tomei por conta. SHELL v50)
+
+**Antes: 2026-09-02.03 ("Abrir no navegador" não funcionava no PWA; virou **Atualizar agora**, que resolve dentro do app. SHELL v49)
 
 **Antes: 2026-09-02.02 (**regressão do timer corrigida** + miniatura da foto de volta. SHELL v48)
 
@@ -1173,6 +1175,20 @@ Não sumiram por bug: eu tinha movido a foto inteira pro "Como fazer" recolhido 
 **Guarda:** se estiver offline, não faz nada e explica — limpar o cache sem rede deixaria o app em branco. E o `localStorage` nunca é tocado: o histórico fica.
 
 12 asserts nos dois apps: derruba SW, limpa cache, recarrega com carimbo, aborta offline, respeita o cancelar, e não toca no histórico.
+
+---
+
+## Foto de volta ao topo — revertendo decisão minha (2026-09-02.04)
+
+**O que o Lucas disse:** *"não quero que apareça a imagem da forma que está, pequena e do lado. quero que seja antes. porque você mudou o layout sem me falar?"*
+
+Ele está certo. Em 2026-08-19.12 eu movi a foto inteira pro "Como fazer" recolhido porque medi ~8 telas de rolagem por sessão e decidi que 370px por exercício era caro demais. **Ele nunca pediu isso.** Eu contei na resposta daquele dia, mas contar depois não é combinar antes — e a troca (reconhecimento visual imediato por menos rolagem) era escolha dele, não minha. Quando ele reclamou, eu ainda inventei uma terceira coisa (miniatura de 56px) em vez de devolver o que existia.
+
+**Revertido:** foto grande no topo do card, com a tarja de nome + tipo e o selo de PR, exatamente como era. Miniatura, cabeçalho duplicado e o CSS de // saíram.
+
+**Mantido** (ele não reclamou, e resolvem problema real): Meta antes dos campos de registro, botão de descanso grande, e "Como fazer" guardando técnica/vídeo/editar. Se ele quiser esses de volta ao original também, é só pedir — o commit  tem o card inteiro como era.
+
+**Regra pra mim:** mudança de layout que o usuário não pediu se pergunta antes, não se anuncia depois.
 
 ---
 
