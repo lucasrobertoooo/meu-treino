@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-09-02.02 (**regressão do timer corrigida** + miniatura da foto de volta. SHELL v48)
+**Última atualização:** 2026-09-02.03 ("Abrir no navegador" não funcionava no PWA; virou **Atualizar agora**, que resolve dentro do app. SHELL v49)
+
+**Antes: 2026-09-02.02 (**regressão do timer corrigida** + miniatura da foto de volta. SHELL v48)
 
 **Antes: 2026-09-02.01 (versão volta a ser a DATA REAL. SHELL v47)
 
@@ -1157,6 +1159,20 @@ Os outros três sites quebrados, todos silenciosos: **volume semanal por grupo**
 
 ### As imagens
 Não sumiram por bug: eu tinha movido a foto inteira pro "Como fazer" recolhido (2026-08-19.12) pra cortar rolagem. O efeito prático foi "as imagens sumiram". Agora há **miniatura de 56px no cabeçalho** — devolve o reconhecimento imediato por 1/6 da altura, e tocar nela abre os detalhes com a foto grande.
+
+---
+
+## "Abrir no navegador" não funcionava (2026-09-02.03)
+
+**Sintoma:** no PWA instalado, o botão só voltava pra home do próprio app em vez de abrir o Safari.
+
+**Causa:** o manifest tem `scope: "./"` e o link apontava pra  — mesma origem, **dentro do escopo**. Em standalone o iOS trata link in-scope como navegação interna. Forçar o Safari dali exigiria um destino fora do escopo, que não existe neste domínio. A lição que eu tinha registrado ("precisa ser `<a target=_blank>`, não `location.href`") vale pra **outra origem** — pro próprio app não adianta.
+
+**Correção — atacar o objetivo, não o meio.** O que se queria não era o navegador, era a versão nova. `atualizarAgora()` faz isso de dentro: derruba os service workers (que são quem serve a cópia velha), limpa todos os caches e recarrega com carimbo de tempo. O SW se registra sozinho no load seguinte.
+
+**Guarda:** se estiver offline, não faz nada e explica — limpar o cache sem rede deixaria o app em branco. E  nunca é tocado: o histórico fica.
+
+12 asserts nos dois apps: derruba SW, limpa cache, recarrega com carimbo, aborta offline, respeita o cancelar, e não toca no histórico.
 
 ---
 

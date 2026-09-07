@@ -1906,7 +1906,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-09-02.02';
+const APP_VERSION = '2026-09-02.03';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -4615,13 +4615,37 @@ function removeSet(id, k){
   upsertToday(id, sets);
   render();
 }
-/* Abre o app no navegador pra forçar atualização. O service worker serve uma cópia offline,
-   então o PWA instalado pode ficar preso numa versão antiga. Precisa ser um <a> real com
-   target=_blank: em PWA standalone o iOS bloqueia location.href pra sair do app.
-   O carimbo de tempo evita que o próprio navegador devolva o HTML do cache. */
-function abrirNoNavegador(a){
-  try{ a.href = a.dataset.url + '?r=' + Date.now(); }catch(e){}
-  return true;
+/* ATUALIZAR AGORA — substitui o "Abrir no navegador", que não funcionava.
+   Motivo: o manifest tem scope "./" e o link apontava pra dentro desse escopo. Em PWA
+   standalone o iOS trata link same-origin/in-scope como navegação INTERNA — o app só
+   recarregava a própria home, nunca abria o Safari. Forçar o Safari daí exigiria um destino
+   fora do escopo, que não existe.
+
+   O que o usuário queria não era o navegador, era a versão nova. Isso dá pra fazer aqui:
+   derruba o service worker (que é quem serve a cópia velha), limpa os caches e recarrega
+   com carimbo de tempo. O SW se registra de novo sozinho no load seguinte.
+
+   Guarda importante: sem rede, limpar cache + recarregar deixaria o app em branco. */
+async function atualizarAgora(){
+  if(navigator.onLine === false){
+    alert('Sem conexão agora.\n\nA atualização precisa baixar a versão nova — se eu limpasse o cache offline, o app ficaria em branco. Tente de novo com internet.');
+    return;
+  }
+  if(!confirm('Buscar a versão mais nova?\n\nO app recarrega. Seus dados não são tocados — ficam no aparelho.')) return;
+  try{
+    if(navigator.serviceWorker && navigator.serviceWorker.getRegistrations){
+      const rs = await navigator.serviceWorker.getRegistrations();
+      for(const r of rs){ try{ await r.unregister(); }catch(e){} }
+    }
+  }catch(e){}
+  try{
+    if(typeof caches!=='undefined' && caches.keys){
+      const ks = await caches.keys();
+      for(const k of ks){ try{ await caches.delete(k); }catch(e){} }
+    }
+  }catch(e){}
+  const base = location.pathname.replace(/[?#].*$/,'');
+  location.replace(base + '?r=' + Date.now());
 }
 /* Estado do "Como fazer": em variável, não em <details>. O app chama render() ao marcar
    série, e um <details> nativo perderia o aberto a cada toque. */
@@ -5917,8 +5941,8 @@ function renderMais(){
 
   <h2 class="sec">Atualizar o app</h2>
   <div class="infocard">
-    <p>O app guarda uma cópia offline de si mesmo, então às vezes continua numa versão antiga. Abrir no navegador busca o arquivo novo direto do servidor.</p>
-    <a class="openweb" href="https://lucasrobertoooo.github.io/meu-treino/" data-url="https://lucasrobertoooo.github.io/meu-treino/" target="_blank" rel="noopener" onclick="return abrirNoNavegador(this)">Abrir no navegador<small>depois: feche o app e reabra pelo ícone</small></a>
+    <p>O app guarda uma cópia offline de si mesmo, então às vezes continua numa versão antiga. Isto derruba essa cópia e busca a nova.</p>
+    <button class="openweb" onclick="atualizarAgora()">Atualizar agora<small>o app recarrega · seus dados não são tocados</small></button>
   </div>
 
   <div class="foot">Adicione à Tela de Início no iPhone: Compartilhar → "Adicionar à Tela de Início".<br>Feito sob medida pro teu ABCD Push/Pull.<br><span style="color:var(--faint);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px">versão ${APP_VERSION}</span></div>`;
