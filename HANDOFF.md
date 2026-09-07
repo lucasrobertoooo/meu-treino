@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-09-02.01 (versão volta a ser a DATA REAL. SHELL v47)
+**Última atualização:** 2026-09-02.02 (**regressão do timer corrigida** + miniatura da foto de volta. SHELL v48)
+
+**Antes: 2026-09-02.01 (versão volta a ser a DATA REAL. SHELL v47)
 
 **Convenção de versão:** `APP_VERSION` é a data do dia em que a mudança foi feita + sequencial. Ficou travada em `2026-08-19` por 14 dias de trabalho — exatamente a confusão que o Lucas reclamou em julho ("que versão é essa? pq não é a data?"). O app dela já tinha voltado pro padrão; agora os dois batem.
 
@@ -1130,6 +1132,31 @@ Só estrutura, sem tocar em treino nem UX.
 **Divergência entre os dois apps:** das 231 funções de mesmo nome, 151 são idênticas e 80 divergem. Amostradas as do motor de decisão — as diferenças são legítimas (guarda de cardio, programa editável, âncora de bloco) ou só prefixo de storage.
 
 *Nota sobre o método:* a primeira versão do analisador deu vários falsos positivos — a regex de definição ignorava `async function`, e a remoção de comentários `//` corrompia linhas com URL dentro de string. Toda remoção foi confirmada por contagem de referências no arquivo bruto antes de apagar.
+
+---
+
+## Regressão do timer (2026-09-02.02)
+
+**Sintoma relatado pelo Lucas:** "o timer não tá mais ativando" e "sumiram as imagens".
+
+### O timer — regressão minha, séria
+A migração pra id estável trocou as chaves de `A_0` pra `a_1`, mas **quatro leitores continuaram decompondo a chave como posicional**:
+
+```js
+const day=id.split('_')[0], i=+id.split('_')[1];   // "a_1" -> day="a"
+openTimer(REST[WK[day].ex[i].t]);                     // WK["a"] undefined -> TypeError
+```
+
+Marcar uma série lançava exceção **e matava o resto do `toggleDone`**: o timer não abria, a sessão não iniciava, e a celebração de treino completo nunca disparava. Confirmei rodando a versão anterior no harness — lançava `Cannot read properties of undefined (reading 'ex')`.
+
+Os outros três sites quebrados, todos silenciosos: **volume semanal por grupo** (zerava), **`suggestedNextDay`** (respondia sempre "A") e **`doneToday`** (nenhum dia aparecia como treinado hoje).
+
+**Correção:** `posOfExId(id)` / `dayOfExId(id)` procuram o id no `WK` e devolvem dia e posição reais, com fallback pra chave posicional antiga. O app dela já tinha esse helper — uma sessão anterior tinha batido no mesmo problema lá e documentado. Agora os dois usam.
+
+**Cuidado permanente:** o id **não é rótulo de dia**. `b_8` mora no dia A e `d_9` no dia C. Nunca voltar a fazer `id.split("_")[0]`. Os únicos `split("_")` legítimos que restam são os do `freelog` (sessões de casa), que seguem em `templateId_exIdx`.
+
+### As imagens
+Não sumiram por bug: eu tinha movido a foto inteira pro "Como fazer" recolhido (2026-08-19.12) pra cortar rolagem. O efeito prático foi "as imagens sumiram". Agora há **miniatura de 56px no cabeçalho** — devolve o reconhecimento imediato por 1/6 da altura, e tocar nela abre os detalhes com a foto grande.
 
 ---
 

@@ -540,7 +540,14 @@
   /* ==== CARD DO EXERCÍCIO REORDENADO ==== */
   .lastd{white-space:nowrap;}   /* a data quebrava no meio: "(08-" / "26):" */
   .exhead{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:9px;}
-  .exname{font-size:18px; font-weight:800; color:var(--ink); letter-spacing:-.015em; line-height:1.2; flex:1 1 auto; min-width:0;}
+  /* A foto tinha ido inteira pro "Como fazer" e o Lucas sentiu que as imagens sumiram.
+     Miniatura devolve o reconhecimento imediato (é essa máquina?) por ~56px em vez de 370px. */
+  .exthumb{
+    width:56px; height:56px; flex:none; border-radius:12px; object-fit:cover; cursor:pointer;
+    border:1px solid var(--line-2); background:var(--glass-2);
+  }
+  .exthumb:active{opacity:.75;}
+  .exname{font-size:17px; font-weight:800; color:var(--ink); letter-spacing:-.015em; line-height:1.25; flex:1 1 auto; min-width:0;}
   .pr-inline{
     display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:800;
     color:#231a05; background:var(--core-grad); border-radius:6px; padding:2px 6px; flex:none;
@@ -1899,7 +1906,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-09-02.01';
+const APP_VERSION = '2026-09-02.02';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -3877,8 +3884,8 @@ function weeklyVolume(){
   const t=today();
   // 1) Programa ABCD (logs)
   for(const id of Object.keys(ST.logs)){
-    const [day,idx]=id.split("_");
-    const ex=WK[day]?.ex[+idx]; if(!ex||!ex.mg) continue;
+    const pos=posOfExId(id); if(!pos) continue;
+    const ex=WK[pos.day]?.ex[pos.i]; if(!ex||!ex.mg) continue;
     for(const sess of ST.logs[id]){
       const dd = daysBetween(sess.date, t);
       if(dd<0 || dd>=7) continue;
@@ -4185,11 +4192,29 @@ function registrarDeloadEmCurso(){
   }catch(e){}
 }
 // Próximo treino sugerido baseado no último feito (ciclo ABCD)
+/* Descobre DIA e POSIÇÃO a partir da chave de um log.
+   As chaves viraram id ESTÁVEL ("a_1", "b_10", "c_7") na migração migrateLogsStableId, mas
+   quem lia continuou fazendo id.split("_")[0] — que devolve "a" minúsculo. E o id não é
+   rótulo de dia: "b_8" e "d_9" moram nos dias A e C. O estrago era grande e silencioso:
+   WK["a"] é undefined, então marcar uma série lançava TypeError e MATAVA o resto do
+   toggleDone — o timer de descanso nunca abria e a celebração de treino completo nunca
+   disparava. Também zerava o volume semanal e fazia suggestedNextDay responder sempre "A". */
+function posOfExId(id){
+  if(!id) return null;
+  for(const d of ['A','B','C','D']){
+    const ex=(WK[d] && WK[d].ex) || [];
+    for(let i=0;i<ex.length;i++) if(ex[i] && ex[i].id===id) return {day:d, i};
+  }
+  const p=String(id).split('_');   // chave posicional antiga, de backup pré-migração
+  if(p.length===2 && ['A','B','C','D'].indexOf(p[0])>=0 && /^\d+$/.test(p[1])) return {day:p[0], i:+p[1]};
+  return null;
+}
+function dayOfExId(id){ const r=posOfExId(id); return r ? r.day : null; }
 function suggestedNextDay(){
   const seq=["A","B","C","D"];
   let lastDay=null, lastDate="0000-00-00";
   for(const id of Object.keys(ST.logs)){
-    const day=id.split("_")[0];
+    const day=dayOfExId(id); if(!day) continue;
     for(const sess of ST.logs[id]){
       if(hasValidDone(sess.sets) && sess.date>lastDate){
         lastDate=sess.date; lastDay=day;
@@ -4218,7 +4243,7 @@ function sessionsForDay(day){
 function todayTrainedDays(){
   const t=today(); const set=new Set();
   for(const id of Object.keys(ST.logs)){
-    const day=id.split('_')[0];
+    const day=dayOfExId(id);
     if(!(day==='A'||day==='B'||day==='C'||day==='D')) continue;
     for(const s of ST.logs[id]){ if(s.date===t && hasValidDone(s.sets)){ set.add(day); break; } }
   }
@@ -4497,6 +4522,7 @@ function renderDay(d){
     h+=`<div class="ex${pular?' skipped':''}">
       <div class="body">
         <div class="exhead">
+          ${url?`<img class="exthumb" src="${url}" alt="" loading="lazy" decoding="async" onclick="toggleDetalhes('${id}')" onerror="this.style.display='none'">`:''}
           <div class="exname">${esc(nm)}</div>
           <div class="pill ${pillC}">${pillT}</div>
           ${todayPR?`<span class="pr-inline">${I.trophy.replace('width="18" height="18"','width="11" height="11"')} PR</span>`:''}
@@ -4684,7 +4710,8 @@ function toggleDone(id,k,el){
     return;
   }
   {
-    const day=id.split('_')[0], i=+id.split('_')[1];
+    const pos=posOfExId(id); if(!pos) return;   // id desconhecido: não inventa dia
+    const day=pos.day, i=pos.i;
     // Auto-start session na primeira marcação válida do dia (não pergunta, é o caminho natural)
     if(!isSessionActive() && !alreadyCelebratedToday(day) && isValidDone(sets[k])){
       ST.session.active={workoutId:day, startAt:Date.now(), pausedAt:null, pausedTotal:0};
