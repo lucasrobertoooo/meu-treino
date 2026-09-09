@@ -10,10 +10,13 @@ const SNAP_MAX = 5;   // quantos snapshots de backup o worker guarda
 /* Os dois apps (dele e dela) podem apontar pro MESMO worker — e ai compartilhariam o
    SHARED_TOKEN, entao separar por token nao resolveria. A separacao e por app, mandado
    pelo cliente em ?app=. Sanitizado: vira chave de KV, nao aceito nada alem de a-z0-9-_. */
+/* Recusa em vez de colapsar. Antes `meu.treino`, `MeuTreino` e `meu treino` caiam todos em
+   `meutreino`, e `../../sub` virava `sub`: um erro de digitacao na configuracao escrevia
+   DENTRO do namespace real e a rotacao comia os backups verdadeiros. */
 function nsApp(url) {
-  const raw = (url.searchParams.get('app') || 'default').toLowerCase();
-  const limpo = raw.replace(/[^a-z0-9_-]/g, '').slice(0, 24);
-  return limpo || 'default';
+  const raw = url.searchParams.get('app');
+  if (raw == null || raw === '') return 'default';
+  return /^[a-z0-9_-]{1,24}$/.test(raw) ? raw : null;
 }
 
 function cors(extra = {}) {
@@ -232,9 +235,22 @@ export default {
          Guarda os ultimos SNAP_MAX snapshots, nao so o ultimo: se um estado ruim for enviado,
          ainda da pra voltar num anterior. Chave por token (um usuario por worker). */
       if (url.pathname === '/backup' && req.method === 'PUT') {
+        if (nsApp(url) === null) return new Response('Invalid app namespace', { status: 400, headers: cors() });
         const body = await req.text();
         if (!body || body.length < 2) return new Response('Empty', { status: 400, headers: cors() });
-        if (body.length > 4 * 1024 * 1024) return new Response('Too large', { status: 413, headers: cors() });
+        /* Mede BYTES, nao chars: 3M de "e" com acento passavam pelos 4M de comprimento e
+           chegavam a 6MB reais no KV. */
+        const bytes = new TextEncoder().encode(body).length;
+        if (bytes > 4 * 1024 * 1024) return new Response('Too large', { status: 413, headers: cors() });
+        /* Corpo precisa ser JSON de objeto. Antes qualquer texto virava snapshot valido e a
+           rotacao ainda empurrava um backup BOM pra fora pra dar lugar ao lixo. */
+        let parsed;
+        try { parsed = JSON.parse(body); } catch (e) {
+          return new Response('Body is not valid JSON', { status: 400, headers: cors() });
+        }
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          return new Response('Body must be a JSON object', { status: 400, headers: cors() });
+        }
         const ns = nsApp(url);
         const now = Date.now();
         const idx = JSON.parse((await env.KV.get(`bk:${ns}:index`)) || '[]');
@@ -251,10 +267,30 @@ export default {
           if (!mantidos.has(v.id)) await env.KV.delete(`bk:${ns}:${v.id}`);
         }
         await env.KV.put(`bk:${ns}:index`, JSON.stringify(novo));
+        /* KV nao tem compare-and-swap: dois PUT simultaneos leem o mesmo indice e um
+           sobrescreve o outro, deixando o corpo do perdedor orfao pra sempre (a rotacao so
+           apaga id que estava no indice que ELA leu).
+           Reconciliacao com GUARDA DE IDADE: so apaga orfao com mais de 1 hora. Sem essa
+           guarda a varredura virava o proprio bug — sob 8 PUT simultaneos cada uma apagava o
+           corpo que a outra tinha acabado de gravar, e sobrava indice cheio com zero
+           arquivos. Escrita concorrente acontece em milissegundos; 1 hora nunca a alcanca. */
+        try {
+          const UMA_HORA = 3600 * 1000;
+          const agora = Date.now();
+          const listadas = await env.KV.list({ prefix: `bk:${ns}:` });
+          const vivos = new Set(novo.map((v) => `bk:${ns}:${v.id}`));
+          vivos.add(`bk:${ns}:index`);
+          for (const k of (listadas.keys || [])) {
+            if (vivos.has(k.name)) continue;
+            const ts = parseInt(String(k.name).split(':').pop().split('-')[0], 10);
+            if (Number.isFinite(ts) && agora - ts > UMA_HORA) await env.KV.delete(k.name);
+          }
+        } catch (e) { /* list indisponivel: segue sem reconciliar */ }
         return Response.json({ ok: true, id, app: ns, guardados: novo.length }, { headers: cors() });
       }
 
       if (url.pathname === '/backup' && req.method === 'GET') {
+        if (nsApp(url) === null) return new Response('Invalid app namespace', { status: 400, headers: cors() });
         const ns = nsApp(url);
         const id = url.searchParams.get('id');
         if (!id) {

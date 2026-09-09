@@ -1893,7 +1893,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-09-09.04';
+const APP_VERSION = '2026-09-09.05';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -2038,17 +2038,26 @@ const BLOCOS = {
     /* Metas do bloco. Espelham o que este bloco realmente entrega, senão a barra da aba
        Corpo lê ao contrário durante 8 semanas. */
     alvos:{quadriceps:10, posterior:10, panturrilha:6, core:6,
-           costas:12, ombro_lat:10, peito_sup:8, peito_med:6, ombro_post:6, ombro_ant:3,
-           triceps:8, biceps:8},
+           costas:8, ombro_lat:9, peito_sup:8, peito_med:6, ombro_post:4, ombro_ant:3,
+           triceps:8, biceps:6},
     resumo:'Quadríceps e posterior no volume de crescimento. Peito, braços e largura mantidos.',
     tier:{quadriceps:1,posterior:1, panturrilha:2, ombro_lat:3,costas:3,peito_sup:3,peito_med:3,
           triceps:4,biceps:4,ombro_post:4,ombro_ant:4,core:4},
     /* b_10 (panturrilha) era 4: menos que core, que e tier 4. Panturrilha e tier 2 aqui
        (apoio) — num bloco de PERNA ela nao pode ficar abaixo da manutencao de core. 6. */
+    /* Distribuição por dia. A primeira versão deste bloco dava A18 · B30 · C19 · D26: o dia B
+       virava uma sessão de 30 séries com a PERNA nas posições 6, 7 e 8 — exatamente o que a
+       justificativa do bloco diz pra evitar (exercício no fim de sessão longa recebe estímulo
+       ruim, Simão et al 2012). O superior aqui está em manutenção, então cede: 2 séries por
+       acessório em B e D. Fica A18 · B26 · C19 · D22.
+       LIMITE CONHECIDO: a perna continua no FIM de B e D, porque a ordem é do programa e não
+       do bloco. Resolver isso exigiria reordenar B e D, o que empurraria bíceps (prioridade 2
+       no bloco de peito/braços) pra trás nos outros 3 meses. Não vale o custo antes dele
+       realmente entrar no bloco de perna. */
     sets:{a_1:3,a_2:3,a_3:2,a_4:3,a_5:2,a_6:2,
-          b_1:3,b_2:3,b_3:3,b_4:2,b_5:3,b_6:5,b_7:5,b_10:6,
+          b_1:2,b_2:2,b_3:2,b_4:2,b_5:2,b_6:5,b_7:5,b_10:6,
           c_1:3,c_2:3,c_3:3,c_4:3,c_5:2,c_6:2,
-          d_1:3,d_2:3,d_3:3,d_4:2,d_5:3,d_6:2,d_7:5,d_8:5},
+          d_1:2,d_2:2,d_3:2,d_4:2,d_5:2,d_6:2,d_7:5,d_8:5},
   },
 };
 const MG_TIER_LABEL = {1:'foco', 2:'apoio', 3:'sustentação', 4:'manutenção'};
@@ -3690,11 +3699,10 @@ function progressState(id, e){
   // RIR: o sinal de fadiga que o app coletava em toda série e nunca lia
   const rirs=h.slice(-Math.min(travadas,3)).map(s=>sessionRIR(s.sets)).filter(v=>v!=null);
   const rirMed=rirs.length ? rirs.reduce((a,b)=>a+b,0)/rirs.length : null;
-  if(travadas>=3 && rirMed!=null && rirMed<=1)
-    return {k:'fadiga', sug, acao:'deload',
-      msg:`${nSess()} sem subir, todas perto da falha (RIR ${fmtStep(rirMed)}). Isso é fadiga acumulada, não falta de esforço.`,
-      nota:'Faça uma semana leve: metade das séries, ou 20% menos carga. Depois volta.'};
-  // No topo da faixa sem conseguir subir: o problema costuma ser o TAMANHO do salto
+  /* PRECEDÊNCIA: isto vem ANTES de `fadiga`. Quem está no TOPO da faixa não está travado
+     por cansaço — a prescrição da dupla progressão é justamente subir a carga. Com `fadiga`
+     na frente, a tela mostrava "faça uma semana leve" logo abaixo de uma Meta dizendo
+     "bateu o topo · sobe carga": duas ordens opostas ao mesmo tempo. */
   if(cur.reps>=rng.max && travadas>=2){
     const step=loadStepFor(id, e) || (sug && sug.inc) || 0;
     const pct=step && cur.kg ? Math.round(step/cur.kg*100) : 0;
@@ -3704,6 +3712,12 @@ function progressState(id, e){
         ? `O menor salto que esse equipamento tem é ${fmtStep(step)}kg (${pct}% a mais). Duas saídas boas: sobe pra ${fmtKg(cur.kg+step)}kg e aceita cair pra ${rng.min} reps, ou mantém ${fmtKg(cur.kg)}kg e acrescenta 1 série.`
         : `Sobe pro próximo peso disponível e aceita cair pra ${rng.min} reps, ou mantém a carga e acrescenta 1 série.`};
   }
+  /* Fadiga só depois de descartar o caso do topo da faixa (acima): aqui a pessoa está
+     travada ABAIXO do topo e perto da falha, que é o quadro real de fadiga acumulada. */
+  if(travadas>=3 && rirMed!=null && rirMed<=1)
+    return {k:'fadiga', sug, acao:'deload',
+      msg:`${nSess()} sem subir, todas perto da falha (RIR ${fmtStep(rirMed)}). Isso é fadiga acumulada, não falta de esforço.`,
+      nota:'Faça uma semana leve: metade das séries, ou 20% menos carga. Depois volta.'};
   // Carga parada com peso caindo é massa magra preservada, não fracasso (Helms 2014)
   const tend=bwTrend(28);
   if(travadas>=3 && tend!=null && tend<=-0.15)
