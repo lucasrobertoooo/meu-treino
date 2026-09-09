@@ -1893,7 +1893,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-09-02.04';
+const APP_VERSION = '2026-09-09.01';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -4619,11 +4619,23 @@ function removeSet(id, k){
 
    Guarda importante: sem rede, limpar cache + recarregar deixaria o app em branco. */
 async function atualizarAgora(){
-  if(navigator.onLine === false){
-    alert('Sem conexão agora.\n\nA atualização precisa baixar a versão nova — se eu limpasse o cache offline, o app ficaria em branco. Tente de novo com internet.');
+  if(!confirm('Buscar a versão mais nova?\n\nO app recarrega. Seus dados não são tocados — ficam no aparelho.')) return;
+  /* Prova de rede REAL antes de destruir o cache. `navigator.onLine` só diz que existe
+     interface ativa: no wi-fi da academia com portal cativo ou saída morta ele responde
+     `true`, e aí o app apagava tudo e ficava em branco até voltar internet de verdade.
+     Aqui a gente baixa o próprio index com no-store: se não vier, não mexe em nada. */
+  let temRede=false;
+  try{
+    const ctrl = typeof AbortController!=='undefined' ? new AbortController() : null;
+    const t = setTimeout(()=>{ try{ ctrl && ctrl.abort(); }catch(_){ } }, 8000);
+    const r = await fetch('index.html?ping=' + Date.now(), {cache:'no-store', signal: ctrl ? ctrl.signal : undefined});
+    clearTimeout(t);
+    temRede = !!(r && r.ok);
+  }catch(e){ temRede=false; }
+  if(!temRede){
+    alert('Não consegui alcançar o servidor agora.\n\nNão vou limpar nada: sem baixar a versão nova, o app ficaria em branco. Tente de novo com internet estável.');
     return;
   }
-  if(!confirm('Buscar a versão mais nova?\n\nO app recarrega. Seus dados não são tocados — ficam no aparelho.')) return;
   try{
     if(navigator.serviceWorker && navigator.serviceWorker.getRegistrations){
       const rs = await navigator.serviceWorker.getRegistrations();
@@ -6407,6 +6419,10 @@ function timerDone(){
   const ppb=document.getElementById('ppbtn');
   if(ppb){ ppb.textContent='Fechar'; ppb.setAttribute('data-state','done'); }
   playChime();
+  /* Cancela o push remoto ANTES de notificar: ele foi agendado pra este mesmo instante e,
+     se sair, o usuário leva dois avisos. O cancelamento só acontecia no closeTimer, 5s
+     depois — tarde demais. */
+  try{ cancelRemotePushes(); }catch(_){}
   notifyTimerDone();
   flashDone();
   autoCloseTO=setTimeout(closeTimer, 5000);
@@ -6594,7 +6610,8 @@ function notifyTimerDone(){
     body:'Próxima série!',
     icon:'icon-192.png',
     badge:'icon-192.png',
-    tag:'meutreino-timer',
+    tag:'meutreino-push',   // MESMA tag do push remoto (sw.js): tags diferentes não se
+                            // substituem e o descanso chegava DUPLICADO, local + remoto.
     renotify:true,
   };
   // Prefere SW.showNotification (melhor sobrevivência em bg) → fallback Notification direto
