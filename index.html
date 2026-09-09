@@ -1893,7 +1893,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-09-09.03';
+const APP_VERSION = '2026-09-09.04';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -2673,7 +2673,11 @@ async function migratePhotosToIDB(){
 }
 
 // Metadados de foto ordenados; filtro por ângulo.
-function photosMeta(){ return (ST.photometa||[]).slice().sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:0)); }
+function photosMeta(){
+  /* Defende contra foto sem `date`/`angle`: addPhotoFile e importPhotos já preenchem, mas
+     importData atribui ST.photometa cru e um registro incompleto derrubava renderCorpo
+     (`.slice()` de undefined) ou imprimia "undefined" na tela. */
+  return (ST.photometa||[]).filter(p=>p&&p.id).map(p=>({id:p.id, date:p.date||today(), angle:p.angle||'front'})).sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:0)); }
 function photosByAngle(angle){ return photosMeta().filter(p=>p.angle===angle); }
 // Rótulo amigável dos 3 ângulos base; qualquer outro (custom) usa o próprio texto.
 function angleLabel(a){ return ({front:'Frente', side:'Lado', back:'Costas'})[a] || a; }
@@ -3010,7 +3014,16 @@ function cleanupPhantomSessions(){
     if(!Array.isArray(ST.logs[id])) continue;
     const before=ST.logs[id].length;
     // Mantém: sessões com pelo menos 1 set válido OU sessão de hoje (em progresso) OU com comentário
-    ST.logs[id]=ST.logs[id].filter(sess => (sess && sess.date===t) || hasValidDoneSafe(sess && sess.sets) || (sess && sess.cmt));
+    /* Sessão PASSADA com números digitados e nenhum ✓ era apagada sem aviso: 3 séries de
+       62,5kg registradas ontem e não marcadas sumiam no boot de hoje, com um console.log
+       como único sinal. Agora só some sessão REALMENTE vazia (sem nenhum kg/rep digitado). */
+    ST.logs[id]=ST.logs[id].filter(sess => {
+      if(!sess) return false;
+      if(sess.date===t) return true;
+      if(hasValidDoneSafe(sess.sets)) return true;
+      if(sess.cmt && String(sess.cmt).trim()) return true;
+      return (sess.sets||[]).some(x=>x && (String(x.kg||'').trim()!=='' || String(x.reps||'').trim()!==''));
+    });
     cleaned += before - ST.logs[id].length;
     if(!ST.logs[id].length) delete ST.logs[id];
   }
@@ -4596,7 +4609,7 @@ function renderDay(d){
       <div class="body">
         ${pular?`<div class="skiptag">${I.moon} Pular hoje · libera ~${Math.round(exMinutes(e)*paceFactor(d))} min</div>`:''}
         <div class="target">
-          <span class="met"><b>${planned}</b> séries${nset>planned?` <span class="xtra">+${nset-planned} extra</span>`:''}</span>
+          <span class="met"><b>${planned}</b> ${planned===1?'série':'séries'}${nset>planned?` <span class="xtra">+${nset-planned} extra</span>`:''}</span>
           <span class="dot"></span>
           <span class="met"><b>${e.r}</b> reps</span>
           <span class="dot"></span>
@@ -5730,7 +5743,7 @@ function renderMeasCompare(){
     const dv=(a!=null&&b!=null)?(b-a):null;
     const dc=dv==null?'':(dv>=0?'var(--ok)':'var(--push)');
     return `<tr><td class="mc-n">${esc(label)}${star?' <span class="mstar">★</span>':''}</td>
-      <td>${a!=null?a.toFixed(1):'–'}</td><td>${b!=null?b.toFixed(1):'–'}</td>
+      <td>${a!=null?num(a).toFixed(1):'–'}</td><td>${b!=null?num(b).toFixed(1):'–'}</td>
       <td style="color:${dc};font-weight:700">${dv==null?'–':(dv>=0?'+':'')+dv.toFixed(1)}</td></tr>`;
   };
   let rows='';
