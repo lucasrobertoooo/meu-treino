@@ -1893,7 +1893,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-09-09.01';
+const APP_VERSION = '2026-09-09.02';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -2569,6 +2569,21 @@ if(!Array.isArray(ST.session.history)) ST.session.history=[];
 if(!ST.freelog || typeof ST.freelog!=='object' || Array.isArray(ST.freelog)) ST.freelog={};
 // Migração defensiva: exmeta = {exId: {n?, cue?, note?}} — overrides do usuário por exercício
 if(!ST.exmeta || typeof ST.exmeta!=='object' || Array.isArray(ST.exmeta)) ST.exmeta={};
+/* Blindagem de shape do ST.logs. Duas lições pagas caro:
+   (1) colar um backup de MEDIDAS no campo de importar transformava ST.logs num array; o boot
+       seguinte morria em recalcPrioridades() e o app abria em BRANCO, sem nenhum botão pra
+       tocar — nem importar, nem resetar. Brick sem saída.
+   (2) a primeira versão desta guarda apagava o exercício INTEIRO quando UMA sessão vinha
+       malformada. Um comentário sem `sets` restaurado da nuvem levava junto anos de treino
+       daquele exercício, em silêncio e com atraso. Agora só a sessão ruim cai. */
+if(!ST.logs || typeof ST.logs!=='object' || Array.isArray(ST.logs)) ST.logs={};
+for(const _lk of Object.keys(ST.logs)){
+  const _lv=ST.logs[_lk];
+  if(!Array.isArray(_lv)){ delete ST.logs[_lk]; continue; }
+  const _ok=_lv.filter(s=>s && typeof s==='object' && Array.isArray(s.sets));
+  if(_ok.length!==_lv.length) ST.logs[_lk]=_ok;
+  if(!_ok.length) delete ST.logs[_lk];
+}
 // Migração defensiva: photometa = [{id, date, angle}] — metadados das fotos (pixels no IndexedDB)
 if(!Array.isArray(ST.photometa)) ST.photometa=[];
 
@@ -3049,6 +3064,16 @@ function exId(day,i){
 /* Renomeia as chaves antigas (A_0, B_3...) pro id do exercício que ocupava a posição.
    Roda uma vez. Chave cujo exercício saiu do programa fica intacta — o histórico órfão
    continua no storage e no backup, só não alimenta mais sugestão. */
+/* Mapa CONGELADO do layout posicional que gerou as chaves antigas (A_0, B_3...).
+   Fica em escopo de módulo porque DOIS pontos precisam dele: a migração de boot e o
+   fundirBackup — um backup anterior à migração traz essas chaves e elas entrariam
+   invisíveis, já que a migração é travada por _logsV2 e roda uma vez só. */
+const LAYOUT_ANTIGO_MAP={
+  A_0:"a_1",A_1:"a_2",A_2:"a_3",A_3:"a_4",A_4:"a_5",A_5:"a_6",A_6:"b_8",
+  B_0:"b_1",B_1:"b_2",B_2:"b_3",B_3:"b_4",B_4:"b_5",B_5:"b_6",B_6:"b_7",B_7:"b_10",
+  C_0:"c_1",C_1:"c_2",C_2:"c_3",C_3:"c_4",C_4:"c_5",C_5:"c_6",C_6:"d_9",
+  D_0:"d_1",D_1:"d_2",D_2:"d_3",D_3:"d_4",D_4:"d_5",D_5:"d_6",D_6:"d_7",D_7:"d_8",
+};
 function migrateLogsStableId(){
   if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
   if(ST.meta._logsV2) return;
@@ -3056,12 +3081,7 @@ function migrateLogsStableId(){
   /* Mapa CONGELADO do layout que gerou essas chaves. NÃO dá pra derivar do WK atual: o dia C
      foi reordenado na mesma versão, então perguntar "quem está na posição 0 hoje?" devolveria
      o supino para uma chave C_0 que na verdade era o desenvolvimento. Pego isso testando. */
-  const LAYOUT_ANTIGO={
-    A_0:"a_1",A_1:"a_2",A_2:"a_3",A_3:"a_4",A_4:"a_5",A_5:"a_6",A_6:"b_8",
-    B_0:"b_1",B_1:"b_2",B_2:"b_3",B_3:"b_4",B_4:"b_5",B_5:"b_6",B_6:"b_7",B_7:"b_10",
-    C_0:"c_1",C_1:"c_2",C_2:"c_3",C_3:"c_4",C_4:"c_5",C_5:"c_6",C_6:"d_9",
-    D_0:"d_1",D_1:"d_2",D_2:"d_3",D_3:"d_4",D_4:"d_5",D_5:"d_6",D_6:"d_7",D_7:"d_8",
-  };
+  const LAYOUT_ANTIGO=LAYOUT_ANTIGO_MAP;
   const remap={};
   for(const key of Object.keys(ST.logs||{})){
     const alvo=LAYOUT_ANTIGO[key];
@@ -3463,7 +3483,12 @@ function suggestNext(id, e){
   // reentrada: nunca sobe. Corta a carga e volta pro piso da faixa.
   const rng=parseRange(e.r);
   const passo=loadStepFor(id, e) || 2.5;
-  const alvo=Math.max(passo, Math.round((num(ref && sessionTop(ref.sets) ? sessionTop(ref.sets).kg : base.kg)*v.f)/passo)*passo);
+  /* floor, não round: com 10kg e passo 5, round(10*0.75/5)*5 devolvia os MESMOS 10kg — o
+     banner prometia "cortei 25%" e entregava 0%. E quando o fator é de corte, garante pelo
+     menos um degrau abaixo, senão "volta de pausa" vira letra morta em carga baixa. */
+  const kgRef = num(ref && sessionTop(ref.sets) ? sessionTop(ref.sets).kg : base.kg);
+  let alvo = Math.max(passo, Math.floor((kgRef*v.f)/passo)*passo);
+  if(v.f < 1 && alvo >= kgRef) alvo = Math.max(passo, kgRef - passo);
   return {kg:alvo, reps:rng.min, why:'volta de pausa · '+v.txt, de:base.de, inc:base.inc, volta:v};
 }
 /* "Top set" da sessão: maior carga e, entre as séries nessa carga, a melhor rep.
@@ -3472,7 +3497,10 @@ function suggestNext(id, e){
    panturrilha, crucifixo inverso) subir 13→15→17 reps dá e1RM idêntico, e a detecção
    antiga acusava "plateau" e sugeria trocar o exercício enquanto o usuário progredia. */
 function sessionTop(sets){
-  const valid=(sets||[]).filter(s=>s&&num(s.kg)>0&&num(s.reps)>0);
+  /* Exige `done`. Sem isso, número digitado e NÃO marcado já contava como sessão feita:
+     um treino abandonado no meio virava "progresso" e a sessão real seguinte virava
+     "travada". Alinha com suggestFrom e hasValidDone, que sempre exigiram o check. */
+  const valid=(sets||[]).filter(s=>s&&s.done&&num(s.kg)>0&&num(s.reps)>0);
   if(!valid.length) return null;
   const kg=Math.max(...valid.map(s=>num(s.kg)));
   const reps=Math.max(...valid.filter(s=>num(s.kg)===kg).map(s=>num(s.reps)));
@@ -3595,8 +3623,17 @@ function progressState(id, e){
       msg:`${abaixo} sessões sem fechar ${rng.min} reps com ${fmtKg(cur.kg)}kg (última: ${cur.reps}).`,
       nota:`A faixa ${e.r} faz parte da prescrição: se a carga não deixa chegar no piso dela, está acima do que o exercício pede — e num isolador isso vira impulso e trapézio em vez do músculo-alvo. Desce pra ${fmtKg(novo)}kg (${pct}% menos), fecha ${rng.min}-${rng.max} com controle, e sobe de novo a partir dali.`};
   }
+  /* Sessão leve (semana de deload, dia cortado) NÃO conta como travada. refSession já
+     ignorava sessão leve pela mesma razão; o contador aqui não ignorava, então o deload que
+     o próprio app prescreve virava acusação de "travado" na semana seguinte. */
+  const nSets = h.map(x=>(x.sets||[]).filter(y=>y&&y.done&&num(y.reps)>0).length);
+  const tipico = nSets.length ? Math.max(...nSets) : 0;
+  const leve = i => tipico>0 && nSets[i] < tipico*0.6;
   let travadas=0;
-  for(let i=tops.length-1;i>0;i--){ if(cmpTop(tops[i],tops[i-1])<=0) travadas++; else break; }
+  for(let i=tops.length-1;i>0;i--){
+    if(leve(h.length-tops.length+i)) continue;              // pula a sessão leve, não quebra a série
+    if(cmpTop(tops[i],tops[i-1])<=0) travadas++; else break;
+  }
   if(travadas<2) return {k:'progredindo', sug, msg:''};   // 1 sessão parada é ruído normal
   const nSess=()=>`${travadas} ${travadas===1?'sessão':'sessões'}`;
   // RIR: o sinal de fadiga que o app coletava em toda série e nunca lia
@@ -6012,6 +6049,24 @@ async function listarNuvem(){
 function fundirBackup(o){
   const rel={sessoes:0, exercicios:0, pesagens:0, medidas:0, fotos:0, campos:0};
   if(!o || typeof o!=='object') throw new Error('formato inválido');
+  /* Backup anterior à migração traz chave POSICIONAL ("A_0"). A migração é travada por
+     ST.meta._logsV2 e roda uma vez só, então essas chaves entravam e ficavam invisíveis
+     PRA SEMPRE — nenhum exercício do programa lê "A_0", e reabrir o app não resgatava.
+     Remapeia aqui, no ponto de entrada. */
+  if(o.logs && typeof o.logs==='object' && !Array.isArray(o.logs)){
+    const remap={};
+    for(const k of Object.keys(o.logs)){
+      const alvo = (typeof LAYOUT_ANTIGO_MAP!=='undefined' && LAYOUT_ANTIGO_MAP[k]) || null;
+      if(alvo && alvo!==k) remap[k]=alvo;
+    }
+    for(const velho of Object.keys(remap)){
+      const novo=remap[velho];
+      const a=o.logs[velho]||[], b=o.logs[novo]||[];
+      const datas=new Set(b.map(x=>x&&x.date));
+      o.logs[novo]=b.concat(a.filter(x=>x&&x.date&&!datas.has(x.date)));
+      delete o.logs[velho];
+    }
+  }
   // logs: união por exercício, depois por data
   if(o.logs && typeof o.logs==='object'){
     for(const id of Object.keys(o.logs)){
@@ -6047,6 +6102,20 @@ function fundirBackup(o){
     for(const id of Object.keys(o.exmeta)) if(ST.exmeta[id]===undefined){ ST.exmeta[id]=o.exmeta[id]; rel.campos++; }
   }
   rel.campos += registrarCamposDesconhecidos(ST.measures);   // idem na restauração da nuvem
+  /* C2: session.history (duração de cada treino) nunca era fundido. Numa instalação limpa,
+     restaurar devolvia logs e medidas mas o histórico de duração continuava vazio — e os
+     próximos envios subiam esse vazio, até a rotação de 5 comer todos os snapshots que
+     ainda tinham o dado. Perda definitiva. União por data + workoutId. */
+  if(o.session && Array.isArray(o.session.history)){
+    if(!ST.session || typeof ST.session!=='object') ST.session={active:null, history:[]};
+    if(!Array.isArray(ST.session.history)) ST.session.history=[];
+    const chave=x=>String(x&&x.date)+"|"+String(x&&x.workoutId);
+    const tem=new Set(ST.session.history.map(chave));
+    for(const it of o.session.history){
+      if(it && it.date && !tem.has(chave(it))){ ST.session.history.push(it); tem.add(chave(it)); rel.campos++; }
+    }
+    ST.session.history.sort((a,b)=> (a.date||'')<(b.date||'') ? -1 : 1);
+  }
   // meta NÃO é fundido: são preferências do aparelho (worker, token, bloco, foco).
   for(const k of Object.keys(LS)) saveK(k);
   return rel;
@@ -6106,6 +6175,17 @@ async function exportData(){
   }catch(e){ /* share cancel ou unsupported, segue */ }
   if(!copied) showToast('Backup gerado abaixo — copie pra um lugar seguro', 'info', 3000);
 }
+/* Reconhece o backup antiquíssimo (só logs na raiz) SEM aceitar qualquer objeto. Sem isto,
+   colar um backup de medidas no campo errado sobrescrevia ST.logs e brickava o app. */
+function looksLikeAncientRawLogs(o){
+  if(!o || typeof o!=='object' || Array.isArray(o)) return false;
+  const keys=Object.keys(o);
+  if(!keys.length) return false;
+  return keys.every(k=>{
+    const v=o[k];
+    return Array.isArray(v) && v.every(s=>s && typeof s==='object' && typeof s.date==='string' && Array.isArray(s.sets));
+  });
+}
 function importData(){
   const v=document.getElementById('imp').value.trim(); if(!v) return;
   try{
@@ -6116,12 +6196,15 @@ function importData(){
         ST[k] = (o[k]!==undefined) ? o[k] : JSON.parse(JSON.stringify(DEFAULTS[k]));
         saveK(k);
       }
-    } else {
-      // backup MUITO antigo: só logs em raiz
+    } else if(looksLikeAncientRawLogs(o)){
+      // backup MUITO antigo: só logs em raiz — e só se REALMENTE tiver forma de logs
       for(const k of Object.keys(LS)){
         ST[k] = JSON.parse(JSON.stringify(DEFAULTS[k]));
       }
       ST.logs=o; saveK('logs');
+    } else {
+      alert('Isso não parece um backup de treino.\n\nNão mexi em nada. Se era um backup de FOTOS ou MEDIDAS, use o campo da seção de fotos.');
+      return;
     }
     // re-roda migração de protein
     for(const date in ST.protein){
@@ -6665,6 +6748,12 @@ async function boot(){
   setTimeout(()=>{ try{ enviarNuvemAuto(); }catch(e){} }, 4000);   // backup automático, em segundo plano
 }
 migrateLogsStableId();   // chaves posicionais viram id estável (uma vez)
+/* Âncora do bloco. SEM isto, blocoDesde ficava null, blocoSemana() devolvia 1 pra sempre e o
+   MESOCICLO INTEIRO ficava morto: nunca chegava a semana de acúmulo, nunca havia deload
+   programado, registrarDeloadEmCurso() nunca disparava, lastDeloadWeek ficava 0 e por isso
+   shouldSwapExercise() jamais podia retornar — o estado "trocar" era inalcançável.
+   O app dela sempre semeou o equivalente (mesoDesde) no boot; este não. */
+if(!(ST.meta && ST.meta.blocoDesde)){ ST.meta=ST.meta||{}; ST.meta.blocoDesde=today(); saveK('meta'); }
 /* Resgata medida já gravada com campo desconhecido — o "Costas 102,5" importado em julho
    estava no storage e nunca apareceu na tela. Idempotente: só cria campo que falta. */
 try{ if(registrarCamposDesconhecidos(ST.measures)) render(); }catch(_){}
