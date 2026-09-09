@@ -1893,7 +1893,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-09-09.02';
+const APP_VERSION = '2026-09-09.03';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -1957,7 +1957,7 @@ const WK = {
     {id:"c_1", n:"Desenvolvimento sentado com halter", s:4, r:"6-10", t:"comp", mg:{ombro_ant:1, ombro_lat:0.5, triceps:0.5}, cue:"Ombro completo (anterior + lateral)."},
     {id:"c_4", n:"Peck deck ou crucifixo máquina", s:5, r:"10-15", t:"iso", mg:{peito_med:1, peito_sup:0.5}, cue:"Contração e alongamento do peito. Pausa 1s no alongamento."},
     {id:"c_5", n:"Extensão de tríceps acima da cabeça", s:3, r:"10-15", t:"iso", mg:{triceps:1}, cue:"Cabeça longa. Posição alongada."},
-    {id:"c_6", n:"Tríceps na polia", s:3, r:"12-15", t:"iso", mg:{triceps:1}, cue:"—"},
+    {id:"c_6", n:"Tríceps na polia", s:3, r:"12-15", t:"iso", mg:{triceps:1}, cue:"Cotovelo colado no corpo e parado — quem trabalha é o antebraço. Estende até travar e volta devagar, sem deixar a polia puxar de volta."},
     // Core movido de D (2026-07-08.03) — ids mantidos (d_9/d_10) pra preservar overrides do usuário
     {id:"d_9", n:"Abdominal declinado com anilha", s:3, r:"10-15", t:"core", mg:{core:1}, cue:"Carregado. Anilha abraçada; enrola o tronco. Progride trocando a anilha."},
   ]},
@@ -1987,12 +1987,24 @@ const MG_ORDER = ["ombro_lat","peito_sup","biceps","triceps","costas","peito_med
 /* Metas recalibradas pro ranking (2026-08-19). Tier 1 e 2 no topo da faixa produtiva,
    tier 4 em nível de manutenção — manter músculo exige bem menos volume que construir
    (Bickel et al 2011), então perna e core cedem espaço sem serem zerados. */
+/* Metas do bloco de PEITO/BRAÇOS. Cada bloco tem as suas — ver BLOCOS[].alvos — e quem lê
+   deve usar mgTarget(mg), nunca MG_TARGETS direto. Motivo: no bloco de perna o quadríceps
+   sobe pra 10 séries contra uma meta de 4, e o peito cai pra 14 contra 21. Com meta fixa a
+   aba Corpo mostrava barra ESTOURADA justo no que ele está construindo e barra pela metade
+   no que está em manutenção proposital — leitura invertida durante as 8 semanas inteiras. */
 const MG_TARGETS = {
   peito_sup:12, peito_med:9,            // tier 1
   triceps:13, biceps:14,                // tier 2
   ombro_lat:14, costas:14, ombro_post:8, ombro_ant:4,   // tier 3
   quadriceps:4, posterior:4, panturrilha:3, core:6,     // tier 4 (manutenção)
 };
+function mgTarget(mg){
+  try{
+    const b=BLOCOS[blocoAtual()];
+    if(b && b.alvos && b.alvos[mg]!=null) return b.alvos[mg];
+  }catch(e){}
+  return MG_TARGETS[mg];
+}
 const MG_COLOR = {
   peito_sup:"#ff6b5c", peito_med:"#ff8a7c",
   costas:"#5b9eff",
@@ -2023,6 +2035,11 @@ const BLOCOS = {
   },
   perna: {
     nome:'Perna', semanas:8,
+    /* Metas do bloco. Espelham o que este bloco realmente entrega, senão a barra da aba
+       Corpo lê ao contrário durante 8 semanas. */
+    alvos:{quadriceps:10, posterior:10, panturrilha:6, core:6,
+           costas:12, ombro_lat:10, peito_sup:8, peito_med:6, ombro_post:6, ombro_ant:3,
+           triceps:8, biceps:8},
     resumo:'Quadríceps e posterior no volume de crescimento. Peito, braços e largura mantidos.',
     tier:{quadriceps:1,posterior:1, panturrilha:2, ombro_lat:3,costas:3,peito_sup:3,peito_med:3,
           triceps:4,biceps:4,ombro_post:4,ombro_ant:4,core:4},
@@ -2284,7 +2301,7 @@ const PHOTO_ID = {
 
   /* ====== INATIVOS (aparecem em EXERCISE_ALTERNATIVES quando ocorre swap) ====== */
   // Peito
-  "Supino inclinado na máquina (mais estável)":"Leverage_Shoulder_Press",
+  "Supino inclinado na máquina (mais estável)":"Leverage_Incline_Chest_Press",
   "Crucifixo inclinado na máquina (alongado)":"Incline_Cable_Flye",
   "Supino inclinado smith (carga maior)":"Smith_Machine_Incline_Bench_Press",
   "Crucifixo reto na máquina (alongado)":"Butterfly",
@@ -2314,7 +2331,7 @@ const PHOTO_ID = {
   "Skull crusher com barra EZ":"EZ-Bar_Skullcrusher",
   "Tríceps polia barra reta":"Triceps_Pushdown_-_Rope_Attachment",
   "Mergulho em paralelas (carga corporal+lastra)":"Dips_-_Triceps_Version",
-  "Coice na polia":"Triceps_Pushdown_-_Rope_Attachment",
+  "Coice na polia":"Triceps_Kickback",
   "Tríceps polia corda":"Triceps_Pushdown_-_Rope_Attachment",
   "Extensão na polia overhead":"Cable_Rope_Overhead_Triceps_Extension",
   "Francês deitado com EZ":"EZ-Bar_Skullcrusher",
@@ -3352,10 +3369,22 @@ function isPRSession(id, sets){
 }
 
 // Parse range "8-12" → {min:8, max:12}
+/* Devolve a faixa de REPS. Duas armadilhas reais:
+   - "30-45s" (isometria) era lido como 30 a 45 repetições: largura 15, ou seja o app só
+     mandaria subir carga depois de 15 semanas, num exercício onde nem há carga pra subir.
+   - "máx" caía num default silencioso de 8-12: a tela dizia "máx" e o motor prescrevia
+     outra coisa. Agora esses casos devolvem `tempo`/`livre` e quem chama decide. */
 function parseRange(r){
-  const m=String(r).match(/(\d+)\s*-\s*(\d+)/);
+  const txt=String(r||'');
+  if(/\d\s*(s|seg|min)\b/i.test(txt) || /\bs\s*$/i.test(txt)){
+    const t=txt.match(/(\d+)\s*-\s*(\d+)/);
+    return {min:t?+t[1]:0, max:t?+t[2]:0, tempo:true};
+  }
+  const m=txt.match(/(\d+)\s*-\s*(\d+)/);
   if(m) return {min:+m[1], max:+m[2]};
-  const n=parseInt(r); return n? {min:n,max:n} : {min:8,max:12};
+  const n=parseInt(txt);
+  if(n) return {min:n, max:n};
+  return {min:8, max:12, livre:true};   // "máx", "até falhar": sem faixa numérica de verdade
 }
 /* TROCA DE EXERCÍCIO — fronteira, não apagamento.
    Ao marcar "Troquei", grava a data em ST.meta.swapAt[id]. As funções de progressão só olham
@@ -3422,6 +3451,9 @@ function loadStepFor(id, e){ return inferLoadStep(id) || globalLoadStep() || 0; 
    aconteceu, sem gravar nada e sem migração. */
 function suggestFrom(sets, e, id){
   const rng=parseRange(e.r);
+  /* Isometria (tempo) e "até falhar" não têm faixa de reps: prescrever "+1 rep" ali é
+     inventar. Sem sugestão, o card só mostra o histórico. */
+  if(rng.tempo || rng.livre) return null;
   const done=(sets||[]).filter(s=>s&&s.done&&num(s.kg)>0&&num(s.reps)>0);
   if(!done.length) return null;
   const maxKg=Math.max(...done.map(s=>num(s.kg)));
@@ -3618,6 +3650,12 @@ function progressState(id, e){
     const step=loadStepFor(id, e) || 0;
     const novo = step ? Math.max(step, cur.kg-step) : Math.round(cur.kg*0.9*2)/2;
     const pct = cur.kg ? Math.round((cur.kg-novo)/cur.kg*100) : 0;
+    /* Sem degrau abaixo (já está no mínimo do equipamento): mandar "desce a carga" com 0%
+       de corte é conselho vazio e o estado não tem saída — `abaixo` só cresce. Nesse caso a
+       alavanca real é a faixa, não o peso. */
+    if(pct<=0) return {k:'carga-alta', sug,
+      msg:`${abaixo} sessões sem fechar ${rng.min} reps com ${fmtKg(cur.kg)}kg — e não há carga menor nesse equipamento.`,
+      nota:`Aqui descer não é opção. Faça as reps que conseguir com boa execução e trate a faixa ${e.r} como alvo, não como regra: chegar em ${rng.min} vai vir da própria repetição do estímulo.`};
     return {k:'carga-alta',
       sug:{kg:novo, reps:rng.min, why:'desce a carga pra entrar na faixa', de:cur.kg, inc:step},
       msg:`${abaixo} sessões sem fechar ${rng.min} reps com ${fmtKg(cur.kg)}kg (última: ${cur.reps}).`,
@@ -3839,7 +3877,6 @@ const HOME_SESSIONS = {
     avoidBefore:[],
     canSkipNextDay:{
       B:["Panturrilha"],
-      D:["Panturrilha"],
     },
     ex:[
       {id:"panturrilha_cardio_1", n:"Panturrilha em pé na escada", s:4, r:"15-20", t:"iso", mg:{panturrilha:1}, cue:"Calcanhar fora do degrau, desce máximo. <em>Pausa 1s embaixo</em> (alongado cresce mais). Pode segurar 1 garrafa de água em cada mão pra lastrar."},
@@ -4079,7 +4116,7 @@ function exValue(e){
   const vol=weeklyVolume();
   let sc=0;
   for(const [mg,w] of Object.entries(e.mg||{})){
-    const meta=MG_TARGETS[mg]||0, feito=vol[mg]||0;
+    const meta=mgTarget(mg)||0, feito=vol[mg]||0;
     const falta = meta>0 ? Math.max(0, Math.min(1,(meta-feito)/meta)) : 0.5;
     sc += w*(falta*2 + tierWeight(mg));
   }
@@ -4515,9 +4552,9 @@ function renderDay(d){
       const isExtra = k>=planned;
       rows+=`<div class="setrow r4${isExtra?' extra':''}">
         <div class="sn">${k+1}</div>
-        <input class="num" inputmode="decimal" placeholder="${lv.kg||'kg'}" value="${tv.kg||''}" data-id="${id}" data-k="${k}" data-f="kg" oninput="onLog(this)">
-        <input class="num" inputmode="numeric" placeholder="${lv.reps||'reps'}" value="${tv.reps||''}" data-id="${id}" data-k="${k}" data-f="reps" oninput="onLog(this)">
-        <input class="num rir" inputmode="numeric" placeholder="${lv.rir!=null&&lv.rir!==''?lv.rir:'RIR'}" value="${tv.rir!=null?tv.rir:''}" data-id="${id}" data-k="${k}" data-f="rir" oninput="onLog(this)" maxlength="1">
+        <input class="num" inputmode="decimal" placeholder="${esc(lv.kg||'kg')}" value="${esc(tv.kg||'')}" data-id="${id}" data-k="${k}" data-f="kg" oninput="onLog(this)">
+        <input class="num" inputmode="numeric" placeholder="${esc(lv.reps||'reps')}" value="${esc(tv.reps||'')}" data-id="${id}" data-k="${k}" data-f="reps" oninput="onLog(this)">
+        <input class="num rir" inputmode="numeric" placeholder="${esc(lv.rir!=null&&lv.rir!==''?lv.rir:'RIR')}" value="${esc(tv.rir!=null?tv.rir:'')}" data-id="${id}" data-k="${k}" data-f="rir" oninput="onLog(this)" maxlength="1">
         <div class="chk ${tv.done?'on':''}" onclick="toggleDone('${id}',${k},this)">${I.check}</div>
         ${isExtra?`<button class="rmset" onclick="removeSet('${id}',${k})" title="Remover série extra" aria-label="Remover série extra">×</button>`:''}
       </div>`;
@@ -4874,9 +4911,9 @@ function renderHomeDay(templateId){
       const lv=last&&last.sets[k]?last.sets[k]:{};
       rows+=`<div class="setrow r4">
         <div class="sn">${k+1}</div>
-        <input class="num" inputmode="decimal" placeholder="${lv.kg||'–'}" value="${tv.kg||''}" data-id="${id}" data-k="${k}" data-f="kg" oninput="onHomeLog(this)">
-        <input class="num" inputmode="numeric" placeholder="${lv.reps||'reps'}" value="${tv.reps||''}" data-id="${id}" data-k="${k}" data-f="reps" oninput="onHomeLog(this)">
-        <input class="num rir" inputmode="numeric" placeholder="${lv.rir!=null&&lv.rir!==''?lv.rir:'RIR'}" value="${tv.rir!=null?tv.rir:''}" data-id="${id}" data-k="${k}" data-f="rir" oninput="onHomeLog(this)" maxlength="1">
+        <input class="num" inputmode="decimal" placeholder="${lv.kg||'–'}" value="${esc(tv.kg||'')}" data-id="${id}" data-k="${k}" data-f="kg" oninput="onHomeLog(this)">
+        <input class="num" inputmode="numeric" placeholder="${esc(lv.reps||'reps')}" value="${esc(tv.reps||'')}" data-id="${id}" data-k="${k}" data-f="reps" oninput="onHomeLog(this)">
+        <input class="num rir" inputmode="numeric" placeholder="${esc(lv.rir!=null&&lv.rir!==''?lv.rir:'RIR')}" value="${esc(tv.rir!=null?tv.rir:'')}" data-id="${id}" data-k="${k}" data-f="rir" oninput="onHomeLog(this)" maxlength="1">
         <div class="chk ${tv.done?'on':''}" onclick="toggleHomeDone('${id}',${k},this)">${I.check}</div>
       </div>`;
     }
@@ -5094,7 +5131,7 @@ function renderHoje(){
   const prioLow=[];
   for(const mg in MG_PRIORITY){
     const v=wkVol[mg]||0;
-    const tgt=MG_TARGETS[mg]||10;
+    const tgt=mgTarget(mg)||10;
     if(v < tgt*0.70){
       prioLow.push({mg, v:Math.round(v*10)/10, tgt, color:MG_COLOR[mg], label:MG_LABELS[mg]});
     }
@@ -5416,7 +5453,7 @@ function renderCorpo(){
   <div class="volcard">`;
   for(const mg of MG_ORDER){
     const v = wkVol[mg]||0;
-    const tgt = MG_TARGETS[mg];
+    const tgt = mgTarget(mg);
     const pct = Math.min(100, (v/tgt)*100);
     const c = MG_COLOR[mg];
     const tier = tierOf(mg);
@@ -5468,7 +5505,7 @@ function renderCorpo(){
     <div class="measure-grid">`;
   for(const [k,nm,prio,isCustom] of allMeasureFields()){
     const last = latestM&&latestM[k]!=null?latestM[k]:'';
-    h+=`<label class="mfield"><span class="mf-l">${esc(nm)}${isCustom?`<button class="mf-x" onclick="event.preventDefault();removeCustomMeasure('${k}')" title="Remover campo">×</button>`:''}</span><input id="m_${k}" inputmode="decimal" placeholder="${last!==''?last:'—'}"></label>`;
+    h+=`<label class="mfield"><span class="mf-l">${esc(nm)}${isCustom?`<button class="mf-x" onclick="event.preventDefault();removeCustomMeasure('${esc(k)}')" title="Remover campo">×</button>`:''}</span><input id="m_${esc(k)}" inputmode="decimal" placeholder="${last!==''?last:'—'}"></label>`;
   }
   h+=`</div>
     <input id="m_note" class="logcmt" type="text" maxlength="120" placeholder="Nota (ex: de manhã, em jejum)" style="margin-top:10px">
@@ -5546,14 +5583,21 @@ function registrarCamposDesconhecidos(lista){
   if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
   if(!Array.isArray(ST.meta.customMeasures)) ST.meta.customMeasures=[];
   const conhecidos=new Set(allMeasureFields().map(f=>f[0]));
-  const ignorar=new Set(['date','id','_at','nota','obs','peso','kg']);
+  /* 'note' E 'nota': o app dele grava `note`, o dela grava `nota`. Faltando um, a anotação
+     virava um CAMPO DE MEDIDA fantasma — e aí o render emitia dois id="m_note", o
+     saveMeasures pegava o primeiro (o numérico) e a nota nunca era salva. Pior: abrir uma
+     medição antiga e salvar sem tocar em nada trocava a nota por "0". */
+  const ignorar=new Set(['date','id','_at','note','nota','obs','texto','comentario','peso','kg']);
   let n=0;
   for(const m of lista){
     if(!m || typeof m!=='object') continue;
     for(const k of Object.keys(m)){
       if(ignorar.has(k) || conhecidos.has(k)) continue;
       const v=m[k];
-      if(v==null || v==='' || !isFinite(num(v))) continue;
+      /* num() devolve 0 pra texto, então `isFinite(num(v))` era SEMPRE verdadeiro — guarda
+         morta. Qualquer texto virava medida. Agora testa o valor cru. */
+      if(v==null || v==='') continue;
+      if(typeof v!=='number' && !/^\s*-?\d+([.,]\d+)?\s*$/.test(String(v))) continue;
       ST.meta.customMeasures.push({key:k, label:rotuloDeCampo(k)});
       conhecidos.add(k); n++;
     }
@@ -5717,7 +5761,7 @@ function openMeasEdit(date){
   meEditDate=date;
   let grid='';
   for(const [k,nm,prio,isCustom] of allMeasureFields()){
-    grid+=`<label class="mfield"><span class="mf-l">${esc(nm)}</span><input id="me_${k}" inputmode="decimal" value="${m[k]!=null?num(m[k]):''}" placeholder="—"></label>`;
+    grid+=`<label class="mfield"><span class="mf-l">${esc(nm)}</span><input id="me_${esc(k)}" inputmode="decimal" value="${m[k]!=null?num(m[k]):''}" placeholder="—"></label>`;
   }
   document.getElementById('measEditBody').innerHTML=`
     <div class="me-date">Medição de ${esc(date.slice(5).replace('-','/'))}</div>
@@ -5928,11 +5972,11 @@ function renderMais(){
     <p style="font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:10px">Notificação confiável de descanso com app fechado/tela bloqueada. Lag típico 0-60s (cron poll do free tier). Preenche os 2 campos abaixo com o que o Worker te deu, depois toca em "Ativar push".</p>
     <div class="ilog">
       <span class="lb">Worker URL</span>
-      <input inputmode="url" placeholder="https://meu-treino-push.SEUUSER.workers.dev" value="${(ST.meta&&ST.meta.workerUrl)||''}" oninput="setWorkerUrl(this.value)">
+      <input inputmode="url" placeholder="https://meu-treino-push.SEUUSER.workers.dev" value="${esc((ST.meta&&ST.meta.workerUrl)||'')}" oninput="setWorkerUrl(this.value)">
     </div>
     <div class="ilog" style="border-top:1px solid var(--line);padding-top:12px">
       <span class="lb">Shared token</span>
-      <input type="password" placeholder="hex de 64 chars" value="${(ST.meta&&ST.meta.workerToken)||''}" oninput="setWorkerToken(this.value)">
+      <input type="password" placeholder="hex de 64 chars" value="${esc((ST.meta&&ST.meta.workerToken)||'')}" oninput="setWorkerToken(this.value)">
     </div>
     <div class="tools" style="margin-top:12px;gap:8px;flex-wrap:wrap">
       <button onclick="subscribeForPush()">${(ST.meta&&ST.meta.pushHash)?'Re-subscribe':'Ativar push'}</button>
