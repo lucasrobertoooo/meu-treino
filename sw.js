@@ -3,7 +3,7 @@
    - app shell (index, manifest, ícones): cache-first com refresh em background
    - fotos do Free Exercise DB: cache-first, persistente (sobrevive a updates)
 */
-const SHELL = 'treino-shell-v57';
+const SHELL = 'treino-shell-v58';
 const PHOTOS = 'treino-photos-v1';
 
 const SHELL_FILES = [
@@ -38,6 +38,26 @@ self.addEventListener('activate', e => {
 });
 
 // Push event — recebe notificação remota do Worker
+
+/* ASSINATURA-2026-09-14 · trocar de aparelho, reinstalar o PWA ou limpar dados do site INVALIDA a
+   assinatura de push. Sem este handler ela só morria em silêncio: o Worker seguia mandando pro
+   endereço velho e nada chegava. Aqui a gente reassina na hora e deixa a nova num cache; a página
+   empurra pro Worker na primeira abertura (o token do Worker vive lá, não aqui). */
+self.addEventListener('pushsubscriptionchange', e => {
+  e.waitUntil((async () => {
+    try{
+      const antiga = e.oldSubscription || await self.registration.pushManager.getSubscription();
+      const chave = antiga && antiga.options && antiga.options.applicationServerKey;
+      if (!chave) return;   // sem a chave do servidor não dá pra reassinar aqui
+      const nova = await self.registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chave });
+      const c = await caches.open('push-pendente');
+      await c.put('/nova-assinatura', new Response(JSON.stringify(nova), { headers: { 'Content-Type': 'application/json' } }));
+      const cls = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      cls.forEach(cl => { try{ cl.postMessage({ tipo: 'assinatura-nova' }); }catch(err){} });
+    }catch(err){ /* a página tenta de novo no boot */ }
+  })());
+});
+
 self.addEventListener('push', e => {
   let data = { title: 'Descanso terminado', body: 'Próxima série!' };
   try {
