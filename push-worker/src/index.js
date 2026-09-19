@@ -227,10 +227,10 @@ export default {
       }
 
       /* ===== BACKUP NA NUVEM =====
-         O objetivo aqui NAO e sync multi-device: cada app roda num aparelho so. E sobreviver
-         a reinstalacao do PWA e a limpeza de storage do navegador — o Lucas ja perdeu
-         historico duas vezes, e agora esse historico alimenta toda a inteligencia do app
-         (progressao, plateau, fadiga, curva).
+         Nasceu como backup (sobreviver a reinstalacao do PWA e a limpeza de storage — o Lucas
+         ja perdeu historico duas vezes). Desde 19/09/2026 tambem e o canal de SYNC entre
+         aparelhos: o app puxa o ultimo snapshot e funde, e envia o resultado. Fotos vao num
+         namespace proprio (`<app>_fotos`), por isso o teto e 20MB (KV aceita ate 25MB).
 
          Guarda os ultimos SNAP_MAX snapshots, nao so o ultimo: se um estado ruim for enviado,
          ainda da pra voltar num anterior. Chave por token (um usuario por worker). */
@@ -239,9 +239,9 @@ export default {
         const body = await req.text();
         if (!body || body.length < 2) return new Response('Empty', { status: 400, headers: cors() });
         /* Mede BYTES, nao chars: 3M de "e" com acento passavam pelos 4M de comprimento e
-           chegavam a 6MB reais no KV. */
+           chegavam a 6MB reais no KV. 20MB: dados ficam em ~200kB, fotos sobem juntas. */
         const bytes = new TextEncoder().encode(body).length;
-        if (bytes > 4 * 1024 * 1024) return new Response('Too large', { status: 413, headers: cors() });
+        if (bytes > 20 * 1024 * 1024) return new Response('Too large', { status: 413, headers: cors() });
         /* Corpo precisa ser JSON de objeto. Antes qualquer texto virava snapshot valido e a
            rotacao ainda empurrava um backup BOM pra fora pra dar lugar ao lixo. */
         let parsed;

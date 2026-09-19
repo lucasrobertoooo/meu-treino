@@ -1893,7 +1893,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-09-09.07';
+const APP_VERSION = '2026-09-19.01';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -2563,6 +2563,13 @@ const MEASURE_FIELDS = [
 ];
 
 /* ============ ESTADO + STORAGE ============ */
+/* Sincronização entre aparelhos (ver bloco SINCRONIZAÇÃO, mais abaixo; declarado aqui em cima porque migrações top-level chamam saveK antes): toda gravação de
+   dado marca o app como "sujo" e agenda um envio 30s depois da última gravação. `quieto`
+   é pra escrita da própria sincronização (nuvemVistoId, carimbos), senão cada envio
+   marcava sujo de novo e o app subia snapshot a cada 30s pra sempre. */
+let _nuvemSujo=false, _envioTimer=null;
+const _NUVEM_DADOS=new Set(['logs','bw','measures','photometa','photoCfg','sleep','protein','suppl','cardio','freelog','exmeta','session','measureCfg','prog','meta']);
+function _agendarEnvio(){ clearTimeout(_envioTimer); _envioTimer=setTimeout(()=>{ try{ sincronizarNuvem('auto'); }catch(e){} }, 30000); }
 const LS = {
   logs:"meutreino_logs_v1",
   bw:"meutreino_bw_v1",
@@ -2659,7 +2666,8 @@ function pdbPut(id, dataUrl){ return pdbOpen().then(db=>new Promise((res,rej)=>{
 function pdbGet(id){ return pdbOpen().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(PDB_STORE,'readonly'); const r=tx.objectStore(PDB_STORE).get(id); r.onsuccess=()=>res(r.result||null); r.onerror=()=>rej(r.error); })); }
 function pdbDel(id){ return pdbOpen().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(PDB_STORE,'readwrite'); tx.objectStore(PDB_STORE).delete(id); tx.oncomplete=()=>res(true); tx.onerror=()=>rej(tx.error); })); }
 
-function nextPhotoId(){ ST.meta.photoSeq=(ST.meta.photoSeq||0)+1; return 'p'+ST.meta.photoSeq; }
+// sufixo aleatório: 'p3' puro colidia quando dois aparelhos criavam a 3ª foto cada um (sync)
+function nextPhotoId(){ ST.meta.photoSeq=(ST.meta.photoSeq||0)+1; return 'p'+ST.meta.photoSeq+'_'+String(Math.random()).slice(2,6); }
 
 // Migração NÃO-DESTRUTIVA das fotos antigas (base64 em ST.photos) -> IndexedDB.
 // Só remove do localStorage o que foi confirmado gravado no IDB. Idempotente (esvazia ST.photos).
@@ -2719,7 +2727,8 @@ function showToast(msg, type='info', ms=2500){
   toastTimer=setTimeout(()=>el.classList.add('hidden'), ms);
 }
 
-function saveK(k){
+function saveK(k, quieto){
+  if(!quieto && _NUVEM_DADOS.has(k)){ _nuvemSujo=true; _agendarEnvio(); }
   try{ localStorage.setItem(LS[k], JSON.stringify(ST[k])); return true; }
   catch(e){
     console.error('saveK fail', k, e);
@@ -2980,6 +2989,7 @@ function showCelebration(day){
   const W=WK[day];
   const summary=gatherWorkoutSummary(day);
   const record=endSession(true); // silent: celebration mostra duração
+  setTimeout(()=>{ try{ sincronizarNuvem('treino'); }catch(e){} }, 1500);   // o outro aparelho vê o treino ao abrir
   const durMs = record ? record.activeMs : 0;
   const streak = getStreak();
   let hero;
@@ -6041,8 +6051,8 @@ function renderMais(){
   <h2 class="sec">Backup na nuvem</h2>
   <div class="infocard">
     ${nuvemPronta()
-      ? `<p>Envia sozinho no máximo 1× a cada 6h, quando há treino do dia. O Worker guarda os 5 últimos.</p>
-         <div class="nuvem-st">${(ST.meta&&ST.meta.nuvemAt) ? 'Último envio: '+new Date(ST.meta.nuvemAt).toLocaleString('pt-BR') : 'Nunca enviado'}</div>
+      ? `<p>Sincroniza sozinho entre aparelhos: puxa ao abrir e ao voltar pro app, envia 30s depois de cada gravação. Nada é apagado na fusão, exceto o que você apagou no outro aparelho. Fotos vão junto. O Worker guarda os 5 últimos.</p>
+         <div class="nuvem-st">${(ST.meta&&ST.meta.nuvemAt) ? 'Última sincronização: '+new Date(ST.meta.nuvemAt).toLocaleString('pt-BR') : 'Nunca sincronizado'}${(ST.meta&&ST.meta.nuvemFotosAt) ? ' · fotos: '+(ST.meta.nuvemFotosN||0)+' na nuvem' : ''}</div>
          <div class="nuvem-btns">
            <button class="nvb" onclick="enviarNuvem()">Enviar agora</button>
            <button class="nvb ghost" onclick="restaurarNuvem()">Restaurar</button>
@@ -6089,31 +6099,216 @@ function nuvemUrl(extra){
 async function enviarNuvem(silencioso){
   if(!nuvemPronta()){ if(!silencioso) showToast('Configure o Worker na aba Mais','warn',3000); return false; }
   try{
-    const full={_v:1, _at:new Date().toISOString()};
-    for(const k of Object.keys(LS)) full[k]=ST[k];
+    const full=montarSnapshot();
     const r=await fetch(nuvemUrl(), {method:'PUT', headers:nuvemHeaders(), body:JSON.stringify(full)});
     if(!r.ok) throw new Error('HTTP '+r.status);
+    let j={}; try{ j=await r.json(); }catch(e){}
+    _nuvemSujo=false; clearTimeout(_envioTimer);
     ST.meta.nuvemAt=Date.now(); ST.meta.lastBackupAt=Date.now();   // conta como backup: silencia o lembrete
-    saveK('meta');
-    if(!silencioso){ showToast('Enviado pra nuvem','ok',2200); render(); }
+    if(j.id) ST.meta.nuvemVistoId=j.id;
+    saveK('meta', true);
+    let fotos={subiu:false};
+    try{ fotos=await sincronizarFotos(true); }
+    catch(e){ if(!silencioso) showToast('Dados enviados; fotos falharam: '+e.message,'warn',3400); }
+    if(!silencioso){ showToast(fotos.subiu ? 'Enviado pra nuvem: dados + '+(ST.meta.nuvemFotosN||0)+' fotos' : 'Enviado pra nuvem','ok',2600); render(); }
     return true;
   }catch(e){
     if(!silencioso) showToast('Falhou: '+e.message,'warn',3400);
     return false;
   }
 }
-/* Envia sozinho no máximo 1x a cada 6h, e só se houver treino registrado hoje. Roda em
-   background: se a rede falhar, não incomoda — a próxima abertura tenta de novo. */
-async function enviarNuvemAuto(){
-  if(!nuvemPronta()) return;
-  const ult=(ST.meta && ST.meta.nuvemAt)||0;
-  if(Date.now()-ult < 6*3600*1000) return;
-  const t=today();
-  let temHoje=false;
-  for(const id of Object.keys(ST.logs||{})) if((ST.logs[id]||[]).some(x=>x&&x.date===t)){ temHoje=true; break; }
-  if(!temHoje && ult) return;                       // nada novo hoje e já existe backup
-  await enviarNuvem(true);
+/* ============ SINCRONIZAÇÃO ENTRE APARELHOS ============
+   O backup era manual + envio automático a cada 6h. Com dois aparelhos (Android e iPhone) isso
+   não basta: cada um precisa PUXAR o que o outro gravou e ENVIAR o que gravou. Regras:
+   - puxa ao abrir, ao voltar pro app, ao concluir treino e ao configurar o Worker (a lista é
+     barata; o corpo só desce se o id mudou); funde, nunca substitui
+   - envia 30s depois da última gravação local (`_nuvemSujo`, marcado no saveK) e sempre que a
+     fusão trouxe coisa nova (o resultado fundido vira a verdade da nuvem)
+   - o snapshot que EU enviei fica marcado como visto (nuvemVistoId), senão eu puxaria meu
+     próprio envio
+   - fotos (pixels do IndexedDB) vão num namespace separado (`<app>_fotos`) e só sobem quando
+     tenho foto que a nuvem não tem — o snapshot de dados fica pequeno e o de fotos é raro
+   Conflito (mesmo registro editado nos dois): vence quem sincronizou por último (_m maior).
+   Apagado num aparelho some do outro pela lápide. Ver carimbarMudancas(). */
+let _sincronizando=false, _ultimoPull=0, _syncPendente=false;
+function _fotoGet(id){ try{ return Promise.resolve(pdbGet(id)); }catch(e){ return Promise.resolve(null); } }
+function _fotoPut(id,du){ try{ return Promise.resolve(pdbPut(id,du)); }catch(e){ return Promise.resolve(false); } }
+function _fotoDel(id){ try{ Promise.resolve(pdbDel(id)).catch(()=>{}); }catch(e){} }
+
+/* ---- Carimbo de mudança + lápides ----
+   A união "local vence" não sabe o que foi APAGADO nem o que foi EDITADO: registro apagado num
+   aparelho voltava do outro, edição ficava presa no aparelho que editou. Em vez de tocar em
+   cada ponto que grava, o app compara cada registro com a impressão digital da última
+   sincronização (guardada só neste aparelho, fora do backup): mudou → ganha _m=agora; sumiu →
+   lápide em ST.meta.tomb (viaja no meta). Na 1ª rodada só fotografa, sem carimbar: registro
+   antigo continua "sem data" — senão um aparelho atrasado venceria uma edição real do outro. */
+const _FP_KEY=LS.meta.replace('_meta_','_syncfp_');
+let _fp=null;
+function _fpLoad(){ if(_fp) return _fp; try{ _fp=JSON.parse(localStorage.getItem(_FP_KEY)||'null'); }catch(e){ _fp=null; } if(!_fp||typeof _fp!=='object'||Array.isArray(_fp)) _fp={}; return _fp; }
+function _fpSave(){ try{ localStorage.setItem(_FP_KEY, JSON.stringify(_fpLoad())); }catch(e){} }
+function _fpHash(item){ let s=''; try{ s=JSON.stringify(item, (k,v)=> k==='_m'?undefined:v)||''; }catch(e){ s=String(Math.random()); } let h=0; for(let i=0;i<s.length;i++) h=(Math.imul(h,31)+s.charCodeAt(i))|0; return h+'.'+s.length; }
+function _fpMarcar(k,item){ _fpLoad()[k]=_fpHash(item); }
+function _syncItens(){   // [chave, registro] de tudo que sincroniza registro a registro
+  const out=[];
+  for(const coll of ['logs','freelog']){ const L=ST[coll]; if(!L||typeof L!=='object') continue; for(const id of Object.keys(L)){ const arr=L[id]; if(!Array.isArray(arr)) continue; for(const x of arr) if(x&&typeof x==='object'&&x.date) out.push([coll+':'+id+'|'+x.date, x]); } }
+  for(const coll of ['bw','measures','photometa']){ const arr=ST[coll]; if(!Array.isArray(arr)) continue; for(const it of arr){ const ch=it&&typeof it==='object'&&(it.id||it.date); if(ch) out.push([coll+':'+ch, it]); } }
+  return out;
 }
+function carimbarMudancas(){
+  if(!ST.meta||typeof ST.meta!=='object') ST.meta={};
+  if(!ST.meta.tomb||typeof ST.meta.tomb!=='object') ST.meta.tomb={};
+  const fp=_fpLoad(), T=ST.meta.tomb, agora=Date.now();
+  const primeira=!fp.__init;
+  const vivos=new Set(), mudouColl=new Set(); let mudouMeta=false;
+  for(const [k,item] of _syncItens()){
+    vivos.add(k);
+    const h=_fpHash(item);
+    if(fp[k]!==h){ if(!primeira){ item._m=agora; mudouColl.add(k.split(':')[0]); } fp[k]=h; }
+    if(T[k] && (+item._m||0) > T[k]){ delete T[k]; mudouMeta=true; }   // recriado depois de apagado
+  }
+  if(!primeira) for(const k of Object.keys(fp)){ if(k!=='__init' && !k.startsWith('prog:') && !vivos.has(k)){ T[k]=agora; delete fp[k]; mudouMeta=true; } }
+  for(const k of Object.keys(T)) if(agora-T[k] > 180*86400000){ delete T[k]; mudouMeta=true; }   // 180d: já fez efeito em todo aparelho
+  fp.__init=1; _fpSave();
+  for(const c of mudouColl) saveK(c, true);
+  if(mudouMeta) saveK('meta', true);
+}
+/* Apaga localmente o que tem lápide mais nova que o registro (a lápide veio do outro aparelho). */
+function aplicarLapides(rel){
+  const T=ST.meta&&ST.meta.tomb; if(!T||typeof T!=='object') return;
+  const fp=_fpLoad();
+  const morta=(k,item)=> !!(T[k] && T[k] > (+item._m||0));
+  for(const coll of ['logs','freelog']){ const L=ST[coll]; if(!L||typeof L!=='object') continue;
+    for(const id of Object.keys(L)){ const arr=L[id]; if(!Array.isArray(arr)) continue;
+      L[id]=arr.filter(x=>{ if(x&&x.date&&morta(coll+':'+id+'|'+x.date, x)){ delete fp[coll+':'+id+'|'+x.date]; rel.apagados++; return false; } return true; }); } }
+  for(const coll of ['bw','measures','photometa']){ const arr=ST[coll]; if(!Array.isArray(arr)) continue;
+    ST[coll]=arr.filter(it=>{ const ch=it&&(it.id||it.date); if(ch && morta(coll+':'+ch, it)){ if(coll==='photometa') _fotoDel(it.id); delete fp[coll+':'+ch]; rel.apagados++; return false; } return true; }); }
+}
+
+function montarSnapshot(){
+  carimbarMudancas();
+  const full={_v:2, _at:new Date().toISOString()};
+  for(const k of Object.keys(LS)) full[k]=ST[k];
+  return full;
+}
+
+/* ---- Fotos: namespace próprio ---- */
+function nuvemFotosUrl(extra){ const base=String(ST.meta.workerUrl||'').replace(/\/+$/,''); return base+'/backup?app='+NUVEM_APP+'_fotos'+(extra||''); }
+async function listarNuvemFotos(){ const r=await fetch(nuvemFotosUrl(), {headers:nuvemHeaders(), cache:'no-store'}); if(!r.ok) throw new Error('HTTP '+r.status); return (await r.json()).snapshots||[]; }
+const FOTOS_TETO=18*1024*1024;        // Worker novo (19/09) aceita 20MB
+const FOTOS_TETO_ANTIGO=3.5*1024*1024;   // Worker anterior recusa acima de 4MB: no 413 o app cai pra este e lembra (meta.nuvemFotosTeto)
+/* Puxa as fotos que faltam aqui e sobe as que faltam lá (mais recentes primeiro; o que não
+   couber no teto fica só neste aparelho — o backup de fotos por arquivo cobre esse caso). */
+async function sincronizarFotos(forcarEnvio){
+  if(!nuvemPronta()) return {entrou:0, subiu:false};
+  let entrou=0, subiu=false, remotoIds=null;
+  const snaps=await listarNuvemFotos();
+  const topo=snaps[0]||null;
+  if(topo && topo.id!==ST.meta.nuvemFotosVistoId){
+    const r=await fetch(nuvemFotosUrl('&id='+encodeURIComponent(topo.id)), {headers:nuvemHeaders(), cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const o=await r.json();
+    const fotos=Array.isArray(o&&o.fotos)?o.fotos:[];
+    remotoIds=fotos.map(f=>f&&f.id).filter(Boolean);
+    if(!Array.isArray(ST.photometa)) ST.photometa=[];
+    const T=(ST.meta.tomb&&typeof ST.meta.tomb==='object')?ST.meta.tomb:{};
+    let mudouMeta=false;
+    for(const f of fotos){
+      if(!f||!f.id||typeof f.dataUrl!=='string') continue;
+      if(T['photometa:'+f.id] && T['photometa:'+f.id] > (+f._m||0)) continue;   // apagada aqui
+      const loc=ST.photometa.find(m=>m&&m.id===f.id);
+      let tem=null; try{ tem=await _fotoGet(f.id); }catch(e){}
+      if(!tem){ let ok=false; try{ ok=await _fotoPut(f.id, f.dataUrl); }catch(e){ ok=false; } if(ok===false) continue; }
+      const meta={id:f.id, date:f.date||today(), angle:f.angle||'front'}; if(f._m) meta._m=f._m;
+      if(!loc){ ST.photometa.push(meta); _fpMarcar('photometa:'+f.id, meta); entrou++; mudouMeta=true; }
+      else if((+f._m||0) > (+loc._m||0)){ Object.assign(loc, meta); _fpMarcar('photometa:'+f.id, loc); mudouMeta=true; }
+    }
+    if(mudouMeta){ ST.photometa.sort((a,b)=> (a.date||'')<(b.date||'')?-1:1); saveK('photometa', true); _fpSave(); }
+    ST.meta.nuvemFotosVistoId=topo.id; ST.meta.nuvemFotosIds=remotoIds; saveK('meta', true);
+  } else if(topo){ remotoIds=Array.isArray(ST.meta.nuvemFotosIds)?ST.meta.nuvemFotosIds:null; }
+  else remotoIds=[];
+  const locais=(ST.photometa||[]).filter(m=>m&&m.id);
+  const remSet=new Set(remotoIds||[]);
+  const faltaLa = remotoIds===null ? true : locais.some(m=>!remSet.has(m.id));
+  if(locais.length && (faltaLa || forcarEnvio)){
+    const ordem=locais.slice().sort((a,b)=> (b.date||'')<(a.date||'')?-1:1);
+    const pixels=new Map();
+    for(const m of ordem){ let du=null; try{ du=await _fotoGet(m.id); }catch(e){} if(typeof du==='string'&&du) pixels.set(m.id,du); }
+    const montar=(teto)=>{
+      const fotos=[], ids=[]; let bytes=200;
+      for(const m of ordem){
+        const du=pixels.get(m.id);
+        if(!du){ ids.push(m.id); continue; }   // sem pixel local: não há o que subir
+        if(bytes+du.length+120 > teto){ ids.push(m.id); continue; }   // não coube: conta como "conhecida" pra não tentar de novo a cada sync
+        const f={id:m.id, date:m.date, angle:m.angle, dataUrl:du}; if(m._m) f._m=m._m;
+        fotos.push(f); ids.push(m.id); bytes+=du.length+120;
+      }
+      return {fotos, ids};
+    };
+    let teto=+ST.meta.nuvemFotosTeto||FOTOS_TETO;
+    let {fotos, ids}=montar(teto);
+    if(fotos.length){
+      let r=await fetch(nuvemFotosUrl(), {method:'PUT', headers:nuvemHeaders(), body:JSON.stringify({_v:1, _at:new Date().toISOString(), fotos})});
+      if(r.status===413 && teto>FOTOS_TETO_ANTIGO){   // Worker antigo (4MB): reduz o teto e lembra
+        teto=FOTOS_TETO_ANTIGO; ST.meta.nuvemFotosTeto=teto; saveK('meta', true);
+        ({fotos, ids}=montar(teto));
+        if(!fotos.length) return {entrou, subiu:false};
+        r=await fetch(nuvemFotosUrl(), {method:'PUT', headers:nuvemHeaders(), body:JSON.stringify({_v:1, _at:new Date().toISOString(), fotos})});
+      }
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      let j={}; try{ j=await r.json(); }catch(e){}
+      if(j.id) ST.meta.nuvemFotosVistoId=j.id;
+      ST.meta.nuvemFotosIds=ids; ST.meta.nuvemFotosAt=Date.now(); ST.meta.nuvemFotosN=fotos.length; saveK('meta', true);
+      subiu=true;
+    }
+  }
+  return {entrou, subiu};
+}
+
+async function sincronizarNuvem(motivo){
+  if(!nuvemPronta()) return;
+  if(_sincronizando){ _syncPendente=true; return; }
+  _sincronizando=true;
+  let entrou=0;
+  try{
+    if(!ST.meta||typeof ST.meta!=='object') ST.meta={};
+    carimbarMudancas();
+    const podePuxar = motivo!=='auto' || (Date.now()-_ultimoPull > 60*1000);
+    if(podePuxar){
+      _ultimoPull=Date.now();
+      const snaps=await listarNuvem();
+      if(snaps.length && snaps[0].id!==ST.meta.nuvemVistoId){
+        const r=await fetch(nuvemUrl('&id='+encodeURIComponent(snaps[0].id)), {headers:nuvemHeaders(), cache:'no-store'});
+        if(!r.ok) throw new Error('HTTP '+r.status);
+        const o=await r.json();
+        delete o.photometa; delete o.fotos;   // foto entra pelo canal de fotos, junto do pixel — senão ficava "foto fantasma"
+        const rel=fundirBackup(o);
+        entrou=rel.sessoes+rel.exercicios+rel.pesagens+rel.medidas+rel.campos+rel.editados+rel.apagados;
+        ST.meta.nuvemVistoId=snaps[0].id; saveK('meta', true);
+      }
+      try{ const f=await sincronizarFotos(false); entrou+=f.entrou; }catch(e){ /* foto não pode travar os dados */ }
+    }
+    if(_nuvemSujo || entrou>0){
+      _nuvemSujo=false; clearTimeout(_envioTimer);   // gravação durante o envio marca sujo de novo
+      const full=montarSnapshot();
+      let r=null;
+      try{ r=await fetch(nuvemUrl(), {method:'PUT', headers:nuvemHeaders(), body:JSON.stringify(full)}); }
+      catch(e){ _nuvemSujo=true; throw e; }
+      if(!r.ok){ _nuvemSujo=true; throw new Error('HTTP '+r.status); }
+      let j={}; try{ j=await r.json(); }catch(e){}
+      ST.meta.nuvemAt=Date.now(); ST.meta.lastBackupAt=Date.now();
+      if(j.id) ST.meta.nuvemVistoId=j.id;
+      saveK('meta', true);
+    }
+    if(entrou>0){ render(); if(motivo!=='boot') showToast('Sincronizado: '+entrou+' registro'+(entrou>1?'s':'')+' do outro aparelho','ok',2600); }
+  }catch(e){ _ultimoPull=0; /* sem rede ou Worker fora: a próxima abertura tenta de novo */ }
+  finally{
+    _sincronizando=false;
+    if(_syncPendente){ _syncPendente=false; setTimeout(()=>{ try{ sincronizarNuvem('auto'); }catch(e){} }, 1500); }
+  }
+}
+try{
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') sincronizarNuvem('volta'); });
+}catch(e){}
 async function listarNuvem(){
   const r=await fetch(nuvemUrl(), {headers:nuvemHeaders(), cache:'no-store'});
   if(!r.ok) throw new Error('HTTP '+r.status);
@@ -6122,8 +6317,18 @@ async function listarNuvem(){
 /* Funde o remoto no local. Nada é sobrescrito: só entra o que falta.
    Devolve um relatório do que entrou, pra não dizer "restaurado" sem prova. */
 function fundirBackup(o){
-  const rel={sessoes:0, exercicios:0, pesagens:0, medidas:0, fotos:0, campos:0};
+  const rel={sessoes:0, exercicios:0, pesagens:0, medidas:0, fotos:0, campos:0, editados:0, apagados:0};
   if(!o || typeof o!=='object') throw new Error('formato inválido');
+  const sujoAntes=_nuvemSujo;
+  if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
+  if(!ST.meta.tomb || typeof ST.meta.tomb!=='object') ST.meta.tomb={};
+  // lápides: união (data mais nova) ANTES de fundir, pra que o apagado lá não volte daqui
+  if(o.meta && o.meta.tomb && typeof o.meta.tomb==='object'){
+    for(const k of Object.keys(o.meta.tomb)){ const v=+o.meta.tomb[k]||0; if(v>(+ST.meta.tomb[k]||0)) ST.meta.tomb[k]=v; }
+  }
+  aplicarLapides(rel);
+  const lapide=(k,item)=> !!(ST.meta.tomb[k] && ST.meta.tomb[k] > (+item._m||0));
+  const maisNovo=(rem,loc)=> (+rem._m||0) > (+loc._m||0);
   /* Backup anterior à migração traz chave POSICIONAL ("A_0"). A migração é travada por
      ST.meta._logsV2 e roda uma vez só, então essas chaves entravam e ficavam invisíveis
      PRA SEMPRE — nenhum exercício do programa lê "A_0", e reabrir o app não resgatava.
@@ -6142,31 +6347,47 @@ function fundirBackup(o){
       delete o.logs[velho];
     }
   }
-  // logs: união por exercício, depois por data
-  if(o.logs && typeof o.logs==='object'){
-    for(const id of Object.keys(o.logs)){
-      const rem=o.logs[id]; if(!Array.isArray(rem)) continue;
-      if(!ST.logs[id]){ ST.logs[id]=[]; rel.exercicios++; }
-      const temData=new Set(ST.logs[id].map(x=>x&&x.date));
+  /* logs e treinos livres: união por exercício, depois por data. Mesma data nos dois lados:
+     o de carimbo (_m) mais novo vence; sem carimbo de nenhum lado, local vence (como antes).
+     freelog era tratado como mapa e só entrava se o exercício livre não existisse aqui —
+     sessões novas dele nunca desciam. */
+  for(const coll of ['logs','freelog']){
+    if(!o[coll] || typeof o[coll]!=='object') continue;
+    if(!ST[coll] || typeof ST[coll]!=='object') ST[coll]={};
+    for(const id of Object.keys(o[coll])){
+      const rem=o[coll][id]; if(!Array.isArray(rem)) continue;
+      if(!ST[coll][id]){ ST[coll][id]=[]; if(coll==='logs') rel.exercicios++; }
+      const arr=ST[coll][id];
+      const porData=new Map(arr.filter(x=>x&&x.date).map(x=>[x.date,x]));
       for(const sess of rem){
-        if(sess && sess.date && !temData.has(sess.date)){ ST.logs[id].push(sess); temData.add(sess.date); rel.sessoes++; }
+        if(!sess || typeof sess!=='object' || !sess.date) continue;
+        const k=coll+':'+id+'|'+sess.date;
+        if(lapide(k,sess)) continue;
+        const loc=porData.get(sess.date);
+        if(!loc){ arr.push(sess); porData.set(sess.date,sess); _fpMarcar(k,sess); rel.sessoes++; }
+        else if(maisNovo(sess,loc)){ arr[arr.indexOf(loc)]=sess; porData.set(sess.date,sess); _fpMarcar(k,sess); rel.editados++; }
       }
-      ST.logs[id].sort((a,b)=> a.date<b.date?-1:1);
+      arr.sort((a,b)=> a.date<b.date?-1:1);
     }
   }
-  // listas por data
+  // listas por data (pesagem, medidas, fotos): chave id||date; mesma chave → carimbo mais novo vence
   for(const [k,campo] of [['bw','pesagens'],['measures','medidas'],['photometa','fotos']]){
     if(!Array.isArray(o[k])) continue;
     if(!Array.isArray(ST[k])) ST[k]=[];
-    const tem=new Set(ST[k].map(x=>x && (x.id || x.date)));
+    const tem=new Map(ST[k].filter(x=>x&&(x.id||x.date)).map(x=>[x.id||x.date, x]));
     for(const it of o[k]){
-      const ch=it && (it.id || it.date);
-      if(ch && !tem.has(ch)){ ST[k].push(it); tem.add(ch); rel[campo]++; }
+      const ch=it && typeof it==='object' && (it.id || it.date);
+      if(!ch) continue;
+      const ck=k+':'+ch;
+      if(lapide(ck,it)) continue;
+      const loc=tem.get(ch);
+      if(!loc){ ST[k].push(it); tem.set(ch,it); _fpMarcar(ck,it); rel[campo]++; }
+      else if(maisNovo(it,loc)){ ST[k][ST[k].indexOf(loc)]=it; tem.set(ch,it); _fpMarcar(ck,it); rel.editados++; }
     }
     ST[k].sort((a,b)=> (a.date||'')<(b.date||'') ? -1 : 1);
   }
-  // mapas por data (sleep, protein, suppl, cardio, freelog): só preenche o que falta
-  for(const k of ['sleep','protein','suppl','cardio','freelog']){
+  // mapas por data (sleep, protein, suppl, cardio): só preenche o que falta
+  for(const k of ['sleep','protein','suppl','cardio']){
     if(!o[k] || typeof o[k]!=='object') continue;
     if(!ST[k] || typeof ST[k]!=='object') ST[k]={};
     for(const d of Object.keys(o[k])) if(ST[k][d]===undefined){ ST[k][d]=o[k][d]; rel.campos++; }
@@ -6191,8 +6412,44 @@ function fundirBackup(o){
     }
     ST.session.history.sort((a,b)=> (a.date||'')<(b.date||'') ? -1 : 1);
   }
-  // meta NÃO é fundido: são preferências do aparelho (worker, token, bloco, foco).
-  for(const k of Object.keys(LS)) saveK(k);
+  /* ---- META: estado de TREINO sincroniza; preferência do APARELHO não ----
+     Sem isto, dois aparelhos divergiam em silêncio: cada um semeava o próprio mesoDesde, tinha
+     o próprio foco, as próprias respostas de recuperação. O que é do aparelho (token do worker,
+     assinatura de push, nome do Atalho) fica onde está. */
+  if(o.meta && typeof o.meta==='object'){
+    if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
+    const M=ST.meta, R=o.meta;
+    const maisAntiga=(a,b)=> (!a? b : !b? a : (a<b? a : b));
+    const maisNova  =(a,b)=> (!a? b : !b? a : (a>b? a : b));
+    // âncoras: vale a data mais ANTIGA (o começo real)
+    for(const k of ['mesoDesde','blocoDesde']){
+      const v=maisAntiga(M[k], R[k]); if(v && v!==M[k]){ M[k]=v; rel.campos++; }
+    }
+    // bloco de ênfase: se o remoto começou o bloco depois, é o mais recente
+    if(R.bloco && R.blocoDesde && (!M.blocoDesde || R.blocoDesde>M.blocoDesde)){ M.bloco=R.bloco; M.blocoDesde=R.blocoDesde; rel.campos++; }
+    // deload: o mais recente manda
+    for(const k of ['deloadAte']){ const v=maisNova(M[k],R[k]); if(v && v!==M[k]){ M[k]=v; rel.campos++; } }
+    for(const k of ['lastDeloadWeek','_uidc']){ const v=Math.max(+M[k]||0, +R[k]||0); if(v && v!==M[k]){ M[k]=v; } }
+    // recuperação: união por data
+    if(R.rec && typeof R.rec==='object'){ M.rec=M.rec||{}; for(const d of Object.keys(R.rec)) if(M.rec[d]===undefined){ M.rec[d]=R.rec[d]; rel.campos++; } }
+    // trocas: fronteira mais antiga, silêncio mais novo
+    if(R.swapAt){ M.swapAt=M.swapAt||{}; for(const id of Object.keys(R.swapAt)){ const v=maisAntiga(M.swapAt[id],R.swapAt[id]); if(v!==M.swapAt[id]){ M.swapAt[id]=v; rel.campos++; } } }
+    if(R.swapSnooze){ M.swapSnooze=M.swapSnooze||{}; for(const id of Object.keys(R.swapSnooze)){ const v=maisNova(M.swapSnooze[id],R.swapSnooze[id]); if(v!==M.swapSnooze[id]){ M.swapSnooze[id]=v; } } }
+    // foco, metas de nutrição, dia de cardio, modo casa/academia: só preenche o que falta aqui
+    for(const k of ['foco','calTarget','carbTarget','proteinTarget','cardioDay','local','autoCompleteOnLastCheck']){
+      if(M[k]===undefined && R[k]!==undefined){ M[k]=R[k]; rel.campos++; }
+    }
+    // campos custom de medida do app dele (o dela vive em measureCfg, tratado acima)
+    if(Array.isArray(R.customMeasures)){ M.customMeasures=M.customMeasures||[]; const tem=new Set(M.customMeasures.map(c=>c&&c.key));
+      for(const c of R.customMeasures) if(c&&c.key&&!tem.has(c.key)){ M.customMeasures.push(c); tem.add(c.key); rel.campos++; } }
+    // NUNCA: workerUrl, workerToken, pushHash, shortcutName, shortcutTimerEnabled, syncPat, nuvemAt, lastBackupAt, _logsV2,
+    //        nuvemVistoId, nuvemFotosVistoId, nuvemFotosIds, nuvemFotosAt (estado por aparelho). tomb é fundido no topo do fundirBackup.
+    saveK('meta');
+  }
+  const mudou=rel.sessoes+rel.exercicios+rel.pesagens+rel.medidas+rel.fotos+rel.campos+rel.editados+rel.apagados;
+  for(const k of Object.keys(LS)) saveK(k, true);
+  _fpSave();
+  if(mudou) { _nuvemSujo=true; _agendarEnvio(); } else _nuvemSujo=sujoAntes;
   return rel;
 }
 async function restaurarNuvem(){
@@ -6210,9 +6467,11 @@ async function restaurarNuvem(){
     const o=await r.json();
     if(!confirm('Vou FUNDIR esse backup no que já está aqui.\n\nNada do aparelho é apagado — só entra o que falta. Seguir?')) return;
     const rel=fundirBackup(o);
+    try{ const f=await sincronizarFotos(false); rel.fotos+=f.entrou; }catch(e){}
     render();
     alert('Restaurado.\n\n'+rel.sessoes+' sessões novas\n'+rel.exercicios+' exercícios novos\n'
-      +rel.pesagens+' pesagens\n'+rel.medidas+' medições\n'+rel.fotos+' fotos\n'+rel.campos+' outros registros');
+      +rel.pesagens+' pesagens\n'+rel.medidas+' medições\n'+rel.fotos+' fotos\n'+rel.campos+' outros registros'
+      +(rel.editados?'\n'+rel.editados+' atualizados':'')+(rel.apagados?'\n'+rel.apagados+' apagados (apagados no outro aparelho)':''));
   }catch(e){ alert('Falhou: '+e.message); }
 }
 async function exportData(){
@@ -6733,15 +6992,21 @@ async function testRemotePush(){
     else showToast('Erro: '+r.status,'warn',3000);
   }catch(e){ showToast('Falha: '+e.message,'warn',3000); }
 }
+/* Configurou o Worker (URL + token) → puxa da nuvem sozinho: é assim que um aparelho novo recebe
+   tudo. Os inputs disparam por tecla (oninput), então espera a digitação/colagem terminar. */
+let _cfgSyncTimer=null;
+function _syncAoConfigurar(){ clearTimeout(_cfgSyncTimer); if(!nuvemPronta()) return; _cfgSyncTimer=setTimeout(()=>{ try{ sincronizarNuvem('config'); }catch(e){} }, 1200); }
 function setWorkerUrl(v){
   if(!ST.meta) ST.meta={};
   ST.meta.workerUrl=String(v||'').trim().replace(/\/$/,'');
-  saveK('meta');
+  saveK('meta', true);
+  _syncAoConfigurar();
 }
 function setWorkerToken(v){
   if(!ST.meta) ST.meta={};
   ST.meta.workerToken=String(v||'').trim();
-  saveK('meta');
+  saveK('meta', true);
+  _syncAoConfigurar();
 }
 function toggleShortcutTimer(){
   if(!ST.meta) ST.meta={};
@@ -6851,7 +7116,7 @@ async function boot(){
   maybeShowA2HSBanner();
   // 5. Backup reminder semanal (delay 1.5s pra não competir com outros toasts no boot)
   setTimeout(checkBackupReminder, 1500);
-  setTimeout(()=>{ try{ enviarNuvemAuto(); }catch(e){} }, 4000);   // backup automático, em segundo plano
+  setTimeout(()=>{ try{ sincronizarNuvem('boot'); }catch(e){} }, 4000);   // puxa do outro aparelho e envia o que mudou   // backup automático, em segundo plano
 }
 migrateLogsStableId();   // chaves posicionais viram id estável (uma vez)
 /* Âncora do bloco. SEM isto, blocoDesde ficava null, blocoSemana() devolvia 1 pra sempre e o

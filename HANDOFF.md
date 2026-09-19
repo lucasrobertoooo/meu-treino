@@ -2,7 +2,13 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-09-02.04 (foto grande de volta no topo do card — revertida uma mudança que eu tomei por conta. SHELL v50)
+**Última atualização:** 2026-09-19.01 (**Sincronização entre aparelhos** — puxa/funde/envia sozinho, com carimbo de edição e lápide de apagado; fotos num namespace próprio. SHELL v59)
+
+**Antes: 2026-09-14 (aparelho novo: a assinatura de push era reenviada morta; SW reassina em `pushsubscriptionchange`. SHELL v58)
+
+**Antes: 2026-09-09.01 a .07 (auditoria com 5 agentes, 4 levas + textos de execução. SHELL v51-v57 — ver seção "Auditoria 2026-09-09")
+
+**Antes: 2026-09-02.04 (foto grande de volta no topo do card — revertida uma mudança que eu tomei por conta. SHELL v50)
 
 **Antes: 2026-09-02.03 ("Abrir no navegador" não funcionava no PWA; virou **Atualizar agora**, que resolve dentro do app. SHELL v49)
 
@@ -1037,7 +1043,47 @@ Os 12 grupos batem a meta exatamente, e peito/costas/bíceps/tríceps treinam 2�
 
 ---
 
+## Sincronização entre aparelhos (2026-09-19.01)
+
+Motivação: a Priscila trocou o Android por um iPhone e o app dela precisa funcionar e sincronizar nos dois. O módulo é idêntico nos dois apps (portado junto), então vale aqui também — hoje o Lucas usa um aparelho só, mas o mecanismo cobre reinstalação e troca de iPhone sem "Restaurar" manual.
+
+**O que mudou de comportamento** (antes: envio automático 1× a cada 6h, restauração só manual):
+- **Puxa** ao abrir (4s depois do boot), ao voltar pro app (`visibilitychange`), ao concluir treino (`showCelebration`) e ao configurar Worker URL/token. A lista de snapshots é barata; o corpo só desce se o id mudou (`meta.nuvemVistoId`).
+- **Envia** 30s depois da última gravação local (`saveK` marca `_nuvemSujo` e agenda `_agendarEnvio`) e sempre que a fusão trouxe coisa nova — o resultado fundido vira a verdade da nuvem.
+- **`saveK(k, quieto)`**: o segundo argumento existe pra escrita da própria sincronização (nuvemVistoId, carimbos). Sem isso cada envio marcava sujo de novo e o app subia snapshot a cada 30s pra sempre. Pegadinha real: `{}` vazio de `prog` (dela) contava como "entrou" e os dois aparelhos ficaram se re-enviando — teste de repouso cobre isso.
+- **Fotos** (pixels do IndexedDB) vão num namespace próprio no mesmo Worker: `?app=meutreino_fotos`. Só sobem quando há foto local que a nuvem não tem (ids em `meta.nuvemFotosIds`); só descem quando o id do snapshot mudou. Mais recentes primeiro; o que não cabe no teto fica só no aparelho (o export de fotos cobre). **`nextPhotoId` ganhou sufixo aleatório** — `p3` puro colidia entre aparelhos.
+- **Teto adaptativo**: o Worker novo aceita 20MB (`FOTOS_TETO` 18MB); o Worker que está no ar ainda é o de 4MB → no 413 o app cai pra 3,5MB e lembra em `meta.nuvemFotosTeto`. Foto nunca trava os dados (try/catch próprio).
+
+**Conflito e apagamento — `carimbarMudancas()`.** A união "local vence" não sabe o que foi apagado nem o que foi editado. Em vez de tocar em cada ponto que grava, a função compara cada registro (sessão de log/freelog por `exId|date`, pesagem/medida/foto por `id||date`) com a impressão digital da última sincronização, guardada só neste aparelho em `meutreino_syncfp_v1` (fora do backup). Mudou → `_m=agora`; sumiu → lápide em `ST.meta.tomb[chave]=agora` (viaja no meta, fundida por data maior). Na fusão: lápide mais nova que o registro apaga/bloqueia; entre dois registros da mesma chave o `_m` maior vence; sem `_m` dos dois lados, local vence como antes. **Na 1ª rodada só fotografa, sem carimbar** — senão um aparelho atrasado venceria uma edição real do outro. Recriar depois de apagar remove a lápide. Lápides com 180 dias são podadas. Limitação assumida: "vence quem sincronizou por último", não quem editou por último — pra uma pessoa alternando aparelhos é a mesma coisa.
+
+**`fundirBackup` agora**: funde `meta.tomb` primeiro → `aplicarLapides()` → união com newer-wins. `freelog` era tratado como mapa (só entrava se o exercício livre não existisse) — passou a fundir por sessão como `logs`. Devolve `rel.editados` e `rel.apagados` além dos contadores antigos. No caminho automático, `photometa` é removido do snapshot de dados antes de fundir (a foto entra pelo canal de fotos junto do pixel — senão ficava "foto fantasma"). Restauração manual continua fundindo tudo e agora também puxa fotos.
+
+**Nunca fundido no meta** (por aparelho): workerUrl, workerToken, pushHash, shortcut*, syncPat, nuvemAt, lastBackupAt, nuvemVistoId, nuvemFotosVistoId, nuvemFotosIds, nuvemFotosAt, nuvemFotosTeto, _logsV2.
+
+**Worker** (`push-worker/src/index.js`): limite de corpo 4MB → 20MB (KV aceita 25MB). **NÃO FOI REDEPLOYADO**: a sessão OAuth do wrangler expirou em 18/09 e o token de API em `~/Desktop/TRIK/.env.cloudflare` é de outra conta (a da TRIK). Precisa de `npx wrangler login` no navegador do Lucas e depois `npx wrangler deploy`. Até lá o app funciona com o teto antigo (3,5MB de fotos por snapshot).
+
+**Removido**: `enviarNuvemAuto` (janela de 6h). `enviarNuvem` manual ("Enviar agora") usa `montarSnapshot()` e sobe as fotos todas (`sincronizarFotos(true)`).
+
+**SW**: `push-pendente` (assinatura reassinada esperando a página subir) estava na lista de caches que o `activate` apaga — um deploy entre a reassinatura e a próxima abertura perdia a assinatura. Agora é poupado.
+
+**Testes** (agora versionados em `tools/tests/` — o scratchpad da sessão anterior se perdeu; harness com jsdom + IndexedDB falso + Worker falso em memória): 46 de regressão (boot, telas, timer, Atalho, import não destrutivo, sync básico) + 52 de cenário (Android com dados → nuvem → iPhone limpo puxa tudo com foto; B treina, A vê; A apaga, B vê sumir; foto nova cruza; sem rede; backup v1 antigo) + 34 de conflito (1ª rodada não carimba; repouso sem ping-pong; edição concorrente vence quem sincronizou por último; apagar/recriar; foto acima do teto; prog dela por carimbo) + 8 do teto adaptativo (Worker antigo 413). Rodar em `tools/tests/`: `node suite.js && node t_sync.js && node t_sync2.js && node t_413.js` e LER o resultado antes de cada push.
+
+---
+
+## Auditoria 2026-09-09 (5 agentes, 4 levas — .01 a .05) + textos (.06, .07)
+
+Resumo do que está detalhado nos commits `a732d6c`, `69bc4f4`, `2016ad5`, `c598889`, `232973c`, `5dc78d8`, `71dd182`:
+- **Motor**: o mesociclo NUNCA andou aqui (`blocoDesde` não era semeado no boot → semana 1 pra sempre, deload e "trocar" inalcançáveis). Semana leve virava "travado" (contador sem guarda de sessão leve). Corte da volta de pausa anulado pelo `Math.round` (agora floor + ≥1 degrau). Sessão abandonada contava como treino feito (`sessionTop` passou a exigir check). `fadiga` vinha antes de `travado-passo` (mandava descansar e subir carga na mesma tela) — ordem invertida. Bloco de perna desbalanceado (B30 → B26, superior em manutenção cede pra 2 séries). `MG_TARGETS` constante → cada bloco tem `alvos`, `mgTarget()` é o único leitor. `parseRange` marca tempo ("30-45s") e livre ("máx") — antes viravam faixa de reps. `carga-alta` beco sem saída no degrau mínimo.
+- **Dados**: brick por colar backup de medidas no import (tela branca) — portados `looksLikeAncientRawLogs` + guarda de shape seletiva. Restaurar backup antigo deixava histórico invisível (chave posicional entrava crua) — remapeia na entrada (`LAYOUT_ANTIGO_MAP`). `session.history` nunca era fundido. Sessão de ontem com número digitado e sem check era apagada no boot (agora só a realmente vazia). Nota da medição destruída (`note` fora da lista de ignorados + guarda numérica morta). Comparador morria com `kg` string; foto sem date/angle derrubava Corpo.
+- **UI/segurança**: 21 pontos de interpolação crua escapados (kg, reps, RIR, placeholders, URL/token do worker, chave de medida importada). Notificação de descanso duplicada (tags unificadas em `meutreino-push`, `timerDone` cancela o push remoto primeiro). "Atualizar agora" só limpa SW+caches depois de provar rede (fetch no-store com 8s). SW: `cache.add` por arquivo, `img/` no cache persistente, `notificationclick` com escopo exato. Ícone maskable gerado de verdade (era igual ao normal).
+- **Worker**: corpo não-JSON → 400; limite mede bytes; race de PUT concorrente resolvida com reconciliação de órfãos **com guarda de 1h** (a 1ª versão sem guarda apagava corpo vivo — pego no teste); `nsApp` estrito.
+- **Textos** (.06/.07): `cue` volta pro corpo do card (eu tinha escondido no "Como fazer" — erro de layout sem perguntar, mesma lição da foto). Reescritos os 30: mediana 62 caracteres, UM ponto-chave em `<em>`, sem narrar músculo. "Como fazer" com duas buscas de vídeo (execução técnica + erros comuns).
+
+---
+
 ## Backup na nuvem (2026-08-19.19)
+
+> **2026-09-19:** a janela de 6h e o `enviarNuvemAuto` foram substituídos pela sincronização entre aparelhos (seção acima). A fusão continua sendo a base, agora com carimbo e lápide.
 
 **O problema.** O Lucas perdeu histórico duas vezes. A exportação manual existe, mas depende de lembrar de tocar num botão — e esse histórico agora alimenta **toda** a inteligência do app: progressão, plateau, fadiga, curva, ritmo de peso.
 
