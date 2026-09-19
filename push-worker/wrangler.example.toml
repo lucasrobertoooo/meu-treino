@@ -2,6 +2,7 @@
 # v2: sem nodejs_compat (Web Crypto nativo, sem dependência de `web-push` npm).
 
 name = "meu-treino-push"
+account_id = "SEU_ACCOUNT_ID"   # `npx wrangler whoami` mostra; sem isto o deploy para num prompt "Select an account"
 main = "src/index.js"
 compatibility_date = "2024-09-23"
 

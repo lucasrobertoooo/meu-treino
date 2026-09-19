@@ -1060,7 +1060,7 @@ Motivação: a Priscila trocou o Android por um iPhone e o app dela precisa func
 
 **Nunca fundido no meta** (por aparelho): workerUrl, workerToken, pushHash, shortcut*, syncPat, nuvemAt, lastBackupAt, nuvemVistoId, nuvemFotosVistoId, nuvemFotosIds, nuvemFotosAt, nuvemFotosTeto, _logsV2.
 
-**Worker** (`push-worker/src/index.js`): limite de corpo 4MB → 20MB (KV aceita 25MB). **NÃO FOI REDEPLOYADO**: a sessão OAuth do wrangler expirou em 18/09 e o token de API em `~/Desktop/TRIK/.env.cloudflare` é de outra conta (a da TRIK). Precisa de `npx wrangler login` no navegador do Lucas e depois `npx wrangler deploy`. Até lá o app funciona com o teto antigo (3,5MB de fotos por snapshot).
+**Worker** (`push-worker/src/index.js`): limite de corpo 4MB → 20MB (KV aceita 25MB). **Deployado em 19/09 às 14:16** (Version ID `b6224c25-2895-465d-a933-4c6eeca6a610`, `https://meu-treino-push.lucasrobertoooo.workers.dev`). Pegadinhas do deploy: a sessão OAuth do wrangler expira (precisa de `npx wrangler login` no navegador); o token em `~/Desktop/TRIK/.env.cloudflare` é de OUTRA conta (TRIK) e não serve; e com duas contas no login o `deploy` parava num prompt `Select an account` que o terminal do app não conseguia responder — por isso `account_id` agora está fixo no `wrangler.toml` (conta pessoal `cb77bbc1…`). O app cai sozinho pro teto de 3,5MB se algum dia bater num Worker antigo (413).
 
 **Removido**: `enviarNuvemAuto` (janela de 6h). `enviarNuvem` manual ("Enviar agora") usa `montarSnapshot()` e sobe as fotos todas (`sincronizarFotos(true)`).
 
