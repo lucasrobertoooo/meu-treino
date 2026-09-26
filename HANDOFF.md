@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-09-19.01 (**Sincronização entre aparelhos** — puxa/funde/envia sozinho, com carimbo de edição e lápide de apagado; fotos num namespace próprio. SHELL v59)
+**Última atualização:** 2026-09-26.01 (**Ordem do dia e troca de exercício** — reordenar/substituir só hoje ou sempre, reversível, com a meta recalculada pela posição; e **baixar a carga de propósito deixa de virar "travado"**. SHELL v60)
+
+**Antes: 2026-09-19.01 (**Sincronização entre aparelhos** — puxa/funde/envia sozinho, com carimbo de edição e lápide de apagado; fotos num namespace próprio. SHELL v59)
 
 **Antes: 2026-09-14 (aparelho novo: a assinatura de push era reenviada morta; SW reassina em `pushsubscriptionchange`. SHELL v58)
 
@@ -1040,6 +1042,133 @@ O foco era código: aqui, `BLOCOS[bloco].tier` com dois blocos fixos. Agora vive
 
 ### Volume e frequência — conferidos, estão certos
 Os 12 grupos batem a meta exatamente, e peito/costas/bíceps/tríceps treinam 2×/semana (Schoenfeld, Ogborn & Krieger 2016).
+
+---
+
+## Mudança grande de carga não é regressão (2026-09-26.01)
+
+Pergunta do Lucas: "e se eu ver que tenho feito o exercício errado e preciso diminuir a carga
+pra fazer certo?". Fui olhar e o app fazia a coisa errada. `travadas` e `abaixo` comparavam a
+sessão nova com a anterior sem saber que a base de carga tinha mudado, e `detectPlateau` virava
+verdade — então **corrigir a execução podia terminar com o app mandando TROCAR o exercício**.
+O caminho pra CIMA já estava certo (cai em `tentando`: "carga nova, agora é chegar no mínimo").
+
+`quedaDeliberada(a,b,e,id)`: a carga caiu **um degrau ou mais E ao menos 8%**, e as reps
+ficaram **dentro da faixa**. Quem regrediu de verdade cai nas reps junto — esse caso continua
+sendo tratado como antes, de propósito. Com os dois sinais:
+- estado novo **`recomecando`**: "carga menor, com as reps dentro da faixa — tratei como
+  escolha sua, não como retrocesso"; aparece só na sessão da virada
+- `travadas`, `abaixo` e `detectPlateau` **param na fronteira**: o que veio antes é outra base
+  de carga e não conta mais como "você travou"
+- botão **"Foi de propósito — recomeçar daqui"** → `recomecarProgressao(id)`, que grava
+  `ST.meta.swapAt[id]=today()` (o mesmo mecanismo do "Troquei"). O histórico fica guardado;
+  só para de mandar no conselho.
+
+A meta seguinte já partia da carga nova sozinha (`refSession` ancora na última sessão), isso
+não precisou mudar.
+
+30 checagens em `tools/tests/t_carga.js`, incluindo os contra-exemplos que importam: queda
+pequena (oscilação de equipamento) não vira "de propósito", e queda **com as reps despencando**
+continua sendo lida como regressão.
+
+---
+
+## Ordem do dia e troca de exercício (2026-09-26.01)
+
+Pedido do Lucas: mudar a ordem do treino quando o aparelho está ocupado, trocar um exercício
+por um equivalente mapeado, **escolher se a mudança é só do dia ou permanente**, poder voltar
+atrás — e o app recalcular a carga, porque puxar pro início um exercício que se faz no meio
+muda o que dá pra levantar. Feito igual nos dois apps.
+
+### As duas camadas (nenhuma toca o programa)
+```
+ST.meta.plan.ord[escopo][dia] = [id,...]                       ordem PERMANENTE
+ST.meta.plan.tr[escopo][id]   = {n,s,r,t,mg,cue,key}           troca PERMANENTE
+ST.meta.plan.hoje = {data, ord:{dia:[id,...]}, tr:{id:{...}}}  SÓ HOJE
+```
+`escopo` é `'p'` no app dele e `_progMode()` (`academia`/`casa`) no dela. A camada de hoje
+**expira sozinha**: `data !== today()` é simplesmente ignorada, sem varredura nem limpeza —
+mesmo padrão do `ST.meta.shortDays`. `dayEx(d)` é o único leitor: aplica ordem e troca sobre
+`dayExBase(d)` e é o que a tela E o motor consomem. Id que a ordem gravada não conhece
+(exercício novo numa atualização) **não some nem vai pro fim**: ancora logo depois do vizinho
+conhecido anterior.
+
+### O substituto tem histórico próprio
+A chave de log vira `a_2~leg_press_45` (`exId(d,i)` devolve isso; `idBase()` desfaz). Carga de
+leg press não entra na progressão do hack squat, e **desfazer devolve o histórico original
+intacto** — que é o que "poder voltar atrás" exige. O id BASE nunca muda: é ele que ancora
+nota, foto, volume e ordem. `exDoLog(id)` resolve a chave de volta pro exercício certo, e é
+o que o volume semanal usa (as séries contam nos músculos do SUBSTITUTO).
+
+### A inteligência de posição
+Simão et al 2012 (revisão de ordem de exercícios, Sports Medicine): o que vem depois rende
+menos, e a queda é maior quando o que veio antes usa os mesmos músculos. Sem tratar isso,
+adiantar um exercício faz o app subestimar a carga e **atrasar produz "travado" falso** — que
+é justamente o gatilho da sugestão de trocar de exercício.
+
+Índice de fadiga acumulada até a posição `i`: `Σ séries(j) × (sobreposição(j,i) + 0.15)`. A
+sobreposição soma os músculos em comum com teto 1; o 0.15 é a parcela sistêmica que qualquer
+série cobra. **Músculos entram por FAMÍLIA** (`peito_sup` + `peito_med` → `peito`) — sem isso
+supino inclinado contaria fadiga zero pro supino reto, que é o caso mais comum de todos.
+
+Cada sessão passa a gravar `f` (fadiga) e `p` (posição) em `upsertToday`. Sessão antiga sem
+carimbo cai em `fadigaPadrao()`, a ordem padrão do programa — que é literalmente onde ela foi
+feita, porque antes desta feature não havia como reordenar.
+
+`ajustePosicao()` recalcula a meta comparando a fadiga de hoje com a da sessão de referência.
+**Não inventa porcentagem**: mexe na faixa de reps (que é o que a dupla progressão mede) e só
+num degrau de carga quando a diferença é grande. Limiar de 1 (uma série de trabalho
+equivalente) pra não reagir a ruído; 3 pra "diferença grande".
+- mais cedo, no meio da faixa → meta mira o **topo** da faixa
+- mais cedo, já no topo → **nada muda**, a regra normal já manda subir a carga
+- mais tarde, e a regra ia subir a carga → **segura a carga**, mantém no topo
+- mais tarde, diferença grande → **um degrau abaixo**, piso da faixa
+- volta de pausa manda mais que posição (comparar com uma sessão de meses atrás é problema maior)
+
+E a proteção que importa: `detectPlateau`, o contador `travadas` e o contador `abaixo`
+**pulam a sessão feita fora da posição habitual** (|f − mediana| ≥ 1.5), do mesmo jeito que já
+pulavam a sessão leve de deload. Sem isso, adiantar um exercício duas vezes fazia o app mandar
+trocar um exercício em que a pessoa está progredindo.
+
+### Alternativas mapeadas
+`altsDe(e)`. No app dele vêm da tabela curada `EXERCISE_ALTERNATIVES` (cobre os 30 exercícios),
+herdando séries/reps/tipo/músculos do SLOT — é um equivalente pra mesma vaga. No dela vêm do
+`EX_BANK` filtrado pelo **músculo principal com chave EXATA**, com a prescrição do banco.
+
+Duas armadilhas pagas no caminho:
+- usar a FAMÍLIA pra filtrar alternativa oferecia agachamento sumô como equivalente da cadeira
+  abdutora (`gluteo_med` → `gluteo`). Família serve pra fadiga, não pra substituição.
+- exigir só "tem esse músculo" dava desenvolvimento de ombro como equivalente da elevação
+  lateral (`ombro_lat: 0.5`). Agora o candidato precisa ter o músculo como **principal** —
+  sem equivalente honesto, não oferece nenhum (é o caso do cardio).
+- tratar prefixo de nome como "mesmo movimento" foi PIOR: matava "Elevação lateral na polia"
+  como alternativa da "Elevação lateral" e as três panturrilhas do app dele. Trocar o
+  EQUIPAMENTO é exatamente o ponto quando a máquina está ocupada. Ficou só igualdade depois
+  de normalizar (tira acento, caixa e o sufixo entre parênteses), que já resolve o caso real
+  de "Rosca martelo (acessório)" oferecendo "Rosca martelo".
+
+### UI (só acrescenta, não move nada)
+- botão ⇄ no canto superior ESQUERDO da foto de cada exercício (o PR badge fica no direito)
+- painel: escopo **Só hoje | Sempre** (padrão: só hoje) · **Fazer agora** (joga pro lugar logo
+  depois do último exercício já marcado — é o gesto do aparelho ocupado, um toque) · ↑ Subir /
+  ↓ Descer · lista de equivalentes · **Voltar pra \<exercício original\>**
+- marca no card: "1º hoje · de costume 4º" / "No lugar de X · só hoje"
+- faixa no topo do treino: "Hoje: ordem trocada · **Desfazer hoje**" e/ou "Sempre: ordem
+  personalizada · **Restaurar padrão**"
+
+### Sincronização
+`fundirBackup` funde `plan.ord` e `plan.tr` (permanentes — é preferência de programa, os dois
+aparelhos têm que mostrar o mesmo treino), local vence e o remoto preenche buraco. A camada
+`hoje` só entra se for de hoje e não houver nenhuma local — um treino começado no outro
+aparelho continua igual.
+
+### Verificação
+94 checagens novas (`tools/tests/t_ordem.js`): escopo, reversão, ordem parcial com id
+desconhecido, chave de log do substituto, histórico preservado nos dois sentidos, carimbo de
+posição, meta recalculada nos dois sentidos, travado falso evitado **com controle** (a mesma
+queda na posição de sempre continua acusando travado), volume semanal no músculo do
+substituto, fusão do plano pelo backup, e a ordem efetiva valendo pra auto-conclusão do
+treino. 234 no total nos dois apps. Conferido na tela nos dois (painel, faixa e marca).
 
 ---
 
