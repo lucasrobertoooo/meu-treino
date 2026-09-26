@@ -266,6 +266,18 @@
 
   /* ============ MODAL EDITAR EXERCÍCIO ============ */
 
+  .pausa-card{
+    margin:0 14px 12px; padding:12px 14px; border-radius:13px;
+    background:var(--glass, rgba(127,127,127,.10)); border:1px solid var(--line, rgba(127,127,127,.22));
+  }
+  .pausa-card .pc-t{font-size:13.5px; font-weight:700; margin-bottom:5px;}
+  .pausa-card .pc-f{font-size:12px; line-height:1.45; opacity:.8;}
+  .pausa-card .pc-b{
+    margin-top:10px; border:none; cursor:pointer; font-size:12px; font-weight:700;
+    background:var(--glass-2, rgba(127,127,127,.16)); color:inherit;
+    border-radius:9px; padding:7px 12px;
+  }
+  .pausa-card .pc-b:active{opacity:.75;}
   /* ---- Ordem do dia e troca de exercício (2026-09-26) ---- */
   .exact{
     position:absolute; top:12px; left:12px; z-index:3;
@@ -1957,7 +1969,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-09-26.01';
+const APP_VERSION = '2026-09-26.02';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -2547,7 +2559,71 @@ function renderFocoEditor(){
    semanas dentro do bloco: 1-2 na base, 3 acumulando (+1 no que é foco), 4 em deload.
    Ressalva honesta: que a rampa seja SUPERIOR a volume fixo alto tem base mais prática
    (modelo MEV/MAV/MRV) que de ensaio controlado — sobrecarga progressiva é que é consenso. */
-function mesoSemana(){ return ((blocoSemana()-1) % 4) + 1; }   // 1..4
+/* O mesociclo passou a ter âncora PRÓPRIA (mesoDesde), como no app dela. Antes era derivado
+   de blocoSemana(), então não havia como recomeçar o ciclo sem mexer no bloco de 12 semanas —
+   e mesoDesde ficava gravado no storage, sincronizado entre aparelhos e NUNCA lido. */
+function mesoDesde(){ return (ST.meta && ST.meta.mesoDesde) || null; }
+function mesoSemana(){
+  const d=mesoDesde();
+  if(d){ const k=daysBetween(d, today()); if(k>=0) return (Math.floor(k/7) % 4) + 1; }
+  return ((blocoSemana()-1) % 4) + 1;   // sem âncora: o relógio antigo, derivado do bloco
+}
+/* ============ PAUSA LONGA RECOMEÇA O MESOCICLO (2026-09-26) ============
+   O relógio do mesociclo era calendário puro: uma semana de viagem avançava a fase sem
+   nenhum estímulo. Quem viajasse na véspera da semana 4 emendava DUAS semanas fracas — a
+   viagem e o deload — sem precisar de nenhuma das duas. Fadiga é o que se acumula treinando,
+   não o que o calendário marca; e uma semana parada já É a semana leve.
+
+   Regra: 7+ dias sem NENHUMA série marcada (academia ou casa), tendo treinado antes disso,
+   re-ancora o mesociclo em hoje — a volta é semana 1, volume de base. Uma vez por pausa
+   (guarda pela data do último treino), visível na tela e desfazível num toque. O bloco de
+   ênfase não é tocado: ele mede meses de programa, não fadiga da semana. */
+function diasSemTreino(){
+  let ult=null;
+  for(const store of ['logs','freelog']){
+    const L=ST[store]||{};
+    for(const id of Object.keys(L)){
+      for(const s of (L[id]||[])){
+        if(!s || !s.date) continue;
+        if(!(s.sets||[]).some(x=>x&&x.done)) continue;
+        if(!ult || s.date>ult) ult=s.date;
+      }
+    }
+  }
+  if(!ult) return null;
+  const d=daysBetween(ult, today());
+  return d>=0 ? {dias:d, ultimo:ult} : null;
+}
+function reancorarMesoAposPausa(){
+  const p=diasSemTreino();
+  if(!p || p.dias<7) return false;
+  if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
+  const j=ST.meta.mesoPausa;
+  if(j && j.ultimo===p.ultimo) return false;              // esta pausa já foi tratada
+  ST.meta.mesoPausa={ultimo:p.ultimo, dias:p.dias, em:today(), antes:ST.meta.mesoDesde||null};
+  ST.meta.mesoDesde=today();
+  saveK('meta');
+  return true;
+}
+function desfazerReancoraMeso(){
+  const r=ST.meta && ST.meta.mesoPausa;
+  if(!r) return;
+  if(r.antes) ST.meta.mesoDesde=r.antes; else delete ST.meta.mesoDesde;
+  ST.meta.mesoPausa={...r, desfeito:true};
+  saveK('meta'); render();
+  showToast('Mesociclo de volta onde estava', 'ok', 2400);
+}
+// card do aviso: só nos 14 dias seguintes ao recomeço, e some se for desfeito
+function cardPausaMeso(){
+  const r=ST.meta && ST.meta.mesoPausa;
+  if(!r || r.desfeito || !r.em) return '';
+  if(daysBetween(r.em, today())>14) return '';
+  return `<div class="pausa-card">
+    <div class="pc-t">${r.dias} dias sem treinar — contei como a sua semana leve</div>
+    <div class="pc-f">O mesociclo recomeçou na <b>semana 1</b> (volume de base) em vez de te jogar numa semana de acúmulo ou numa semana leve logo depois da parada. A carga não mudou: até duas semanas parado a força se mantém.</div>
+    <button class="pc-b" onclick="desfazerReancoraMeso()">Desfazer</button>
+  </div>`;
+}
 function emDeload(){
   const ate = ST.meta && ST.meta.deloadAte;
   if(ate && daysBetween(today(), ate) >= 0) return true;        // deload antecipado por fadiga
@@ -4877,6 +4953,7 @@ function renderDays(){
       <button onclick="anteciparDeload()">Semana leve</button>
     </div>`;
   }
+  h+=cardPausaMeso();
   const bl=BLOCOS[blocoAtual()], blSem=blocoSemana(), blVenc=blocoVencido();
   h+=`<div class="bloco ${blVenc?'venceu':''}">
     <div class="bl-hd">
@@ -6909,6 +6986,7 @@ function fundirBackup(o){
     // bloco de ênfase: se o remoto começou o bloco depois, é o mais recente
     if(R.bloco && R.blocoDesde && (!M.blocoDesde || R.blocoDesde>M.blocoDesde)){ M.bloco=R.bloco; M.blocoDesde=R.blocoDesde; rel.campos++; }
     // deload: o mais recente manda
+    if(R.mesoPausa && !M.mesoPausa){ M.mesoPausa=R.mesoPausa; rel.campos++; }
     for(const k of ['deloadAte']){ const v=maisNova(M[k],R[k]); if(v && v!==M[k]){ M[k]=v; rel.campos++; } }
     for(const k of ['lastDeloadWeek','_uidc']){ const v=Math.max(+M[k]||0, +R[k]||0); if(v && v!==M[k]){ M[k]=v; } }
     // recuperação: união por data
@@ -7624,6 +7702,16 @@ migrateLogsStableId();   // chaves posicionais viram id estável (uma vez)
    shouldSwapExercise() jamais podia retornar — o estado "trocar" era inalcançável.
    O app dela sempre semeou o equivalente (mesoDesde) no boot; este não. */
 if(!(ST.meta && ST.meta.blocoDesde)){ ST.meta=ST.meta||{}; ST.meta.blocoDesde=today(); saveK('meta'); }
+/* Âncora do mesociclo. Semeada numa data que reproduz EXATAMENTE a semana que o relógio
+   antigo (derivado do bloco) daria hoje — ninguém muda de fase por causa de um deploy. */
+if(!(ST.meta && ST.meta.mesoDesde)){
+  ST.meta=ST.meta||{};
+  const _semAnt=((blocoSemana()-1) % 4) + 1;
+  const _off=Math.max(0, daysBetween(blocoDesde()||today(), today())) % 7;
+  ST.meta.mesoDesde=dateAdd(today(), -((_semAnt-1)*7 + _off));
+  saveK('meta');
+}
+try{ reancorarMesoAposPausa(); }catch(_){}   // semana parada é a semana leve: o ciclo recomeça na volta
 /* Resgata medida já gravada com campo desconhecido — o "Costas 102,5" importado em julho
    estava no storage e nunca apareceu na tela. Idempotente: só cria campo que falta. */
 try{ if(registrarCamposDesconhecidos(ST.measures)) render(); }catch(_){}

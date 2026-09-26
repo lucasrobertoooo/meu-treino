@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-09-26.01 (**Ordem do dia e troca de exercício** — reordenar/substituir só hoje ou sempre, reversível, com a meta recalculada pela posição; e **baixar a carga de propósito deixa de virar "travado"**. SHELL v60)
+**Última atualização:** 2026-09-26.02 (**Semana parada é a semana leve** — pausa de 7+ dias recomeça o mesociclo em vez de avançar a fase no calendário. SHELL v61)
+
+**Antes: 2026-09-26.01 (**Ordem do dia e troca de exercício** — reordenar/substituir só hoje ou sempre, reversível, com a meta recalculada pela posição; e **baixar a carga de propósito deixa de virar "travado"**. SHELL v60)
 
 **Antes: 2026-09-19.01 (**Sincronização entre aparelhos** — puxa/funde/envia sozinho, com carimbo de edição e lápide de apagado; fotos num namespace próprio. SHELL v59)
 
@@ -1042,6 +1044,36 @@ O foco era código: aqui, `BLOCOS[bloco].tier` com dois blocos fixos. Agora vive
 
 ### Volume e frequência — conferidos, estão certos
 Os 12 grupos batem a meta exatamente, e peito/costas/bíceps/tríceps treinam 2×/semana (Schoenfeld, Ogborn & Krieger 2016).
+
+---
+
+## Semana parada é a semana leve (2026-09-26.02)
+
+Pergunta do Lucas: 7 dias viajando, sem academia. "O app vai entender isso como?"
+
+O que já estava certo: **carga não muda** (`fatorVolta` só age a partir de 15 dias — força se
+mantém bem até ~2-3 semanas, McMaster et al 2013), a pausa **não cria sessão travada**, e
+`autoDetectDeload` já marcava a semana vazia como semana leve.
+
+O que estava errado: o relógio do mesociclo era **calendário puro**. Uma semana de viagem
+avançava a fase sem nenhum estímulo — e quem viajasse na véspera da semana 4 emendava DUAS
+semanas fracas, a viagem e o deload, sem precisar de nenhuma das duas. Fadiga é o que se
+acumula treinando, não o que o calendário marca.
+
+**Regra nova:** 7+ dias sem nenhuma série marcada (academia OU casa), tendo treinado antes,
+re-ancora o mesociclo em hoje — a volta é **semana 1, volume de base**. Uma vez por pausa
+(guarda pela data do último treino), com card explicando na tela e **Desfazer** num toque. O
+bloco de ênfase não é tocado: ele mede meses de programa, não fadiga da semana.
+
+**O mesociclo dele ganhou âncora própria.** Era derivado de `blocoSemana()`, então não havia
+como recomeçar o ciclo sem mexer no bloco de 12 semanas — e `ST.meta.mesoDesde` ficava
+gravado, sincronizado entre aparelhos e **nunca lido** (campo morto; o app dela sempre leu).
+Agora os dois usam `mesoDesde`. A migração semeia uma data que reproduz EXATAMENTE a semana
+que o relógio antigo daria hoje: ninguém muda de fase por causa de um deploy — 4 checagens
+cobrem as 4 semanas possíveis.
+
+36 checagens em `tools/tests/t_pausa.js`, incluindo: treino em casa segura o relógio (não é
+pausa), reabrir o app não re-ancora de novo, desfazer sobrevive ao reload.
 
 ---
 
