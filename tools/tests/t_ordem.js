@@ -73,6 +73,7 @@ async function cenario(app){
   const s0=w4._ls('logs')[idA][0], s3=w4._ls('logs')[idE][0];
   ok(s0.f===0 && s0.p===0,'1º exercício: fadiga 0 gravada', s0);
   ok(typeof s3.f==='number' && s3.f>0 && s3.p===3,'4º exercício: fadiga >0 gravada', s3);
+  ok(s0.fv===2 && s3.fv===2,'carimbo sai com a versão da fórmula', {a:s0.fv, b:s3.fv});
 
   // ---- inteligência: mesma sessão, posições diferentes
   const w5=await load(app, {}, {}); await w5._tick(150);
@@ -84,8 +85,8 @@ async function cenario(app){
     // duas sessões no MEIO da faixa, na posição padrão
     const meio=Math.min(rng.max-1, rng.min+1);
     const logs={}; logs[idX]=[
-      {date:D(9), sets:[{kg:'20',reps:String(meio),rir:'2',done:true}], f:w5.fadigaPadrao(idX), p:3},
-      {date:D(4), sets:[{kg:'20',reps:String(meio),rir:'2',done:true}], f:w5.fadigaPadrao(idX), p:3}];
+      {date:D(9), sets:[{kg:'20',reps:String(meio),rir:'2',done:true}], f:w5.fadigaPadrao(idX), fv:2, p:3},
+      {date:D(4), sets:[{kg:'20',reps:String(meio),rir:'2',done:true}], f:w5.fadigaPadrao(idX), fv:2, p:3}];
     const seed=Object.fromEntries(w5.localStorage._map); seed[ns+'_logs_v1']=JSON.stringify(logs);
     const A=await load(app, seed, {}); await A._tick(150);
     const normal=A.suggestNext(idX, A.dayEx(dia)[3]);
@@ -113,7 +114,7 @@ async function cenario(app){
     const r1=rng.min, r2=Math.min(rng.max, rng.min+1), r3=Math.min(rng.max, rng.min+2);
     if(!(r3>r2 && r2>r1)){ console.log('  (faixa curta demais pro teste de travado falso)'); }
     else{
-      const mk=(dt,reps,f)=>({date:dt, sets:[{kg:'20',reps:String(reps),rir:'2',done:true}], f});
+      const mk=(dt,reps,f)=>({date:dt, sets:[{kg:'20',reps:String(reps),rir:'2',done:true}], f, fv:2});   // fv:2 = carimbo da fórmula atual
       const subindo=[mk(D(21),r1,fPad), mk(D(14),r2,fPad), mk(D(7),r3,fPad)];
       const seedT=Object.fromEntries(w5.localStorage._map);
       seedT[ns+'_logs_v1']=JSON.stringify({[idX]:subindo.concat([mk(D(2),r1,fPad+6)])});

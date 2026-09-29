@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-09-26.02 (**Semana parada é a semana leve** — pausa de 7+ dias recomeça o mesociclo em vez de avançar a fase no calendário. SHELL v61)
+**Última atualização:** 2026-09-28.01 (**Peso e reps não sobem mais juntos** — dois bugs meus na feature de ordem, com trava de invariante e varredura de todas as metas. SHELL v62)
+
+**Antes: 2026-09-26.02 (**Semana parada é a semana leve** — pausa de 7+ dias recomeça o mesociclo em vez de avançar a fase no calendário. SHELL v61)
 
 **Antes: 2026-09-26.01 (**Ordem do dia e troca de exercício** — reordenar/substituir só hoje ou sempre, reversível, com a meta recalculada pela posição; e **baixar a carga de propósito deixa de virar "travado"**. SHELL v60)
 
@@ -1044,6 +1046,49 @@ O foco era código: aqui, `BLOCOS[bloco].tier` com dois blocos fixos. Agora vive
 
 ### Volume e frequência — conferidos, estão certos
 Os 12 grupos batem a meta exatamente, e peito/costas/bíceps/tríceps treinam 2×/semana (Schoenfeld, Ogborn & Krieger 2016).
+
+---
+
+## Peso e reps subindo juntos — bug meu, corrigido (2026-09-28.01)
+
+O Lucas viu a meta mandar subir a carga E as repetições ao mesmo tempo, e estranhou. Ele está
+certo: na dupla progressão o peso só sobe **quando as reps voltam pro piso da faixa**. Subir
+os dois juntos é prescrição impossível. Dois defeitos meus, os dois de 26/09, na feature de
+ordem/troca. O fluxo normal (`suggestFrom`) nunca esteve errado.
+
+**1 · o guard olhava a coisa errada.** Em `ajustePosicao`, o ramo "hoje você está mais
+descansado" tinha `if(base.reps>=rng.max) return null` pra dizer "já é subida de carga, não
+mexe". Mas depois de uma subida de carga as reps JÁ estão no piso — o guard nunca disparava, e
+o ajuste somava o topo da faixa em cima do peso novo: **"22,5kg × 16" onde o certo era
+"22,5kg × 12"**. O teste certo é `base.kg > base.de`.
+
+**2 · o índice de fadiga era contaminado pela fase do mesociclo.** `fadigaAte` usava
+`exSets()`, que soma +1 na semana de acúmulo e corta pela metade no deload. Resultado: a MESMA
+posição dava `f` diferente conforme a semana, e o app concluía "hoje você está mais
+descansado" **sem ninguém ter mexido em nada** — bastava a sessão de referência ser de uma
+semana de acúmulo. Agora usa `setsBase(e)`, as séries planejadas do programa: o índice mede
+ORDEM, e ordem não muda com a fase.
+
+O carimbo ganhou versão (`fv:2`). Os poucos `f` gravados entre 26 e 28/09 usaram a fórmula
+contaminada; sem versão eles seguiriam mentindo pra sempre. `fadigaDaSessao` só confia em
+`f` quando `fv>=2`, senão cai no palpite da ordem padrão.
+
+**Trava de invariante.** `travaDuplaProgressao(sug, e)` na saída de `suggestNext`: se a meta
+sobe a carga (`kg > de`), as reps voltam pro piso, ponto. Não é a correção — é a rede, pra que
+nenhum ajuste futuro consiga violar isso em silêncio.
+
+`tools/tests/t_meta.js`: **540 metas varridas no app dele e 468 no dela** (todo exercício ×
+base/acúmulo/deload × piso/meio/topo da faixa × ordem normal e invertida), nenhuma sobe peso e
+reps juntos; mais a prova de que a fadiga da posição é idêntica nas três fases, e de que
+adiantar um exercício que já ia subir carga mantém o piso em vez de somar reps.
+
+**Dois defeitos de processo aprendidos aqui**, ambos já corrigidos:
+- o script de patch escrevia o arquivo só no fim do laço; um `sys.exit(1)` no penúltimo passo
+  descartou em silêncio tudo que já tinha dito "ok" pro app dela. Os dois apps ficaram
+  divergentes por alguns minutos e só o teste pegou. **Conferir paridade dos dois arquivos
+  depois de todo patch em par.**
+- o `D(n)` do harness usava `toISOString()` (UTC) enquanto os apps usam data LOCAL: depois das
+  21h no Brasil os testes de data falhavam sozinhos. Agora é data local.
 
 ---
 

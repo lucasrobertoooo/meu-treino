@@ -75,5 +75,8 @@ async function load(app, seed, opts){
   w._tick=(ms)=>new Promise(r=>setTimeout(r,ms||30));
   return w;
 }
-const D=(n)=>{ const d=new Date(); d.setDate(d.getDate()-n); return d.toISOString().slice(0,10); };
+/* Data LOCAL, como o today() dos apps (localISO). Com toISOString() isto era UTC e, depois
+   das 21h no Brasil, D(8) virava 9 dias pro app — dois testes falharam por isso. */
+const D=(n)=>{ const d=new Date(); d.setDate(d.getDate()-n); const p=x=>String(x).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); };
 module.exports={load, D, fakeWorker, fakeIDB, NS, APPS};

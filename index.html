@@ -1969,7 +1969,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-09-26.02';
+const APP_VERSION = '2026-09-28.01';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -2149,10 +2149,15 @@ function ordemMudada(d){ const o=ordemDe(d); if(!o) return null; const atual=day
 function trocasDoDia(d){ return dayEx(d).filter(e=>e && e._alt); }
 
 /* ---- Fadiga acumulada até a posição i (índice de comparação, não caloria) ---- */
+/* Séries PLANEJADAS DO PROGRAMA, sem a fase do mesociclo. Usar exSets() aqui foi um erro:
+   ele soma +1 na semana de acúmulo e corta pela metade no deload, então a MESMA posição
+   dava f diferente conforme a semana — e o app concluía "hoje você está mais descansado"
+   sem ninguém ter mexido em nada. Este índice mede ORDEM, e ordem não muda com a fase. */
+function setsBase(e){ const ov=(BLOCOS[blocoAtual()] && BLOCOS[blocoAtual()].sets) || {}; return (e && e.id && ov[e.id]) || parseInt(e && e.s) || 3; }
 function fadigaAte(lista, i){
   const e=lista&&lista[i]; if(!e) return 0;
   let f=0;
-  for(let j=0;j<i;j++){ const x=lista[j]; if(!x) continue; f += (exSets(x)||0) * (mgSobrepoe(x,e)+FAD_SIST); }
+  for(let j=0;j<i;j++){ const x=lista[j]; if(!x) continue; f += (setsBase(x)||0) * (mgSobrepoe(x,e)+FAD_SIST); }
   return Math.round(f*100)/100;
 }
 function fadigaHoje(logid){ const p=posOfExId(logid); if(!p) return null; return fadigaAte(dayEx(p.day), p.i); }
@@ -2164,7 +2169,9 @@ function fadigaPadrao(logid){
   const k=base.findIndex(x=>x && x.id===idBase(logid));
   return k<0 ? null : fadigaAte(base, k);
 }
-function fadigaDaSessao(s, logid){ return (s && typeof s.f==='number') ? s.f : fadigaPadrao(logid); }
+/* fv = versão da fórmula do carimbo. Os f gravados entre 26 e 28/09 usavam exSets()
+   (contaminado pela fase) — sem versão eles seguiriam mentindo pra sempre. */
+function fadigaDaSessao(s, logid){ return (s && typeof s.f==='number' && s.fv>=2) ? s.f : fadigaPadrao(logid); }
 // mediana das últimas 6: a posição "de costume" deste exercício
 function fTipico(h, logid){
   const v=(h||[]).map(s=>fadigaDaSessao(s,logid)).filter(x=>typeof x==='number');
@@ -2191,7 +2198,12 @@ function ajustePosicao(base, e, id, ref){
   const onde=p?`${p.i+1}º de ${tot} hoje`:'posição diferente hoje';
   const passo=loadStepFor(id,e)||0;
   if(dif>0){
-    if(base.reps>=rng.max) return null;             // já é subida de carga: a regra normal basta
+    /* Se a regra normal JÁ está subindo a carga, não se mexe: na dupla progressão o peso sobe
+       E as reps caem pro piso da faixa. O teste era `base.reps>=rng.max`, que não pega este
+       caso — depois de uma subida de carga as reps JÁ estão no piso — e o app somava o topo
+       da faixa em cima do peso novo: "22,5kg × 16" onde o certo era "22,5kg × 12". */
+    if(base.kg>base.de) return null;
+    if(base.reps>=rng.max) return null;
     return {...base, reps:rng.max, why:`${onde} · mais cedo que de costume, mira o topo da faixa`, pos:{dif, dir:'cedo'}};
   }
   if(base.kg>base.de) return {...base, kg:base.de, reps:rng.max, why:`${onde} · mais tarde que de costume, segura a carga`, pos:{dif, dir:'tarde'}};
@@ -3742,8 +3754,8 @@ function upsertToday(id, sets){
   let f=null, pos=null;
   try{ f=fadigaHoje(id); pos=posOfExId(id); }catch(e){}
   const ex=ST.logs[id].find(s=>s.date===t);
-  if(ex){ ex.sets=sets; if(f!=null){ ex.f=f; if(pos) ex.p=pos.i; } }
-  else { const novo={date:t, sets}; if(f!=null){ novo.f=f; if(pos) novo.p=pos.i; } ST.logs[id].push(novo); }
+  if(ex){ ex.sets=sets; if(f!=null){ ex.f=f; ex.fv=2; if(pos) ex.p=pos.i; } }
+  else { const novo={date:t, sets}; if(f!=null){ novo.f=f; novo.fv=2; if(pos) novo.p=pos.i; } ST.logs[id].push(novo); }
   saveK('logs');
 }
 
@@ -4028,6 +4040,16 @@ function fatorVolta(id){
   if(d<=90)  return {f:0.90, d, txt:Math.round(d/7)+' semanas parado', nota:'Cortei ~10% da carga pra reentrada. Você recupera rápido — em 2-3 semanas costuma estar de volta ao que era.'};
   return       {f:0.75, d, txt:Math.round(d/30)+' meses parado', nota:'Cortei ~25% da carga. Reconstruir é bem mais rápido que construir da primeira vez, mas começar no peso antigo é como se machuca.'};
 }
+/* INVARIANTE da dupla progressão: quando o peso sobe, as reps voltam pro PISO da faixa.
+   Subir os dois juntos é prescrição impossível — e foi exatamente o bug de 26/09. A trava
+   fica aqui, na saída, pra que nenhum ajuste futuro consiga violar isso em silêncio. */
+function travaDuplaProgressao(sug, e){
+  if(!sug || !e) return sug;
+  const rng=parseRange(e.r);
+  if(rng.tempo || rng.livre) return sug;
+  if(sug.de!=null && sug.kg>sug.de && sug.reps>rng.min) return {...sug, reps:rng.min};
+  return sug;
+}
 function suggestNext(id, e){
   if(!e) return null;
   const ref=refSession(id);
@@ -4037,7 +4059,7 @@ function suggestNext(id, e){
   const v=fatorVolta(id);
   /* Volta de pausa manda mais que posição: comparar com uma sessão de meses atrás é problema
      maior que ter adiantado o exercício. Fora isso, a posição de hoje recalcula a meta. */
-  if(!v) return ajustePosicao(base, e, id, ref) || base;
+  if(!v) return travaDuplaProgressao(ajustePosicao(base, e, id, ref) || base, e);
   // reentrada: nunca sobe. Corta a carga e volta pro piso da faixa.
   const rng=parseRange(e.r);
   const passo=loadStepFor(id, e) || 2.5;
