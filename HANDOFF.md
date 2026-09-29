@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-09-28.01 (**Peso e reps não sobem mais juntos** — dois bugs meus na feature de ordem, com trava de invariante e varredura de todas as metas. SHELL v62)
+**Última atualização:** 2026-09-29.01 (**Auditoria geral** — 5 achados corrigidos, incluindo um de tela branca; modelo de duração unificado. SHELL v63)
+
+**Antes: 2026-09-28.01 (**Peso e reps não sobem mais juntos** — dois bugs meus na feature de ordem, com trava de invariante e varredura de todas as metas. SHELL v62)
 
 **Antes: 2026-09-26.02 (**Semana parada é a semana leve** — pausa de 7+ dias recomeça o mesociclo em vez de avançar a fase no calendário. SHELL v61)
 
@@ -1046,6 +1048,85 @@ O foco era código: aqui, `BLOCOS[bloco].tier` com dois blocos fixos. Agora vive
 
 ### Volume e frequência — conferidos, estão certos
 Os 12 grupos batem a meta exatamente, e peito/costas/bíceps/tríceps treinam 2×/semana (Schoenfeld, Ogborn & Krieger 2016).
+
+---
+
+## Auditoria geral (2026-09-29.01)
+
+Varredura mecânica dos dois apps, não no olho: função sem chamador, campo de `ST.meta`
+gravado e nunca lido, divergência entre os apps em função de motor que deveria ser igual,
+invariantes em tempo de execução, e render de todas as telas com dado sujo.
+
+**Limpo:** zero função morta nos dois. Das 48 funções de motor comparadas, 37 são byte a byte
+iguais e as 10 diferenças são todas legítimas (guarda de cardio, concordância de gênero,
+programas diferentes). `suggestNext`, `progressState` e `sincronizarNuvem` sem divergência de
+lógica. Nenhum `mg` sem rótulo, nenhuma faixa de reps mal interpretada, `exId` único por dia,
+`dayEx` nunca perde nem duplica exercício, `exSets>=1` em toda fase.
+
+### F1 · registro de sessão sem data derrubava a aba Corpo (os dois apps)
+A guarda de boot conferia que `ST.session.history` era ARRAY, nunca o shape de cada registro.
+Um registro sem `date` mata `renderCorpo` em `r.date.slice(5)` — aba inteira em branco. É o
+MESMO furo que a foto sem `date` e o `bw` com `kg` string já tinham dado; `session.history`
+ficou de fora das duas vezes. Agora a guarda **recupera a data pelo `endAt`/`startAt`** quando
+dá e só descarta o que não tem conserto — nunca joga a lista fora. Os dois pontos de render
+também deixaram de confiar (`String(r.date||'')`). A fusão de backup já filtrava por `it.date`;
+o furo era o storage local.
+
+### F2 · `REST` não tem `cardio` (era latente, virou alcançável)
+`REST = {comp, iso, core}`. O programa dela tem `t:'cardio'`, e `toggleDone` lia `REST[t]` sem
+fallback: marcar a bike abriria um descanso com o valor ANTERIOR do timer e chamaria o Atalho
+do iPhone com `NaN`. Era inalcançável só porque o cardio é o último exercício do dia — **e a
+reordenação que subi em 26/09 tornou alcançável**. Guarda `if(_rest>0)` nos dois apps.
+
+### F3 · o modelo de duração dela subestimava 6 a 18 min por treino
+`exMinutes` era diferente nos dois apps: o dela não contava as 2 séries de aquecimento dos
+compostos nem dobrava o trabalho unilateral ("por perna"). Unificado no modelo dele, que é o
+completo, e portado o `paceFactor` — que calibra a estimativa pela mediana da duração REAL das
+sessões e não existia no app dela. Novos: `cardioMinutes(e)` (a bike é tempo fixo, não série)
+e `dayMinutes(d)` (peso calibrado + cardio). Números reais depois da correção:
+
+| | A | B | C | D | média |
+|---|---|---|---|---|---|
+| dele (só peso) | 68 | 73 | 68 | 75 | **71** |
+| dela (peso + bike) | 72 | 85 | 82 | 89 | **82** |
+
+O estimador antigo dela dizia 67/70/71/71 — é de onde vinha a impressão de que as durações
+batiam. **Não batem: os treinos dela são ~11 min mais longos.** Fechar isso exige mexer no
+programa de alguém, então fica como decisão do Lucas (ver "Pendências").
+
+### F4 · `bloco`/`blocoDesde` mortos no app dela
+Blocos de ênfase são conceito do app DELE. No dela nada lê esses campos — só viajavam no
+backup. Removidos da fusão de meta. (Espelho do `mesoDesde`, que era o contrário: lido lá,
+morto aqui, corrigido em 26/09.)
+
+### F5 · mover o cardio pra antes dos pesos passava em silêncio
+A regra do próprio programa dela é bike SEMPRE depois. Com a reordenação isso virou possível
+num toque. O app não bloqueia — é o treino dela — mas o painel agora avisa.
+
+26 checagens novas em `tools/tests/t_audit.js`, uma por achado.
+
+### Defeito de processo (de novo)
+O script de patch escreveu o arquivo dela só no fim do laço e um `sys.exit(1)` descartou em
+silêncio tudo que já tinha dito "ok" — **a mesma armadilha de 28/09**, anotada e repetida.
+Agora o padrão é `edita(old,new,label)` que **grava a cada substituição**. Conferir paridade
+dos dois arquivos continua obrigatório depois de todo patch em par.
+
+---
+
+### Pendência aberta: paridade de duração
+
+O Lucas quer que o treino dele tenha a mesma duração dos dela. Com o estimador corrigido
+(F3), a diferença real é de ~11 min: ele 71, ela 82 (peso + bike). Não dá pra encostar sem
+mexer no programa de alguém, e o dela está protegido por decisão dele.
+
+Caminho recomendado, **não aplicado** (é mudança de conteúdo de treino, se pergunta antes):
+**10-15 min de bike Z2 no fim dos treinos dele**, espelhando a estrutura dela. Fecha os 11 min
+quase exatos (A+10, B+12, C+15, D+15 emparelha dia a dia), **não custa hipertrofia** (bike não
+interfere; corrida interferiria — Wilson 2012), e não mexe em uma série sequer de volume.
+
+Se for aplicar: o exercício entra com `t:'cardio'` e `mg:{}` — **`mg:{cardio:1}` NÃO**, porque
+`cardio` não existe em `MG_LABELS` no app dele e o volume seria somado e sumiria da tela (o
+bug de 09/09). A guarda F2 já cobre o descanso.
 
 ---
 

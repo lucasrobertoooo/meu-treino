@@ -1969,7 +1969,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-09-28.01';
+const APP_VERSION = '2026-09-29.01';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -2331,6 +2331,12 @@ function planRender(){
       ? 'Mais cedo do que de costume: você chega menos cansado, então a meta de hoje mira o topo da faixa de reps.'
       : 'Mais tarde do que de costume: rende menos por causa do que veio antes. A meta de hoje afrouxa e esta sessão não conta como travada.';
   }
+  /* A regra do próprio programa é cardio SEMPRE depois dos pesos: bike antes rouba o que
+     sobra pro estímulo de força. O app não bloqueia — é o treino dela, e pode haver motivo —
+     mas não deixa passar em silêncio. */
+  const _l=dayEx(d);
+  if(e.t==='cardio' && planIdx < _l.length-1 && _l.slice(planIdx+1).some(x=>x && x.t!=='cardio'))
+    nota = 'Cardio antes dos pesos: a bike antes rouba a energia do estímulo de força. A recomendação do seu programa é deixar por último.';
   const esc2=(s)=>esc(String(s==null?'':s));
   ov.innerHTML=`<div class="exedit-card plano-card">
     <div class="exedit-hd"><span>${esc2(exName(e))}</span><button class="exedit-x" onclick="planFechar()" aria-label="Fechar">×</button></div>
@@ -3093,6 +3099,25 @@ for(const date in ST.protein){
 if(!ST.session || typeof ST.session!=='object'){ ST.session={active:null, history:[]}; }
 if(!('active' in ST.session)) ST.session.active=null;
 if(!Array.isArray(ST.session.history)) ST.session.history=[];
+/* Cada registro precisa de data; sem isso renderCorpo morre em r.date.slice() e a aba Corpo
+   some inteira. A guarda acima só checava que history era ARRAY — mesmo furo que a foto sem
+   date e o bw com kg string já tinham dado. Aqui: RECUPERA a data pelo carimbo de tempo
+   quando dá, e só descarta o que não tem conserto. Nunca joga a lista fora.
+   (A fusão de backup já filtrava por `it.date`; o furo era o storage local.) */
+if(Array.isArray(ST.session.history)){
+  const _antes=ST.session.history.length;
+  ST.session.history=ST.session.history
+    .filter(r=>r && typeof r==='object')
+    .map(r=>{
+      if(typeof r.date!=='string' || r.date.length<10){
+        const t=+r.endAt || +r.startAt || 0;
+        if(t>0) r.date=localISO(new Date(t));
+      }
+      return r;
+    })
+    .filter(r=> typeof r.date==='string' && r.date.length>=10);
+  if(ST.session.history.length!==_antes){ try{ saveK('session'); }catch(e){} console.log('[boot] histórico de treino: '+(_antes-ST.session.history.length)+' registro(s) sem data descartado(s)'); }
+}
 // Migração defensiva: freelog deve ser objeto {sessionId: [{date, sets}]}
 if(!ST.freelog || typeof ST.freelog!=='object' || Array.isArray(ST.freelog)) ST.freelog={};
 // Migração defensiva: exmeta = {exId: {n?, cue?, note?}} — overrides do usuário por exercício
@@ -4691,14 +4716,32 @@ function autoDetectDeload(){
 
 // Minutos estimados de um exercício: execução + descanso por série (+ aquecimento nos compostos).
 // Unilateral ("por lado") conta dobrado — são duas execuções por série registrada.
+/* Modelo de duração — IGUAL nos dois apps (antes o dela não contava aquecimento nem
+   unilateral, e subestimava o treino dela em 6 a 18 min por sessão).
+   - 2 séries de aquecimento em todo composto (~2,3 min)
+   - "por lado"/"por perna" custa o DOBRO de ciclos exec+descanso
+   - cardio entra à parte (cardioMinutes), porque é tempo fixo, não série */
 const EXEC_SEC = {comp:45, iso:35, core:40};
 function exMinutes(e){
-  if(!e) return 0;
-  const sets = exSets(e) * (/por lado/i.test(String(e.r||'')) ? 2 : 1);
+  if(!e || e.t==='cardio') return 0;
+  const uni = /por lado|por perna|cada lado|\/lado|\/perna/i.test(String(e.r||''));
+  const sets = exSets(e) * (uni ? 2 : 1);
   const exec = EXEC_SEC[e.t] ?? 35;
   const rest = REST[e.t] ?? 90;
   const warm = e.t==='comp' ? 2*(25+45) : 0;     // 2 séries de aquecimento
   return (sets*(exec+rest) + warm)/60;
+}
+// Minutos de cardio prescritos no exercício ("15 min", "25-35 min"): média da faixa.
+function cardioMinutes(e){
+  if(!e || e.t!=='cardio') return 0;
+  const m=String(e.r||'').match(/(\d+)\s*(?:-\s*(\d+))?\s*min/i);
+  if(!m) return 0;
+  return m[2] ? ((+m[1])+(+m[2]))/2 : (+m[1]);
+}
+// Duração estimada do dia inteiro, peso + cardio, já calibrada pelo ritmo real.
+function dayMinutes(d){
+  const l=dayEx(d), f=paceFactor(d);
+  return l.reduce((a,e)=>a + exMinutes(e)*f + cardioMinutes(e), 0);
 }
 // Fator que aproxima o modelo do tempo que ELE de fato leva neste treino (mediana do histórico).
 // Sem histórico suficiente, fica 1 (modelo puro). Limitado pra um outlier não distorcer tudo.
@@ -5054,7 +5097,7 @@ function renderDay(d){
   if(hist.length){
     const rows=hist.slice(0,4).map(r=>{
       const vol=r.volume?` · ${r.volume>=1000?(r.volume/1000).toFixed(1)+'t':r.volume+'kg'}`:'';
-      return `<div class="wkh-row"><span class="wkh-d">${esc(r.date.slice(5).replace('-','/'))}</span><span class="wkh-v">${fmtDurMin(r.activeMs)}</span><span class="wkh-s">${r.sets||0} sets${vol}</span></div>`;
+      return `<div class="wkh-row"><span class="wkh-d">${esc(String(r.date||'').slice(5).replace('-','/'))}</span><span class="wkh-v">${fmtDurMin(r.activeMs)}</span><span class="wkh-s">${r.sets||0} sets${vol}</span></div>`;
     }).join('');
     h+=`<div class="wkhist">
       <div class="wkh-h">${I.hist} Histórico deste treino</div>
@@ -5450,9 +5493,10 @@ function toggleDone(id,k,el){
       // IMPORTANTE: dispara Shortcut ANTES de abrir overlay/audio/etc — iOS PWA
       // exige deep-link como primeira ação do gesto de usuário. Qualquer coisa
       // no meio (openTimer, unlockAudio, requestWakeLock) queima o gesto.
-      const _exT=(dayEx(day)[i]||{}).t;
-      maybeInvokeShortcutTimer(REST[_exT]);
-      openTimer(REST[_exT]); startTimer();
+      /* Mesma guarda do app dela: tipo sem descanso definido (hoje só 'cardio') não pode
+         abrir um descanso com o valor ANTERIOR do timer nem chamar o Atalho com NaN. */
+      const _exT=(dayEx(day)[i]||{}).t, _rest=REST[_exT];
+      if(_rest>0){ maybeInvokeShortcutTimer(_rest); openTimer(_rest); startTimer(); }
     }
     // Detecta workout 100% completo → celebra direto (sem perguntar)
     if(isWorkoutComplete(day) && !alreadyCelebratedToday(day)){
@@ -6028,7 +6072,7 @@ function renderCorpo(){
         <div class="hbadge ${wk?wk.type:''}">${r.workoutId}</div>
         <div class="hmeta">
           <div class="hnm">${esc(nm)}</div>
-          <div class="hsub">${esc(r.date.slice(5).replace('-','/'))} · ${r.sets||0} sets${vol?` · ${vol}`:''}</div>
+          <div class="hsub">${esc(String(r.date||'').slice(5).replace('-','/'))} · ${r.sets||0} sets${vol?` · ${vol}`:''}</div>
         </div>
         <div class="hdur">${fmtDurMin(r.activeMs)}</div>
       </div>`;
