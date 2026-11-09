@@ -51,6 +51,15 @@ function resp(status, body){ return { ok:status>=200&&status<300, status, json:a
 async function load(app, seed, opts){
   opts=opts||{};
   const html=fs.readFileSync(APPS[app],'utf8');
+  /* Plano novo dela (09/11/2026): o boot migra o programa uma vez (arquiva ST.prog da academia,
+     recomeça o mesociclo, marca progDesde). Seed não vazio representa um aparelho que JÁ está no
+     plano novo — senão a migração reescreveria o estado que o teste montou. A migração em si é
+     testada em t_plano.js (opts.migrar=true deixa o seed como veio). */
+  if(app==='hers' && seed && Object.keys(seed).length && !opts.migrar){
+    seed={...seed}; const k='treinoela_meta_v1';
+    let m={}; try{ m=JSON.parse(seed[k]||'{}')||{}; }catch(e){}
+    if(!m.progVer){ m.progVer='2026-11-09'; seed[k]=JSON.stringify(m); }
+  }
   const errors=[];
   const dom=new JSDOM(html, { runScripts:'dangerously', pretendToBeVisual:true, url:'https://lucasrobertoooo.github.io/'+(app==='his'?'meu-treino':'meu-treino-ela')+'/', beforeParse(w){
     Object.defineProperty(w,'localStorage',{value:fakeStorage(seed), configurable:true});

@@ -77,10 +77,14 @@ async function cenario(app){
 
   // ---- inteligência: mesma sessão, posições diferentes
   const w5=await load(app, {}, {}); await w5._tick(150);
-  const idX=w5.exId(dia,3);
-  const ex3=w5.dayEx(dia)[3];
+  /* qual exercício mover: no app dele o 4º; no dela (plano de 09/11/2026) o 2º — o 4º dela é a
+     abdutora, e depois dela só vêm abdominal e bike, que quase não cansam glúteo: jogá-la pro
+     fim não muda a fadiga o bastante pra regra da "diferença grande" agir (o que está certo). */
+  const IX = app==='hers' ? 1 : 3;
+  const idX=w5.exId(dia,IX);
+  const ex3=w5.dayEx(dia)[IX];
   const rng=w5.parseRange(ex3.r);
-  if(rng.tempo||rng.livre){ console.log('  (4º exercício é tempo/livre — pulo o teste de meta)'); }
+  if(rng.tempo||rng.livre){ console.log('  (exercício escolhido é tempo/livre — pulo o teste de meta)'); }
   else {
     // duas sessões no MEIO da faixa, na posição padrão
     const meio=Math.min(rng.max-1, rng.min+1);
@@ -89,19 +93,20 @@ async function cenario(app){
       {date:D(4), sets:[{kg:'20',reps:String(meio),rir:'2',done:true}], f:w5.fadigaPadrao(idX), fv:2, p:3}];
     const seed=Object.fromEntries(w5.localStorage._map); seed[ns+'_logs_v1']=JSON.stringify(logs);
     const A=await load(app, seed, {}); await A._tick(150);
-    const normal=A.suggestNext(idX, A.dayEx(dia)[3]);
+    const normal=A.suggestNext(idX, A.dayEx(dia)[IX]);
     ok(normal && normal.reps===meio+1,'na posição de sempre: +1 rep (dupla progressão)', normal);
     // move pro 1º lugar
-    A.planAbrir(dia,3); A.planSetEsc('hoje'); A.planFazerAgora();
+    A.planAbrir(dia,IX); A.planSetEsc('hoje'); A.planFazerAgora();
     const idY=A.exId(dia,0);
     ok(idY===idX,'o exercício foi pro 1º lugar', {idX, idY});
     const cedo=A.suggestNext(idX, A.dayEx(dia)[0]);
     ok(cedo && cedo.reps===rng.max,'mais cedo: meta mira o TOPO da faixa', cedo);
-    ok(cedo && /mais cedo/.test(cedo.why||''),'e explica o porquê', cedo&&cedo.why);
+    // faixa curta (10-12 no plano dela): o +1 normal JÁ chega no topo, e aí a posição não muda nada — sem explicação a dar
+    ok(cedo && (normal.reps>=rng.max || /mais cedo/.test(cedo.why||'')),'e explica o porquê (quando a posição muda a meta)', cedo&&cedo.why);
     // agora joga pro fim
     A.planDesfazerHoje(dia);
     const ids=A.dayEx(dia).map(e=>e.id);
-    const [mv]=ids.splice(3,1); ids.push(mv);
+    const [mv]=ids.splice(IX,1); ids.push(mv);
     A.planGravarOrdem(dia, ids, 'hoje');
     const fim=A.suggestNext(idX, A.dayEx(dia)[A.dayEx(dia).length-1]);
     ok(fim && fim.reps===rng.min,'mais tarde: meta cai pro piso da faixa', fim);

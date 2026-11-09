@@ -44,7 +44,9 @@ async function cenario(app){
   const comp={n:'x', s:4, r:'8-12', t:'comp', mg:{}};
   const uni ={n:'y', s:3, r:'10-12 por perna', t:'comp', mg:{}};
   const card={n:'z', s:1, r:'25-35 min', t:'cardio', mg:{}};
-  ok(Math.abs(C.exMinutes(comp)-15.3)<0.2,'composto 4x8-12 = ~15,3 min (com aquecimento)', C.exMinutes(comp).toFixed(1));
+  // descanso de composto: 150 s no app dele, 105 s no dela (plano de 09/11/2026: 90-120 s)
+  const esperado = app==='hers' ? 12.3 : 15.3;
+  ok(Math.abs(C.exMinutes(comp)-esperado)<0.2,`composto 4x8-12 = ~${esperado} min (com aquecimento)`, C.exMinutes(comp).toFixed(1));
   ok(C.exMinutes(uni) > C.exMinutes({...uni, r:'10-12'}),'unilateral custa mais que bilateral', {uni:C.exMinutes(uni).toFixed(1), bi:C.exMinutes({...uni,r:'10-12'}).toFixed(1)});
   ok(C.exMinutes(card)===0 && C.cardioMinutes(card)===30,'cardio: 0 min de peso, 30 min de bike', {p:C.exMinutes(card), c:C.cardioMinutes(card)});
   ok(typeof C.paceFactor==='function' && C.paceFactor(C.diasProg()[0])===1,'paceFactor existe e vale 1 sem histórico');
