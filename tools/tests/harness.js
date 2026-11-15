@@ -60,6 +60,13 @@ async function load(app, seed, opts){
     let m={}; try{ m=JSON.parse(seed[k]||'{}')||{}; }catch(e){}
     if(!m.progVer){ m.progVer='2026-11-15'; seed[k]=JSON.stringify(m); }
   }
+  /* Ciclo comum (15/11/2026): o boot ancora os dois apps em 2026-11-16 uma vez. Seed não vazio
+     já está no ciclo comum, senão a âncora que o teste montou seria trocada. */
+  if(seed && Object.keys(seed).length && !opts.migrar){
+    seed={...seed}; const k=NS[app]+'_meta_v1';
+    let m={}; try{ m=JSON.parse(seed[k]||'{}')||{}; }catch(e){}
+    if(!m.cicloComum){ m.cicloComum='2026-11-16'; seed[k]=JSON.stringify(m); }
+  }
   const errors=[];
   const dom=new JSDOM(html, { runScripts:'dangerously', pretendToBeVisual:true, url:'https://lucasrobertoooo.github.io/'+(app==='his'?'meu-treino':'meu-treino-ela')+'/', beforeParse(w){
     Object.defineProperty(w,'localStorage',{value:fakeStorage(seed), configurable:true});

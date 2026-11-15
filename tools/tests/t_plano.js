@@ -54,7 +54,8 @@ const ESPERADO={A:['c_3','a_3','a_2','a_4','b_8','a_7'], B:['b2_grv','a_6','d_6'
   const prog=M._ls('prog');
   ok(!prog.academia && prog.casa && prog.casa.A.length===1,'programa de casa não foi tocado', Object.keys(prog));
   ok(Object.keys(prog).length>0,'prog nunca fica vazio (a sync puxaria o antigo de volta)');
-  ok(meta.mesoDesde===D(0) && arq.mesoDesde===D(17),'mesociclo recomeça junto com o plano (o antigo fica no arquivo)', {agora:meta.mesoDesde, antes:arq.mesoDesde});
+  // depois da migração o ciclo comum aos dois apps (15/11/2026) ancora em 2026-11-16
+  ok(meta.mesoDesde==='2026-11-16' && arq.mesoDesde===D(17),'mesociclo recomeça (no ciclo comum aos dois apps); o antigo fica no arquivo', {agora:meta.mesoDesde, antes:arq.mesoDesde});
   ok(meta.progM===502,'carimbo do programa: +1 por degrau sobre o compartilhado (igual nos dois aparelhos)', meta.progM);
   ok(M.paceFactor('A')===1,'sessão do programa antigo não calibra a duração do novo', M.paceFactor('A'));
   ok(M.dayOfExId('a_4')==='A' && M.dayOfExId('c3_bul')==='C' && M.dayOfExId('e_1')==='E','dayOfExId atravessa o marcador sem erro');
@@ -79,7 +80,7 @@ const ESPERADO={A:['c_3','a_3','a_2','a_4','b_8','a_7'], B:['b2_grv','a_6','d_6'
   ok(JSON.stringify(N9.dayEx('B').map(e=>e.id))===JSON.stringify(ESPERADO.B) && a9.prog.B,'treino 2 editado dá lugar ao enxuto (o editado vai pro arquivo)');
   ok(N9.dayEx('A')[0].n==='Búlgaro editado','edição dela no treino 1 continua (dia que não mudou)');
   ok(a9.tr.b2_tri && !a9.tr.a_2 && N9._ls('meta').plan.tr.academia.a_2,'troca de exercício que saiu vai pro arquivo; a de exercício que ficou continua', a9.tr);
-  ok(m9.mesoDesde===D(6),'mesociclo NÃO recomeça no degrau 2', m9.mesoDesde);
+  ok(m9.mesoAntesComum===D(6) && m9.mesoDesde==='2026-11-16','degrau 2 não recomeça o ciclo; quem ancora é o ciclo comum (anterior guardado)', {antes:m9.mesoAntesComum, agora:m9.mesoDesde});
   ok(N9.paceFactor('B')===1,'duração do treino 2 não calibra com as sessões do treino 2 antigo', N9.paceFactor('B'));
   ok(N9._errors.length===0,'sem erro global', N9._errors[0]);
 

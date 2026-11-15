@@ -105,6 +105,22 @@ async function cenario(app){
     const st=N.progressState('a_4', N.exDoLog('a_4'));
     ok(st.k!=='carga-alta' && st.sug && st.sug.kg===40,'abdutora 12-16 → 15-20: recomeça a contagem, carga de referência mantida', st);
   }
-  for(const w of [A,B,C,E,F,G,Hh,I,J,Kk]) if(w._errors.length){ ok(false,'erro global',w._errors[0]); break; }
+  console.log('-- ciclo comum (15/11/2026)');
+  const sc={}; sc[K('meta')]=JSON.stringify({mesoDesde:D(17)}); sc[K('logs')]=JSON.stringify({[id]:[sess(D(1),normal)]});
+  const P=await load(app,sc,{migrar:true}); await P._tick(150);
+  const mp=P._ls('meta');
+  const antesEsperado = app==='hers' ? D(0) : D(17);   // no dela a migração do plano já tinha recomeçado o ciclo hoje
+  ok(mp.mesoDesde==='2026-11-16' && mp.mesoAntesComum===antesEsperado && mp.cicloComum==='2026-11-16','âncora comum na segunda 16/11 (anterior guardada)', mp);
+  ok(P.mesoSemana()===(D(0)<'2026-11-16'?1:P.mesoSemana()) && P.mesoSemana()>=1,'antes da segunda já conta como semana 1', P.mesoSemana());
+  const P2=await load(app,Object.fromEntries(P.localStorage._map),{migrar:true}); await P2._tick(150);
+  ok(P2._ls('meta').mesoAntesComum===antesEsperado && P2._ls('meta').mesoDesde==='2026-11-16','ancora uma vez só (segunda abertura não mexe)');
+  const s4w={}; s4w[K('meta')]=JSON.stringify({mesoDesde:D(22)}); s4w[K('logs')]=JSON.stringify({[id]:[sess(D(1),normal)]});
+  const Q=await load(app,s4w,{}); await Q._tick(150);
+  const e5=Q.exDoLog(id), b5=Q.setsBase(e5);
+  ok(Q.mesoSemana()===4 && Q.exSets(e5)===Math.max(1,b5-1),'semana 4: 1 série a menos (regra dela, agora nos dois)', {base:b5, s:Q.exSets(e5)});
+  const s3w={}; s3w[K('meta')]=JSON.stringify({mesoDesde:D(15)}); s3w[K('logs')]=JSON.stringify({[id]:[sess(D(1),normal)]});
+  const R=await load(app,s3w,{}); await R._tick(150);
+  ok(R.mesoSemana()===3 && R.exSets(R.exDoLog(id))===b5 && R.faseMeso().k==='base','semana 3: sem série extra', {sem:R.mesoSemana(), s:R.exSets(R.exDoLog(id)), f:R.faseMeso().k});
+  for(const w of [A,B,C,E,F,G,Hh,I,J,Kk,P,Q,R]) if(w._errors.length){ ok(false,'erro global',w._errors[0]); break; }
 }
 (async()=>{ await cenario('his'); await cenario('hers'); console.log(`\n${n-fails}/${n} ok`+(fails?`, ${fails} FALHAS`:'')); process.exit(fails?1:0); })().catch(e=>{ console.error('FATAL',e); process.exit(1); });

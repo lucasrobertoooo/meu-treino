@@ -1969,7 +1969,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-11-15.01';
+const APP_VERSION = '2026-11-15.02';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -2586,7 +2586,7 @@ function renderFocoEditor(){
   const rot={f:'FOCO', a:'apoio', manut:'manutenção', fora:'—'};
   return `<div class="focoed">
     <div class="fe-h">Toque num grupo pra girar entre <b>foco</b> → apoio → manutenção → nada.
-      Foco e apoio ganham série a mais na semana de acúmulo e são os últimos a sair quando o tempo aperta.</div>
+      Foco e apoio são os últimos a sair quando o tempo aperta (45 min e Essencial).</div>
     <div class="fe-grid">
       ${MG_ORDER.filter(mg=>MG_LABELS[mg] && mg!=='cardio').map(mg=>{
         const k=camada(mg);
@@ -2608,10 +2608,26 @@ function renderFocoEditor(){
 /* O mesociclo passou a ter âncora PRÓPRIA (mesoDesde), como no app dela. Antes era derivado
    de blocoSemana(), então não havia como recomeçar o ciclo sem mexer no bloco de 12 semanas —
    e mesoDesde ficava gravado no storage, sincronizado entre aparelhos e NUNCA lido. */
+/* ============ CICLO COMUM AOS DOIS APPS (15/11/2026, decisão do Lucas) ============
+   Os dois treinam juntos e os ciclos estavam desencontrados: regras diferentes (no dele +1 série
+   na semana 3 e metade na 4; no dela, -1 série na 4) e âncoras diferentes. Agora os dois usam a
+   regra do plano dela e começam a semana 1 na MESMA segunda. Uma vez por aparelho; a âncora
+   anterior fica guardada. Pausa de 7+ dias ou semana leve antecipada ainda re-ancoram cada app
+   por conta própria — o que é o certo pra quem parou, mas desencontra os dois de novo. */
+const CICLO_COMUM='2026-11-16';
+function ancorarCicloComum(){
+  if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
+  if(ST.meta.cicloComum===CICLO_COMUM) return false;
+  ST.meta.mesoAntesComum=ST.meta.mesoDesde||null;
+  ST.meta.mesoDesde=CICLO_COMUM;
+  ST.meta.cicloComum=CICLO_COMUM;
+  saveK('meta');
+  return true;
+}
 function mesoDesde(){ return (ST.meta && ST.meta.mesoDesde) || null; }
 function mesoSemana(){
   const d=mesoDesde();
-  if(d){ const k=daysBetween(d, today()); if(k>=0) return (Math.floor(k/7) % 4) + 1; }
+  if(d){ const k=daysBetween(d, today()); if(k>=0) return (Math.floor(k/7) % 4) + 1; if(ST.meta && ST.meta.cicloComum===d) return 1; }   // ciclo comum que começa numa segunda futura: semana 1
   return ((blocoSemana()-1) % 4) + 1;   // sem âncora: o relógio antigo, derivado do bloco
 }
 /* ============ PAUSA LONGA RECOMEÇA O MESOCICLO (2026-09-26) ============
@@ -2666,7 +2682,7 @@ function cardPausaMeso(){
   if(daysBetween(r.em, today())>14) return '';
   return `<div class="pausa-card">
     <div class="pc-t">${r.dias} dias sem treinar — contei como a sua semana leve</div>
-    <div class="pc-f">O mesociclo recomeçou na <b>semana 1</b> (volume de base) em vez de te jogar numa semana de acúmulo ou numa semana leve logo depois da parada. A carga não mudou: até duas semanas parado a força se mantém.</div>
+    <div class="pc-f">O mesociclo recomeçou na <b>semana 1</b> (volume de base) em vez de te jogar numa semana leve logo depois da parada. A carga não mudou: até duas semanas parado a força se mantém.</div>
     <button class="pc-b" onclick="desfazerReancoraMeso()">Desfazer</button>
   </div>`;
 }
@@ -2676,10 +2692,8 @@ function emDeload(){
   return mesoSemana()===4;
 }
 function faseMeso(){
-  if(emDeload()) return {k:'deload', nome:'Deload', nota:'Semana leve. Séries cortadas pela metade — carga igual, sem chegar perto da falha.'};
-  const m=mesoSemana();
-  if(m<=2) return {k:'base', nome:'Base', nota:'Volume de base. É daqui que a rampa sobe.'};
-  return {k:'acumulo', nome:'Acúmulo', nota:'Semana mais pesada: uma série a mais em cada exercício do foco.'};
+  if(emDeload()) return {k:'deload', nome:'Semana leve', nota:'Uma série a menos em cada exercício. A carga fica igual: a semana é pra recuperar.'};
+  return {k:'base', nome:'Progressão', nota:'Suba a carga ou as repetições. Quando fizer o topo da faixa em todas as séries, aumenta a carga.'};
 }
 // Séries planejadas do exercício AGORA: bloco + fase do mesociclo
 /* ============ RECUPERAÇÃO SUBJETIVA (autorregulação de volume) ============
@@ -2742,12 +2756,11 @@ function exSets(e){
   if(!e) return 3;
   const ov=BLOCOS[blocoAtual()].sets || {};
   const base = (e.id && ov[e.id]) || parseInt(e.s) || 3;
-  if(emDeload()) return Math.max(1, Math.round(base*0.5));      // deload corta tudo pela metade
-  if(mesoSemana()===3 && !recuperacaoRuim()){   // o freio da recuperação segura o +1
-    // acúmulo: +1 só nos músculos que são foco do bloco (tier 1-2)
-    const foco = Object.entries(e.mg||{}).some(([mg,w])=>w>=1 && tierOf(mg)<=2);
-    return foco ? base+1 : base;
-  }
+  /* Regra comum aos dois apps desde 15/11/2026 (a do plano dela): semanas 1-3 com as mesmas
+     séries, progredindo carga/reps; semana 4 com 1 série a menos em cada exercício, mesma carga.
+     Antes: +1 série no foco na semana 3 e metade de tudo na 4 — o treino chegava a 80 min numa
+     semana e 40 na outra, e nunca batia com o dela. */
+  if(emDeload()) return Math.max(1, base-1);
   return base;
 }
 /* POR QUE este número de séries (15/11/2026). O card mostrava o número do PROGRAMA (e.s)
@@ -2760,11 +2773,10 @@ function motivoSeries(e, planned){
   const partes=[];
   if(base!==prog) partes.push('bloco '+String(B.nome||'').toLowerCase());
   if(emDeload()) partes.push('semana leve');
-  else if(planned>base) partes.push('+1 da semana de acúmulo');
   return partes.length ? partes.join(' · ')+' · normal '+prog : '';
 }
 function anteciparDeload(){
-  if(!confirm('Fazer a semana leve agora?\n\nAs séries caem pela metade por 7 dias. Serve pra descarregar fadiga acumulada — a carga continua a mesma, só não vá perto da falha.')) return;
+  if(!confirm('Fazer a semana leve agora?\n\nSai uma série de cada exercício por 7 dias. Serve pra descarregar fadiga acumulada — a carga continua a mesma, só não vá perto da falha.')) return;
   if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
   ST.meta.deloadAte = dateAdd(today(), 6);
   /* o ciclo passa a estar na semana 4 a partir de hoje: depois dos 7 dias vem a semana 1.
@@ -4421,7 +4433,7 @@ function progressState(id, e){
   if(travadas>=3 && rirMed!=null && rirMed<=1)
     return {k:'fadiga', sug, acao:'deload',
       msg:`${nSess()} sem subir, todas perto da falha (RIR ${fmtStep(rirMed)}). Isso é fadiga acumulada, não falta de esforço.`,
-      nota:'Faça uma semana leve: metade das séries, ou 20% menos carga. Depois volta.'};
+      nota:'Faça uma semana leve: uma série a menos em cada exercício, mesma carga. Depois volta.'};
   // Carga parada com peso caindo é massa magra preservada, não fracasso (Helms 2014)
   const tend=bwTrend(28);
   if(travadas>=3 && tend!=null && tend<=-0.15)
@@ -7914,6 +7926,7 @@ if(!(ST.meta && ST.meta.mesoDesde)){
   ST.meta.mesoDesde=dateAdd(today(), -((_semAnt-1)*7 + _off));
   saveK('meta');
 }
+try{ ancorarCicloComum(); }catch(e){}   // ciclo igual ao dela (15/11/2026)
 try{ reancorarMesoAposPausa(); }catch(_){}   // semana parada é a semana leve: o ciclo recomeça na volta
 /* Resgata medida já gravada com campo desconhecido — o "Costas 102,5" importado em julho
    estava no storage e nunca apareceu na tela. Idempotente: só cria campo que falta. */
