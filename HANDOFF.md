@@ -72,6 +72,24 @@ PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPh
 
 **Antes: 2026-07-08.01** — Edição de exercícios pelo app: nome/descrição/nota por exercício, override isolado em `ST.exmeta` ancorado por `id` estável (git nunca sobrescreve).
 
+
+## Auditoria e correções (2026-11-15.01, SHELL v64)
+
+### Auditoria de 15/11/2026 (3 auditores em paralelo: sessão, progressão, camadas) — os DOIS apps
+Testes: `tools/tests/t_correcoes.js` (34 checagens, uma por achado confirmado).
+- **Sessão esquecida cronometrava por dias.** Nada encerrava `ST.session.active`. Agora `encerrarSessaoVelha()` (boot, volta pro app, antes do auto-start) fecha sessão de outro dia ou com 90 min sem set, com fim no `lastSetAt` (carimbado a cada set). Sem set: descarta. `endSession` não grava registro de 0 sets (bloqueava o dia), data pelo `startAt`, sets dos dias que a sessão cobriu (meia-noite). Marcar set de OUTRO treino fecha a sessão anterior.
+- **`paceFactor`**: só sessões de 10 min a 3 h com sets, mediana de verdade, 3 no mínimo. No app dela desconta a bike do tempo real (o modelo só conta peso — sem isso o fator saía ~1,4).
+- **Sessão leve virava referência** (cortes 3→2, 5→3, -1 série): `upsertToday` carimba `plan` (séries planejadas) e `fase:'deload'`; `sessaoLeve(s,h,id)` usa o carimbo e, sem carimbo, as séries que o programa/bloco pede hoje (o MÁXIMO histórico fazia uma sessão com extras calar o "travado" pra sempre, e a troca de bloco 4→2 também).
+- **Semana leve mandava "sobe carga"**: `suggestNext` repete carga e reps da referência na semana leve.
+- **Antecipar a semana leve** re-ancora o ciclo (`mesoDesde = hoje-21`): depois dos 7 dias vem a semana 1, não outra semana leve.
+- **Card mostra o motivo das séries**: `motivoSeries()` → "3 séries (semana leve · normal 5)", "(bloco perna · normal 4)", "(+1 da semana de acúmulo …)".
+- **Fadiga**: `fadigaHoje` (previsão pra meta) ignora o que o modo curto cortou; `fadigaFeita` (carimbo) conta o que já tem série marcada e só carimba na 1ª marcação do dia.
+- **Modo curto**: protege o 1º do PROGRAMA pelo id (não o adiantado); `foraHoje()` tira os cortados de `isWorkoutComplete`/`isLastPlannedPosition` (o treino não fechava). "Fazer agora · sempre" vai pro índice 0.
+- **Atualização**: `sw.js` busca a PÁGINA na rede primeiro (4 s, depois cópia), e `checarVersaoNova()` mostra um aviso "Versão nova · Atualizar" ao abrir/voltar (a cada 20 min no máx.). Antes era cache-first e o PWA no iPhone ficava dias na versão velha.
+- **Não corrigido (registrado):** treino que atravessa a meia-noite com troca "só hoje" no app dela (`toggleDone` por índice) — raro; sessões antigas sem carimbo `plan` em semana leve de -1 série continuam indistinguíveis de sessão normal.
+
+**Por que as séries dele caíram:** semana 4 do ciclo (metade, arredondando), semana leve antecipada, o fim do +1 da semana 3, freio de recuperação, mudança de foco ou troca para o bloco de perna. Agora o card diz qual.
+
 ## Antes de codar: ler primeiro
 - **§ Sessão 2026-07-02** neste doc — rename das laterais, fix da foto quebrada, refactor de PHOTO_ID/ALTERNATIVES, fix timer nativo em PWA standalone, APP_VERSION, e pendências de fotos
 - **§ Timer nativo iOS (Atalhos)** neste doc — arquitetura + setup + limitação do swap

@@ -1969,7 +1969,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-09-29.01';
+const APP_VERSION = '2026-11-15.01';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -2160,7 +2160,34 @@ function fadigaAte(lista, i){
   for(let j=0;j<i;j++){ const x=lista[j]; if(!x) continue; f += (setsBase(x)||0) * (mgSobrepoe(x,e)+FAD_SIST); }
   return Math.round(f*100)/100;
 }
-function fadigaHoje(logid){ const p=posOfExId(logid); if(!p) return null; return fadigaAte(dayEx(p.day), p.i); }
+/* Duas perguntas diferentes (15/11/2026):
+   - fadigaHoje = PREVISÃO pra meta: quanto ela vai chegar cansada nesse exercício seguindo a
+     ordem de hoje, sem contar o que o modo curto cortou (a não ser que tenha sido feito);
+   - fadigaFeita = CARIMBO da sessão: o que já tem série marcada hoje. Fazer o 4º primeiro sem
+     reordenar, ou pular exercícios, carimbava "na posição de costume" e inflava a meta seguinte. */
+function fadigaHoje(logid){
+  const p=posOfExId(logid); if(!p) return null;
+  const lista=dayEx(p.day), e=lista[p.i]; if(!e) return null;
+  const fora=foraHoje(p.day);
+  let f=0;
+  for(let j=0;j<p.i;j++){
+    const x=lista[j]; if(!x) continue;
+    if(fora.has(j)){ const s=todaySession(exLogId(x)); if(!(s && (s.sets||[]).some(y=>y&&y.done))) continue; }
+    f += (setsBase(x)||0) * (mgSobrepoe(x,e)+FAD_SIST);
+  }
+  return Math.round(f*100)/100;
+}
+function fadigaFeita(logid){
+  const p=posOfExId(logid); if(!p) return null;
+  const lista=dayEx(p.day), e=lista[p.i]; if(!e) return null;
+  let f=0;
+  lista.forEach((x,j)=>{
+    if(j===p.i || !x) return;
+    const s=todaySession(exLogId(x));
+    if(s && (s.sets||[]).some(y=>y&&y.done)) f += (setsBase(x)||0) * (mgSobrepoe(x,e)+FAD_SIST);
+  });
+  return Math.round(f*100)/100;
+}
 /* Ordem PADRÃO do programa: é onde TODA sessão anterior a esta feature foi feita, porque
    antes não havia como reordenar. Por isso serve de palpite honesto pro histórico sem carimbo. */
 function fadigaPadrao(logid){
@@ -2286,7 +2313,8 @@ function planMover(delta){
 function planFazerAgora(){
   if(planDia==null || planIdx==null) return;
   const ids=dayEx(planDia).map(e=>e.id);
-  let alvo=planProximaPos(planDia);
+  // "sempre" é ordem permanente: vai pro começo (as séries marcadas hoje não dizem nada sobre os próximos treinos)
+  let alvo=planEsc==='sempre' ? 0 : planProximaPos(planDia);
   if(alvo>planIdx) alvo--;                       // tirar o item antes desloca o alvo
   if(alvo===planIdx){ planFechar(); return; }
   const [x]=ids.splice(planIdx,1); ids.splice(alvo,0,x);
@@ -2722,10 +2750,27 @@ function exSets(e){
   }
   return base;
 }
+/* POR QUE este número de séries (15/11/2026). O card mostrava o número do PROGRAMA (e.s)
+   enquanto as linhas seguiam exSets() — semana leve, bloco, acúmulo — sem dizer nada. */
+function motivoSeries(e, planned){
+  const prog=parseInt(e && e.s)||3;
+  if(planned===prog) return '';
+  const B=BLOCOS[blocoAtual()]||{}; const ov=B.sets||{};
+  const base=(e.id && ov[e.id]) || prog;
+  const partes=[];
+  if(base!==prog) partes.push('bloco '+String(B.nome||'').toLowerCase());
+  if(emDeload()) partes.push('semana leve');
+  else if(planned>base) partes.push('+1 da semana de acúmulo');
+  return partes.length ? partes.join(' · ')+' · normal '+prog : '';
+}
 function anteciparDeload(){
   if(!confirm('Fazer a semana leve agora?\n\nAs séries caem pela metade por 7 dias. Serve pra descarregar fadiga acumulada — a carga continua a mesma, só não vá perto da falha.')) return;
   if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
   ST.meta.deloadAte = dateAdd(today(), 6);
+  /* o ciclo passa a estar na semana 4 a partir de hoje: depois dos 7 dias vem a semana 1.
+     Antes, antecipar na semana 3 emendava DUAS semanas leves (a antecipada e a do calendário). */
+  ST.meta.mesoAntesDoDeload = ST.meta.mesoDesde || null;
+  ST.meta.mesoDesde = dateAdd(today(), -21);
   saveK('meta'); registrarDeloadEmCurso(); render(); showToast('Semana leve começou', 'ok', 2400);
 }
 // Peso do tier na pontuação: 1=3, 2=2, 3=1, 4=0
@@ -3328,21 +3373,42 @@ function resumeSession(){
   updateFabMenu();
   showToast(`Treino retomado`, 'ok', 1500);
 }
-function endSession(silent=false){
+/* ============ SESSÃO ABANDONADA (15/11/2026) ============
+   Nada encerrava uma sessão esquecida: o app voltava dias depois "cronometrando 72 h", o
+   treino seguinte entrava no registro da sessão velha e um registro de 72 h envenenava a
+   estimativa de duração. Regra: sessão de OUTRO dia, ou 90 min sem marcar set, encerra
+   sozinha — com o fim no ÚLTIMO set marcado (não agora). Sem nenhum set, é descartada. */
+const SESSAO_OCIOSA_MS=90*60000;
+function sessaoVencida(){
+  const s=ST.session && ST.session.active;
+  if(!s || !s.startAt) return false;
+  const ref=s.lastSetAt||s.startAt;
+  if(localISO(new Date(s.startAt))!==today() && Date.now()-ref>20*60000) return true;   // virou o dia (com folga pra treino na meia-noite)
+  return Date.now()-ref > SESSAO_OCIOSA_MS;
+}
+function encerrarSessaoVelha(){
+  if(!sessaoVencida()) return false;
+  const s=ST.session.active;
+  endSession(true, s.lastSetAt||s.startAt);
+  return true;
+}
+function endSession(silent=false, fimEm){
   const s=ST.session.active;
   if(!s) return null;
-  const endAt=Date.now();
+  const endAt=Math.max(s.startAt, fimEm||Date.now());
   const totalMs=endAt-s.startAt;
   const pausedMs=(s.pausedTotal||0)+(s.pausedAt?endAt-s.pausedAt:0);
   const activeMs=Math.max(0, totalMs-pausedMs);
-  // Conta sets válidos do treino hoje
-  const t=todayISO();
+  // Conta sets válidos do treino nos dias que a sessão cobriu (treino que passa da meia-noite)
+  const t=localISO(new Date(s.startAt));
+  const diasSess=[t, localISO(new Date(endAt))];
+  const logDoDia=(id)=>{ const h=ST.logs[id]||[]; const sets=[]; for(const x of h) if(x && diasSess.includes(x.date)) sets.push(...(x.sets||[])); return sets.length?{sets}:null; };
   let setsN=0, volume=0;
   const W=WK[s.workoutId];
   if(W){
     dayEx(s.workoutId).forEach((e,i)=>{
       const id=exId(s.workoutId,i);
-      const tod=todaySession(id);
+      const tod=logDoDia(id);
       if(tod){
         tod.sets.forEach(set=>{
           if(isValidDone(set)){
@@ -3354,7 +3420,8 @@ function endSession(silent=false){
     });
   }
   const record={date:t, workoutId:s.workoutId, startAt:s.startAt, endAt, durationMs:totalMs, activeMs, sets:setsN, volume:Math.round(volume)};
-  ST.session.history.push(record);
+  // "Iniciar" e "Parar" sem nenhum set não é treino: não grava (antes bloqueava o dia inteiro)
+  if(setsN>0) ST.session.history.push(record);
   ST.session.active=null;
   saveK('session');
   updateSessionDisplays();
@@ -3457,12 +3524,19 @@ function onFabStartClick(){
 }
 
 /* ============ CELEBRATION (item 10) ============ */
+/* No modo curto (e no "mais cardio" dela) os exercícios cortados não contam: sem isso o treino
+   nunca fechava sozinho e o descanso abria depois da última série de verdade (15/11/2026). */
+function foraHoje(day){
+  try{ const m=shortDayMin(day); return m ? shortPlan(day, m).fora : new Set(); }catch(e){ return new Set(); }
+}
 function isWorkoutComplete(day){
   // Auto-trigger só em 100% dos sets planejados feitos (evita false positive)
   // Pra encerrar com volume parcial, usar FAB → Parar treino
   const W=WK[day]; if(!W) return false;
   let plannedTotal=0, doneTotal=0;
+  const _fora=foraHoje(day);
   dayEx(day).forEach((e,i)=>{
+    if(_fora.has(i)) return;
     plannedTotal += exSets(e);
     const tod=todaySession(exId(day,i));
     if(tod) doneTotal += tod.sets.filter(isValidDone).length;
@@ -3471,7 +3545,8 @@ function isWorkoutComplete(day){
 }
 function alreadyCelebratedToday(day){
   const t=todayISO();
-  return ST.session.history.some(h=>h.date===t && h.workoutId===day);
+  // registro de 0 sets (de antes da correção de 15/11) não conta como treino feito
+  return ST.session.history.some(h=>h && h.date===t && h.workoutId===day && !(h.sets===0));
 }
 function gatherWorkoutSummary(day){
   const t=todayISO();
@@ -3776,11 +3851,16 @@ function upsertToday(id, sets){
   /* Carimba a POSIÇÃO e a fadiga acumulada em que a sessão foi feita. É o que permite, mais
      tarde, saber que 8 reps em 5º lugar não é pior que 9 reps em 1º. Sessão antiga sem
      carimbo cai no palpite da ordem padrão (fadigaPadrao), que é onde ela foi feita mesmo. */
-  let f=null, pos=null;
-  try{ f=fadigaHoje(id); pos=posOfExId(id); }catch(e){}
+  let f=null, pos=null, plan=null;
+  try{ f=fadigaFeita(id); pos=posOfExId(id); const ee=pos && dayEx(pos.day)[pos.i]; if(ee) plan=exSets(ee); }catch(e){}
   const ex=ST.logs[id].find(s=>s.date===t);
-  if(ex){ ex.sets=sets; if(f!=null){ ex.f=f; ex.fv=2; if(pos) ex.p=pos.i; } }
-  else { const novo={date:t, sets}; if(f!=null){ novo.f=f; novo.fv=2; if(pos) novo.p=pos.i; } ST.logs[id].push(novo); }
+  /* Carimbos de 15/11/2026: `plan` = séries planejadas HOJE e `fase:'deload'` na semana leve.
+     Sem isso, sessão leve só era reconhecida se tivesse menos de 60% do MÁXIMO histórico —
+     escapavam os cortes de 3→2, 5→3 e o -1 série do plano dela, e a sessão leve virava
+     referência (o app mandava subir carga cedo). E o fadiga/posição só é carimbado na
+     PRIMEIRA marcação do dia: marcar de novo depois de fazer outros exercícios inflava. */
+  if(ex){ ex.sets=sets; if(f!=null && ex.f==null){ ex.f=f; ex.fv=2; if(pos) ex.p=pos.i; } if(plan && ex.plan==null) ex.plan=plan; if(emDeload()) ex.fase='deload'; }
+  else { const novo={date:t, sets}; if(f!=null){ novo.f=f; novo.fv=2; if(pos) novo.p=pos.i; } if(plan) novo.plan=plan; if(emDeload()) novo.fase='deload'; ST.logs[id].push(novo); }
   saveK('logs');
 }
 
@@ -4034,13 +4114,30 @@ function suggestFrom(sets, e, id){
 /* Sessão âncora da próxima meta: quase sempre a última, mas não quando a última foi leve
    (semana de deload, dia cortado). Ancorar ali faz o app prescrever a carga do deload na
    volta. Detecta pelo número de séries feitas, sem depender do deload estar marcado. */
+/* Sessão LEVE (semana leve, dia cortado): não serve de referência nem conta como travada.
+   1º pelo carimbo (fase/plan, desde 15/11/2026); sessão antiga sem carimbo cai na MEDIANA das
+   últimas sessões — o máximo histórico fazia UMA sessão com séries extras transformar todas as
+   normais em "leves" pra sempre, e a troca de bloco (4→2 séries) calava o aviso de travado. */
+function nSetsFeitos(s){ return ((s&&s.sets)||[]).filter(x=>x&&x.done&&num(x.reps)>0).length; }
+function sessaoLeve(s, h, id){
+  if(!s) return false;
+  if(s.fase==='deload') return true;
+  const n=nSetsFeitos(s);
+  if(s.plan>0) return n < s.plan*0.6;
+  // sem carimbo: compara com as séries que o programa (e o bloco atual) pede hoje fora da semana leve
+  const e=id ? exDoLog(id) : null;
+  const base=e ? setsBase(e) : 0;
+  if(base>0) return n < base*0.6;
+  const ult=(h||[]).slice(-6).filter(x=>!(x&&x.fase==='deload')).map(nSetsFeitos).sort((a,b)=>a-b);
+  if(!ult.length) return false;
+  const med=ult[Math.floor(ult.length/2)];
+  return med>0 && n < med*0.6;
+}
 function refSession(id){
   const h=(progressSessions(id)||[]).filter(s=>sessionTop(s.sets) && s.date!==today());
   if(!h.length) return null;
   const ult=h.slice(-4);
-  const cont=ult.map(s=>(s.sets||[]).filter(x=>x&&x.done&&num(x.reps)>0).length);
-  const tipico=Math.max(...cont);
-  if(ult.length>1 && cont[cont.length-1] < tipico*0.6) return ult[ult.length-2];
+  for(let i=ult.length-1;i>=0;i--) if(!sessaoLeve(ult[i], h, id)) return ult[i];
   return ult[ult.length-1];
 }
 /* ============ VOLTA DE PAUSA ============
@@ -4084,6 +4181,12 @@ function suggestNext(id, e){
   const v=fatorVolta(id);
   /* Volta de pausa manda mais que posição: comparar com uma sessão de meses atrás é problema
      maior que ter adiantado o exercício. Fora isso, a posição de hoje recalcula a meta. */
+  /* Semana leve: a Meta mandava "bateu o topo · sobe carga" enquanto a fase dizia "carga
+     igual". Na semana leve repete a carga e as reps da referência (15/11/2026). */
+  if(!v && emDeload()){
+    const top=sessionTop(ref.sets);
+    if(top) return {kg:num(top.kg), reps:num(top.reps), why:'semana leve · mesma carga, longe da falha', de:base.de, inc:base.inc};
+  }
   if(!v) return travaDuplaProgressao(ajustePosicao(base, e, id, ref) || base, e);
   // reentrada: nunca sobe. Corta a carga e volta pro piso da faixa.
   const rng=parseRange(e.r);
@@ -4287,9 +4390,7 @@ function progressState(id, e){
   /* Sessão leve (semana de deload, dia cortado) NÃO conta como travada. refSession já
      ignorava sessão leve pela mesma razão; o contador aqui não ignorava, então o deload que
      o próprio app prescreve virava acusação de "travado" na semana seguinte. */
-  const nSets = h.map(x=>(x.sets||[]).filter(y=>y&&y.done&&num(y.reps)>0).length);
-  const tipico = nSets.length ? Math.max(...nSets) : 0;
-  const leve = i => tipico>0 && nSets[i] < tipico*0.6;
+  const leve = i => sessaoLeve(h[i], h, id);
   let travadas=0;
   for(let i=tops.length-1;i>0;i--){
     if(leve(h.length-tops.length+i)) continue;              // pula a sessão leve, não quebra a série
@@ -4746,10 +4847,14 @@ function dayMinutes(d){
 // Fator que aproxima o modelo do tempo que ELE de fato leva neste treino (mediana do histórico).
 // Sem histórico suficiente, fica 1 (modelo puro). Limitado pra um outlier não distorcer tudo.
 function paceFactor(d){
-  const h=sessionsForDay(d).filter(r=>r && r.activeMs>0);
-  if(h.length<2) return 1;
+  /* Só sessões plausíveis (10 min a 3 h, com sets): um registro de 72 h de sessão esquecida
+     levava o fator ao teto 1,8. Mediana verdadeira (com 2 registros a "mediana" era o maior)
+     e 3 sessões no mínimo (15/11/2026). */
+  const h=sessionsForDay(d).filter(r=>r && r.activeMs>=10*60000 && r.activeMs<=3*3600000 && r.sets!==0);
+  if(h.length<3) return 1;
   const mins=h.slice(0,6).map(r=>r.activeMs/60000).sort((a,b)=>a-b);
-  const real=mins[Math.floor(mins.length/2)];
+  const meio=mins.length/2;
+  const real=mins.length%2 ? mins[Math.floor(meio)] : (mins[meio-1]+mins[meio])/2;
   const modelo=dayEx(d).reduce((a,e)=>a+exMinutes(e),0);
   if(!(modelo>0) || !(real>0)) return 1;
   return Math.min(1.8, Math.max(0.6, real/modelo));
@@ -4786,7 +4891,9 @@ function shortPlan(d, alvoMin){
   if(!(alvoMin>0) || total<=alvoMin) return {fora, estMin:Math.round(total), total:Math.round(total), coube:true};
 
   // um guardião por músculo prioritário presente hoje: o de maior valor
-  const guard=new Set([0]);
+  // protege o 1º do PROGRAMA (pelo id), não o 1º da ordem de hoje — "Fazer agora" na panturrilha protegia a panturrilha
+  const _id0=((dayExBase(d)||[])[0]||{}).id; const _i0=ex.findIndex(x=>x && x.id===_id0);
+  const guard=new Set([_i0>=0?_i0:0]);
   for(const mg of Object.keys(BLOCOS[blocoAtual()].tier).filter(m=>tierOf(m)<=2)){   // guarda o foco do bloco
     let melhor=-1, best=-Infinity;
     ex.forEach((e,i)=>{ if((e.mg||{})[mg]>=1){ const v=exValue(e); if(v>best){best=v; melhor=i;} } });
@@ -5257,7 +5364,7 @@ function renderDay(d){
         ${pular?`<div class="skiptag">${I.moon} Pular hoje · libera ~${Math.round(exMinutes(e)*paceFactor(d))} min</div>`:''}
         ${planTag(d,i)}
         <div class="target">
-          <span class="met"><b>${planned}</b> ${planned===1?'série':'séries'}${nset>planned?` <span class="xtra">+${nset-planned} extra</span>`:''}</span>
+          <span class="met"><b>${planned}</b> ${planned===1?'série':'séries'}${nset>planned?` <span class="xtra">+${nset-planned} extra</span>`:''}${(()=>{ const m=motivoSeries(e, planned); return m?` <small style="opacity:.75">(${m})</small>`:''; })()}</span>
           <span class="dot"></span>
           <span class="met"><b>${e.r}</b> reps</span>
           <span class="dot"></span>
@@ -5421,7 +5528,9 @@ function onComment(inp){ const id=inp.dataset.cid; setTodayComment(id, inp.value
 function isLastPlannedPosition(day, exIdx, setIdx){
   const W = WK[day]; if(!W) return false;
   const lista = dayEx(day);
-  if(exIdx !== lista.length - 1) return false;
+  const _fora = foraHoje(day);
+  let ultimo = lista.length - 1; while(ultimo>0 && _fora.has(ultimo)) ultimo--;
+  if(exIdx !== ultimo) return false;
   const planned = exSets(lista[exIdx]);
   const tod = todaySession(exId(day, exIdx));
   // conta séries extras: o descanso só é pulado na ÚLTIMA linha real, não na última planejada
@@ -5478,12 +5587,16 @@ function toggleDone(id,k,el){
     const pos=posOfExId(id); if(!pos) return;   // id desconhecido: não inventa dia
     const day=pos.day, i=pos.i;
     // Auto-start session na primeira marcação válida do dia (não pergunta, é o caminho natural)
+    // sessão esquecida (outro dia / 90 min parada) fecha antes; sessão de OUTRO treino também
+    encerrarSessaoVelha();
+    if(isSessionActive() && ST.session.active.workoutId!==day && isValidDone(sets[k])) endSession(true, ST.session.active.lastSetAt||Date.now());
     if(!isSessionActive() && !alreadyCelebratedToday(day) && isValidDone(sets[k])){
       ST.session.active={workoutId:day, startAt:Date.now(), pausedAt:null, pausedTotal:0};
       saveK('session');
       updateSessionDisplays();
       updateFabMenu();
     }
+    if(isSessionActive() && isValidDone(sets[k])){ ST.session.active.lastSetAt=Date.now(); saveK('session'); }
     // Se sessão estava pausada, retoma sozinho ao checar set
     if(isSessionPaused()){ resumeSession(); }
     const isLast = isLastPlannedPosition(day, i, k);
@@ -6932,6 +7045,29 @@ async function sincronizarNuvem(motivo){
 }
 try{
   document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') sincronizarNuvem('volta'); });
+  /* VERSÃO NOVA (15/11/2026) · ao abrir e ao voltar pro app, no máximo a cada 20 min, confere
+     se o servidor tem outra APP_VERSION. Se tiver, mostra um aviso com botão — o PWA no iPhone
+     pode passar dias "voltando da memória" sem recarregar, e ninguém percebia. */
+  let _verChecada=0;
+  async function checarVersaoNova(){
+    if(Date.now()-_verChecada < 20*60000) return;
+    _verChecada=Date.now();
+    try{
+      const r=await fetch('index.html?ping='+Date.now(), {cache:'no-store'});
+      if(!r.ok) return;
+      const m=(await r.text()).match(/const APP_VERSION = '([^']+)'/);
+      if(!m || m[1]===APP_VERSION || m[1]<APP_VERSION) return;
+      if(document.getElementById('versaoNova')) return;
+      const b=document.createElement('div');
+      b.id='versaoNova';
+      b.setAttribute('style','position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 10px);z-index:9999;display:flex;align-items:center;gap:10px;padding:11px 12px 11px 14px;border-radius:14px;background:#1c1518;color:#fff;font:600 13px/1.35 -apple-system,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25)');
+      b.innerHTML='<span style="flex:1">Versão nova do app ('+m[1]+')</span><button style="border:0;border-radius:10px;padding:8px 12px;font:700 13px -apple-system,system-ui,sans-serif;background:#fff;color:#1c1518" onclick="atualizarAgora()">Atualizar</button><button aria-label="Fechar" style="border:0;background:transparent;color:#fff;font-size:18px;padding:0 4px" onclick="this.parentNode.remove()">×</button>';
+      document.body.appendChild(b);
+    }catch(e){}
+  }
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') checarVersaoNova(); });
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible'){ try{ if(encerrarSessaoVelha()){ render(); showToast('Treino anterior encerrado no último set marcado', 'info', 2600); } }catch(e){} } });
+  setTimeout(checarVersaoNova, 6000);
 }catch(e){}
 async function listarNuvem(){
   const r=await fetch(nuvemUrl(), {headers:nuvemHeaders(), cache:'no-store'});
@@ -7748,6 +7884,7 @@ if('serviceWorker' in navigator && (location.protocol==='https:' || location.hos
 async function boot(){
   // 1. Cleanup defensivo (phantom sessions de dias passados sem ✓)
   cleanupPhantomSessions();
+  try{ encerrarSessaoVelha(); }catch(e){}   // sessão esquecida de outro dia/90 min parada
   recalcPrioridades();
   // 2. Storage seguro (resistente a ITP) — protege localStorage E IndexedDB de eviction
   await requestPersistentStorage();

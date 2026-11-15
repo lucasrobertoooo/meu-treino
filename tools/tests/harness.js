@@ -58,7 +58,7 @@ async function load(app, seed, opts){
   if(app==='hers' && seed && Object.keys(seed).length && !opts.migrar){
     seed={...seed}; const k='treinoela_meta_v1';
     let m={}; try{ m=JSON.parse(seed[k]||'{}')||{}; }catch(e){}
-    if(!m.progVer){ m.progVer='2026-11-09'; seed[k]=JSON.stringify(m); }
+    if(!m.progVer){ m.progVer='2026-11-15'; seed[k]=JSON.stringify(m); }
   }
   const errors=[];
   const dom=new JSDOM(html, { runScripts:'dangerously', pretendToBeVisual:true, url:'https://lucasrobertoooo.github.io/'+(app==='his'?'meu-treino':'meu-treino-ela')+'/', beforeParse(w){

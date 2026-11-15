@@ -55,9 +55,14 @@ async function cenario(app){
 
   // paceFactor calibra pelo histórico real
   const modelo=C.dayEx(d).reduce((a,e)=>a+C.exMinutes(e),0);
+  /* 3 sessões (o mínimo desde 15/11) e, no app dela, o tempo real inclui a bike — que o
+     modelo de peso não conta e o paceFactor desconta */
+  const bike=C.dayEx(d).reduce((a,e)=>a+C.cardioMinutes(e),0);
+  const real=(modelo*1.3+bike)*60000;
   const s4={}; s4[ns+'_session_v1']=JSON.stringify({active:null, history:[
-    {date:D(7), workoutId:d, activeMs:modelo*60000*1.3, endAt:Date.now()-7*86400000},
-    {date:D(3), workoutId:d, activeMs:modelo*60000*1.3, endAt:Date.now()-3*86400000}]});
+    {date:D(10), workoutId:d, activeMs:real, sets:12, endAt:Date.now()-10*86400000},
+    {date:D(7), workoutId:d, activeMs:real, sets:12, endAt:Date.now()-7*86400000},
+    {date:D(3), workoutId:d, activeMs:real, sets:12, endAt:Date.now()-3*86400000}]});
   const E=await load(app, s4, {}); await E._tick(150);
   ok(Math.abs(E.paceFactor(d)-1.3)<0.05,'paceFactor aprende o ritmo real (1,3x)', E.paceFactor(d).toFixed(2));
 

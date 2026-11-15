@@ -3,7 +3,7 @@
    - app shell (index, manifest, ícones): cache-first com refresh em background
    - fotos do Free Exercise DB: cache-first, persistente (sobrevive a updates)
 */
-const SHELL = 'treino-shell-v63';
+const SHELL = 'treino-shell-v64';
 const PHOTOS = 'treino-photos-v1';
 
 const SHELL_FILES = [
@@ -124,6 +124,28 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  /* PÁGINA (index / navegação) → REDE PRIMEIRO, com 4 s de limite, e cópia guardada só sem
+     sinal. Era cache-first: a primeira abertura depois de publicar sempre mostrava a versão
+     velha, e no iPhone um PWA que "volta" da memória nem recarrega — ela ficou dias sem
+     receber o plano novo (15/11/2026). Ícones e manifest seguem cache-first abaixo. */
+  const ehPagina = req.mode === 'navigate' || url.pathname.endsWith('/') || url.pathname.endsWith('.html');
+  if (url.origin === location.origin && ehPagina && !url.search.includes('ping=')) {
+    e.respondWith(
+      caches.open(SHELL).then(c => {
+        const cacheavel = !url.search.includes('r=');
+        const rede = fetch(req, {cache: 'no-store'}).then(res => {
+          if (res.ok && cacheavel) c.put(req, res.clone());
+          return res;
+        });
+        const limite = new Promise(r => setTimeout(r, 4000)).then(() => c.match(req));
+        return Promise.race([rede.catch(() => c.match(req)), limite.then(hit => hit || rede)])
+          .then(res => res || c.match('index.html'))
+          .catch(() => c.match(req).then(hit => hit || c.match('index.html')));
+      })
+    );
+    return;
+  }
+
   // mesma origem → cache-first com refresh em background
   if (url.origin === location.origin) {
     e.respondWith(
@@ -131,7 +153,8 @@ self.addEventListener('fetch', e => {
         c.match(req).then(hit => {
           /* Nao cacheia a URL com carimbo que o proprio "Atualizar agora" cria (?r=...):
              cada atualizacao deixava uma entrada nova no SHELL que nunca era podada. */
-          const cacheavel = !url.search.includes('r=');
+          // nem o ?r= do "Atualizar agora" nem o ?ping= da checagem de versão: virariam entradas eternas no SHELL
+          const cacheavel = !url.search.includes('r=') && !url.search.includes('ping=');
           const net = fetch(req).then(res => {
             if (res.ok && cacheavel) c.put(req, res.clone());
             return res;
