@@ -3,7 +3,8 @@
    Limitações: const/let de módulo (ST, WK) NÃO são acessíveis de fora — verifique por
    localStorage e pelo innerHTML renderizado; chame funções de render direto. */
 const fs=require('fs'), path=require('path');
-const {JSDOM}=require('/Users/zana/Developer/bussola/node_modules/jsdom');
+// jsdom local (npm install em tools/tests); o de ~/Developer/bussola sumiu em nov/2026
+const {JSDOM}=(()=>{ try{ return require('jsdom'); }catch(e){ return require('/Users/zana/Developer/bussola/node_modules/jsdom'); } })();
 const APPS={ his:'/Users/zana/Documents/MeuTreino/index.html', hers:'/Users/zana/Documents/Treino-Ela/index.html' };
 const NS={ his:'meutreino', hers:'treinoela' };
 
@@ -65,7 +66,7 @@ async function load(app, seed, opts){
   if(seed && Object.keys(seed).length && !opts.migrar){
     seed={...seed}; const k=NS[app]+'_meta_v1';
     let m={}; try{ m=JSON.parse(seed[k]||'{}')||{}; }catch(e){}
-    if(!m.cicloComum){ m.cicloComum='2026-11-16'; seed[k]=JSON.stringify(m); }
+    if(!m.cicloComum){ m.cicloComum='2026-11-16'; if(!m.mesoDesde && !m.blocoDesde) m.mesoDesde='2026-11-16'; seed[k]=JSON.stringify(m); }   // mesma âncora que um aparelho novo teria
   }
   const errors=[];
   const dom=new JSDOM(html, { runScripts:'dangerously', pretendToBeVisual:true, url:'https://lucasrobertoooo.github.io/'+(app==='his'?'meu-treino':'meu-treino-ela')+'/', beforeParse(w){
@@ -81,6 +82,10 @@ async function load(app, seed, opts){
     w.HTMLCanvasElement.prototype.getContext=()=>({drawImage(){},fillRect(){},clearRect(){},getImageData:()=>({data:[]}),putImageData(){},createImageData:()=>[],setTransform(){},drawImage(){},save(){},restore(){},beginPath(){},moveTo(){},lineTo(){},closePath(){},stroke(){},fill(){},arc(){},fillText(){},measureText:()=>({width:0})});
     w.HTMLCanvasElement.prototype.toDataURL=()=>'data:image/jpeg;base64,AAAA';
     w.addEventListener('error', e=>errors.push(e.error?String(e.error.stack||e.error):String(e.message)));
+    /* Relógio falso: opts.agora (ms) vira o "agora" do app desde o primeiro script. */
+    if(opts.agora){ const RD=w.Date, off=opts.agora-RD.now();
+      class FD extends RD{ constructor(...a){ if(a.length===0) super(RD.now()+off); else super(...a); } static now(){ return RD.now()+off; } }
+      w.Date=FD; }
   }});
   const w=dom.window;
   w._errors=errors;

@@ -75,6 +75,13 @@ PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPh
 
 ## Auditoria e correções (2026-11-15.01, SHELL v64)
 
+### Treino que passa da meia-noite (2026-11-24.01) — os DOIS apps
+Bug grave relatado em 23→24/11: o treino da Priscila "sumiu" à meia-noite. As séries não foram apagadas — ficaram com a data de 23/11, e a tela passou a mostrar o "treino de hoje" (24/11, vazio); séries marcadas depois iam pra outra data, às vezes em outra sessão.
+- **`diaTreino()`**: com sessão ativa (série nos últimos 90 min), tudo que é do treino usa a data do INÍCIO — registro das séries, tela, `lastSession`/`refSession`, ordem/troca de hoje, modo de tempo, "mais cardio", comentário, faxina de fantasmas. Peso, sono, macros seguem o calendário.
+- **`sessaoVencida()`**: virar o dia não encerra mais; só 90 min sem série.
+- **`juntarTreinoDaMeiaNoite()`** (boot e volta pro app, uma vez por treino): junta no dia do início (a) sessão com início e fim em dias diferentes e (b) duas sessões do mesmo treino em dias seguidos com até 60 min entre elas. Séries: se as de depois começam com as de antes, vale a lista de depois; senão concatena. Marca `juntado`.
+- Testes: `t_meianoite.js` (30, com relógio falso `opts.agora` no harness). jsdom agora é local (`tools/tests/node_modules`, ignorado pelo git; `npm install` lá se faltar).
+
 ### Ciclo comum aos dois apps (2026-11-15.02, decisão do Lucas)
 Os dois apps usam a mesma regra (a do plano dela): semanas 1-3 com as mesmas séries, semana 4 com 1 série a menos em cada exercício. Saíram, no app dele, o +1 da semana 3 e a metade da semana 4. `ancorarCicloComum()` põe `mesoDesde='2026-11-16'` (segunda) uma vez por aparelho e guarda a anterior em `mesoAntesComum`; âncora no futuro conta como semana 1. Pausa de 7+ dias e semana leve antecipada ainda re-ancoram cada app sozinho (desencontra os dois de novo — avisar se acontecer).
 

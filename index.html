@@ -1969,7 +1969,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-11-15.02';
+const APP_VERSION = '2026-11-24.01';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -2114,8 +2114,8 @@ function idBase(id){ const s=String(id==null?'':id); const i=s.indexOf('~'); ret
 
 function planRoot(){ ST.meta=ST.meta||{}; if(!ST.meta.plan || typeof ST.meta.plan!=='object' || Array.isArray(ST.meta.plan)) ST.meta.plan={}; return ST.meta.plan; }
 function planEscopo(){ return 'p'; }
-function planHoje(){ const h=planRoot().hoje; return (h && h.data===today()) ? h : null; }
-function planHojeRW(){ const p=planRoot(); if(!p.hoje || p.hoje.data!==today()) p.hoje={data:today(), ord:{}, tr:{}}; p.hoje.ord=p.hoje.ord||{}; p.hoje.tr=p.hoje.tr||{}; return p.hoje; }
+function planHoje(){ const h=planRoot().hoje; return (h && h.data===diaTreino()) ? h : null; }
+function planHojeRW(){ const p=planRoot(); if(!p.hoje || p.hoje.data!==diaTreino()) p.hoje={data:diaTreino(), ord:{}, tr:{}}; p.hoje.ord=p.hoje.ord||{}; p.hoje.tr=p.hoje.tr||{}; return p.hoje; }
 function planPerm(){ const p=planRoot(), s=planEscopo(); return {ord:(p.ord&&p.ord[s])||{}, tr:(p.tr&&p.tr[s])||{}}; }
 function planPermRW(){ const p=planRoot(), s=planEscopo(); p.ord=p.ord||{}; p.tr=p.tr||{}; p.ord[s]=p.ord[s]||{}; p.tr[s]=p.tr[s]||{}; return {ord:p.ord[s], tr:p.tr[s]}; }
 
@@ -3394,9 +3394,71 @@ const SESSAO_OCIOSA_MS=90*60000;
 function sessaoVencida(){
   const s=ST.session && ST.session.active;
   if(!s || !s.startAt) return false;
-  const ref=s.lastSetAt||s.startAt;
-  if(localISO(new Date(s.startAt))!==today() && Date.now()-ref>20*60000) return true;   // virou o dia (com folga pra treino na meia-noite)
-  return Date.now()-ref > SESSAO_OCIOSA_MS;
+  // virar o dia NÃO encerra (24/11/2026: o treino dela sumiu da tela à meia-noite) — só 90 min sem série
+  return Date.now()-(s.lastSetAt||s.startAt) > SESSAO_OCIOSA_MS;
+}
+/* ============ DIA DO TREINO (24/11/2026) ============
+   Treino que passa da meia-noite continua sendo o treino do dia em que COMEÇOU. Antes, à
+   meia-noite a tela virava "o treino de hoje" (vazio): as séries de antes ficavam salvas com
+   a data de ontem, fora da tela, e as marcadas depois iam pra outra data — o treino parecia ter
+   sumido. Enquanto houver sessão ativa (série marcada nos últimos 90 min), tudo que é do treino
+   (registro das séries, tela, ordem/troca de hoje, modo de tempo, comentário) usa a data do
+   início. Peso, sono, macros e o resto continuam no calendário normal. */
+function diaTreino(){
+  const s=ST.session && ST.session.active;
+  if(s && s.startAt && !sessaoVencida()){
+    const d0=localISO(new Date(s.startAt));
+    if(d0<today()) return d0;
+  }
+  return today();
+}
+/* ============ CONSERTO DO TREINO PARTIDO NA MEIA-NOITE (24/11/2026) ============
+   Antes do diaTreino(), um treino que passava da meia-noite ficava em DUAS datas: as séries de
+   antes com a data de ontem e as de depois com a de hoje — às vezes até em duas sessões. Uma vez
+   por treino partido, isto junta tudo no dia em que o treino começou:
+   - sessão cujo início e fim caem em dias diferentes, ou
+   - duas sessões do MESMO treino em dias seguidos, a 2ª começando até 60 min depois do fim da 1ª.
+   Séries: se as de depois começam com as mesmas de antes (a tela levou as antigas junto), vale a
+   lista de depois; senão, as de antes + as de depois. Nada é apagado sem ser copiado antes. */
+function juntarTreinoDaMeiaNoite(){
+  const hist=(ST.session && ST.session.history)||[];
+  let mudou=0;
+  const igual=(x,y)=>x&&y&& String(x.kg||'')===String(y.kg||'') && String(x.reps||'')===String(y.reps||'');
+  const juntarLogs=(wk, dA, dB)=>{
+    const ids=new Set((dayEx(wk)||[]).map((e,i)=>exId(wk,i)));
+    for(const id of Object.keys(ST.logs||{})){ if(String(id).split('~')[0] && ids.has(idBase(id))) ids.add(id); }
+    for(const id of ids){
+      const L=ST.logs[id]; if(!Array.isArray(L)) continue;
+      const b=L.find(x=>x&&x.date===dB); if(!b) continue;
+      const aa=L.find(x=>x&&x.date===dA);
+      if(!aa){ b.date=dA; mudou++; continue; }
+      const A=aa.sets||[], B=b.sets||[];
+      const prefixo=A.length<=B.length && A.every((x,i)=>igual(x,B[i]));
+      aa.sets = prefixo ? B : A.concat(B);
+      if(b.cmt && !aa.cmt) aa.cmt=b.cmt;
+      L.splice(L.indexOf(b),1); mudou++;
+    }
+  };
+  // caso 1: uma sessão que atravessou a meia-noite
+  for(const r of hist){
+    if(!r || r.juntado || !r.startAt || !r.endAt) continue;
+    const dA=localISO(new Date(r.startAt)), dB=localISO(new Date(r.endAt));
+    if(dA!==dB && dateAdd(dA,1)===dB){ juntarLogs(r.workoutId, dA, dB); r.date=dA; r.juntado=true; mudou++; }
+  }
+  // caso 2: a sessão foi encerrada e outra do mesmo treino reabriu logo depois, já no dia seguinte
+  const ord=hist.filter(r=>r && r.startAt && r.endAt).sort((x,y)=>x.startAt-y.startAt);
+  for(let i=1;i<ord.length;i++){
+    const r1=ord[i-1], r2=ord[i];
+    if(r2.workoutId!==r1.workoutId || r2.juntado) continue;
+    const dA=localISO(new Date(r1.startAt)), dB=localISO(new Date(r2.startAt));
+    if(dA===dB || dateAdd(dA,1)!==dB || r2.startAt-r1.endAt > 60*60000) continue;
+    juntarLogs(r1.workoutId, dA, dB);
+    r1.endAt=r2.endAt; r1.durationMs=(r1.durationMs||0)+(r2.durationMs||0); r1.activeMs=(r1.activeMs||0)+(r2.activeMs||0);
+    r1.sets=(r1.sets||0)+(r2.sets||0); r1.volume=(r1.volume||0)+(r2.volume||0); r1.juntado=true;
+    hist.splice(hist.indexOf(r2),1); ord.splice(i,1); i--; mudou++;
+  }
+  if(mudou){ saveK('logs'); saveK('session'); }
+  return mudou>0;
 }
 function encerrarSessaoVelha(){
   if(!sessaoVencida()) return false;
@@ -3556,12 +3618,12 @@ function isWorkoutComplete(day){
   return plannedTotal>0 && doneTotal>=plannedTotal;
 }
 function alreadyCelebratedToday(day){
-  const t=todayISO();
+  const t=diaTreino();
   // registro de 0 sets (de antes da correção de 15/11) não conta como treino feito
   return ST.session.history.some(h=>h && h.date===t && h.workoutId===day && !(h.sets===0));
 }
 function gatherWorkoutSummary(day){
-  const t=todayISO();
+  const t=diaTreino();
   const W=WK[day];
   let setsN=0, volume=0, prs=[], topProgress=null;
   dayEx(day).forEach((e,i)=>{
@@ -3634,7 +3696,7 @@ function closeCelebration(){
 
 /* ============ Phantom session cleanup (audit B fix) ============ */
 function cleanupPhantomSessions(){
-  const t=todayISO();
+  const t=diaTreino();
   let cleaned=0;
   for(const id in ST.logs){
     if(!Array.isArray(ST.logs[id])) continue;
@@ -3849,17 +3911,17 @@ function prTrackerForWorkout(day){
 
 function lastSession(id){
   const h=progressSessions(id); if(!h||!h.length) return null;   // respeita a fronteira de troca
-  const t=today();
+  const t=diaTreino();
   for(let k=h.length-1;k>=0;k--){ if(h[k].date!==t) return h[k]; }
   return null;
 }
 function todaySession(id){
   const h=ST.logs[id]; if(!h) return null;
-  const t=today(); return h.find(s=>s.date===t)||null;
+  const t=diaTreino(); return h.find(s=>s.date===t)||null;
 }
 function upsertToday(id, sets){
   if(!ST.logs[id]) ST.logs[id]=[];
-  const t=today();
+  const t=diaTreino();
   /* Carimba a POSIÇÃO e a fadiga acumulada em que a sessão foi feita. É o que permite, mais
      tarde, saber que 8 reps em 5º lugar não é pior que 9 reps em 1º. Sessão antiga sem
      carimbo cai no palpite da ordem padrão (fadigaPadrao), que é onde ela foi feita mesmo. */
@@ -3904,7 +3966,7 @@ function upsertFreeToday(id, sets){
    "peguei mais leve, ombro doendo", "variação com pegada fechada". */
 function setTodayComment(id, text){
   if(!ST.logs[id]) ST.logs[id]=[];
-  const t=today();
+  const t=diaTreino();
   let ex=ST.logs[id].find(s=>s.date===t);
   if(!ex){ ex={date:t, sets:[]}; ST.logs[id].push(ex); }
   const c=(text||'').trim();
@@ -4146,7 +4208,7 @@ function sessaoLeve(s, h, id){
   return med>0 && n < med*0.6;
 }
 function refSession(id){
-  const h=(progressSessions(id)||[]).filter(s=>sessionTop(s.sets) && s.date!==today());
+  const h=(progressSessions(id)||[]).filter(s=>sessionTop(s.sets) && s.date!==diaTreino());
   if(!h.length) return null;
   const ult=h.slice(-4);
   for(let i=ult.length-1;i>=0;i--) if(!sessaoLeve(ult[i], h, id)) return ult[i];
@@ -4924,13 +4986,13 @@ function shortPlan(d, alvoMin){
 // Marcação por data (só hoje), expira em 30 dias, entra no backup junto com ST.meta.
 function shortDayMin(d){
   const m=(ST.meta && ST.meta.shortDays) || {};
-  const r=m[today()];
+  const r=m[diaTreino()];
   return (r && r.d===d) ? r.min : 0;
 }
 function setShortDay(d, min){
   if(!ST.meta || typeof ST.meta!=='object') ST.meta={};
   ST.meta.shortDays=ST.meta.shortDays||{};
-  const t=today();
+  const t=diaTreino();
   if(!min) delete ST.meta.shortDays[t];
   else ST.meta.shortDays[t]={d, min};
   for(const k of Object.keys(ST.meta.shortDays)){
@@ -5072,7 +5134,7 @@ function sessionsForDay(day){
 }
 // Quais dias ABCD tiveram sets válidos HOJE (mesmo sem ter concluído/celebrado).
 function todayTrainedDays(){
-  const t=today(); const set=new Set();
+  const t=diaTreino(); const set=new Set();
   for(const id of Object.keys(ST.logs)){
     const day=dayOfExId(id);
     if(!(day==='A'||day==='B'||day==='C'||day==='D')) continue;
@@ -5082,7 +5144,7 @@ function todayTrainedDays(){
 }
 // Último treino ABCD CONCLUÍDO hoje (registro tem duração). null se nenhum finalizado.
 function todaySessionRecord(){
-  const t=today();
+  const t=diaTreino();
   const recs=ST.session.history.filter(h=>h.date===t);
   return recs.length ? recs[recs.length-1] : null;
 }
@@ -7078,7 +7140,7 @@ try{
     }catch(e){}
   }
   document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') checarVersaoNova(); });
-  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible'){ try{ if(encerrarSessaoVelha()){ render(); showToast('Treino anterior encerrado no último set marcado', 'info', 2600); } }catch(e){} } });
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible'){ try{ if(encerrarSessaoVelha()){ juntarTreinoDaMeiaNoite(); render(); showToast('Treino anterior encerrado no último set marcado', 'info', 2600); } }catch(e){} } });
   setTimeout(checarVersaoNova, 6000);
 }catch(e){}
 async function listarNuvem(){
@@ -7896,7 +7958,8 @@ if('serviceWorker' in navigator && (location.protocol==='https:' || location.hos
 async function boot(){
   // 1. Cleanup defensivo (phantom sessions de dias passados sem ✓)
   cleanupPhantomSessions();
-  try{ encerrarSessaoVelha(); }catch(e){}   // sessão esquecida de outro dia/90 min parada
+  try{ encerrarSessaoVelha(); }catch(e){}   // sessão esquecida (90 min sem série)
+  try{ if(juntarTreinoDaMeiaNoite()){ render(); showToast('Treino que passou da meia-noite foi juntado no dia em que começou', 'ok', 3200); } }catch(e){ console.error('juntar meia-noite', e); }
   recalcPrioridades();
   // 2. Storage seguro (resistente a ITP) — protege localStorage E IndexedDB de eviction
   await requestPersistentStorage();
