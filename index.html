@@ -909,6 +909,7 @@
     display:flex; align-items:center; gap:8px;
   }
   .suggest .v{color:#fff; font-weight:800; letter-spacing:-.01em;}
+  .suggest .metaef{display:block; color:var(--muted); font-size:11.5px; font-weight:500; margin-top:2px;}
   .suggest .why{color:var(--muted); font-weight:500; font-size:11px;}
   .plateau{
     margin-top:8px; padding:9px 12px; border-radius:12px;
@@ -1969,7 +1970,7 @@
 
 <script>
 /* ============ VERSÃO (visível na aba Mais pra confirmar deploy) ============ */
-const APP_VERSION = '2026-11-24.01';
+const APP_VERSION = '2026-11-24.02';
 
 /* ============ ÍCONES (Lucide, inline) ============ */
 const I = {
@@ -4173,17 +4174,62 @@ function suggestFrom(sets, e, id){
   if(!done.length) return null;
   const maxKg=Math.max(...done.map(s=>num(s.kg)));
   const topSets=done.filter(s=>num(s.kg)===maxKg);
-  const minRepsTop = Math.min(...topSets.map(s=>num(s.reps)));
+  const repsTop = topSets.map(s=>num(s.reps));
+  const minRepsTop = Math.min(...repsTop);
   const baseInc = e.t==='comp' ? (maxKg>=40?5:2.5) : (maxKg>=20?2.5:1);
   const step = loadStepFor(id, e);
   const inc = step ? Math.max(step, Math.round(baseInc/step)*step) : baseInc;
-  if(minRepsTop >= rng.max){
+  if(topoAtingido(repsTop, rng)){
     return {kg:maxKg+inc, reps:rng.min, why:"bateu o topo · sobe carga", de:maxKg, inc};
   }
-  if(minRepsTop >= rng.min){
-    return {kg:maxKg, reps:minRepsTop+1, why:"mesma carga · +1 rep", de:maxKg, inc};
+  const alvos=alvosPorSerie(done, rng);
+  const reps=alvos[done.indexOf(topSets[0])].reps;
+  return {kg:maxKg, reps, alvos, why: minRepsTop>=rng.min ? "mesma carga · supere a última" : "mesma carga · feche a faixa", de:maxKg, inc};
+}
+/* ============ META POR SÉRIE (2026-11-24.02) ============
+   Antes a Meta era UM número pra todas as séries, tirado da PIOR ("12·11·10·9·8" virava
+   "Meta 9"): quem seguia parava a 1ª com 3 ou mais reps sobrando. E a carga só subia com
+   TODAS as séries no topo, o que a última, já cansada, quase nunca fecha.
+
+   Sobe a carga: melhor série no topo, pior a no máximo 2 reps dele (1 em faixa curta) e
+   média a no máximo 1 rep. Com 1 série só na carga máxima, dá no mesmo de antes. */
+function topoAtingido(reps, rng){
+  if(!reps.length) return false;
+  const folga=Math.min(2, Math.floor((rng.max-rng.min)/2));
+  const media=reps.reduce((a,b)=>a+b,0)/reps.length;
+  return Math.max(...reps)>=rng.max && Math.min(...reps)>=rng.max-folga && media>=rng.max-1;
+}
+/* Cada série parte do que ELA fez. Sobrou rep (RIR 2+): soma a sobra menos 1. Já foi ao
+   limite (RIR 0-1): repete, e só a 1ª série abaixo do topo ganha +1. Sem RIR anotado: +1.
+   Série que já está no topo fica no topo, com "ou mais" (a tela mostra "10+"). */
+function alvosPorSerie(done, rng){
+  let deuUm=false;
+  return done.map(x=>{
+    const r=num(x.reps), kg=num(x.kg);
+    if(r>=rng.max) return {kg, reps:rng.max, mais:true};
+    const temRir=String(x.rir==null?'':x.rir).trim()!=='';
+    const rir=temRir ? num(x.rir) : null;
+    let soma = rir==null ? 1 : (rir>=2 ? Math.min(3, rir-1) : 0);
+    if(soma===0 && !deuUm) soma=1;
+    if(soma>0) deuUm=true;
+    return {kg, reps:Math.min(rng.max, Math.max(rng.min, r+soma))};
+  });
+}
+/* Texto da Meta no card. Semana leve e volta de pausa não cobram esforço. */
+function metaTxt(sug, e, nsets){
+  const leve=/semana leve/.test(sug.why||'') || !!sug.volta;
+  if(sug.alvos && sug.alvos.length){
+    const a=[]; for(let k=0;k<nsets;k++) a.push(sug.alvos[Math.min(k, sug.alvos.length-1)]);
+    const um=a.every(x=>x.kg===a[0].kg);
+    const f=x=>(um?'':fmtKg(x.kg)+'×')+x.reps+(x.mais?'+':'');
+    return (um?fmtKg(a[0].kg)+'kg · ':'')+a.map(f).join(' / ');
   }
-  return {kg:maxKg, reps:rng.min, why:"foca em chegar no mínimo", de:maxKg, inc};
+  return fmtKg(sug.kg)+'kg × '+sug.reps+(leve?'':'+');
+}
+function esforcoTxt(sug, e){
+  if(/semana leve/.test(sug.why||'') || sug.volta) return '';
+  const rng=parseRange(e.r); if(rng.tempo||rng.livre) return '';
+  return e.t==='iso' ? 'A Meta é o mínimo: pare com 0 a 2 reps sobrando.' : 'A Meta é o mínimo: pare com 1 a 2 reps sobrando.';
 }
 /* Sessão âncora da próxima meta: quase sempre a última, mas não quando a última foi leve
    (semana de deload, dia cortado). Ancorar ali faz o app prescrever a carga do deload na
@@ -4261,7 +4307,11 @@ function suggestNext(id, e){
     const top=sessionTop(ref.sets);
     if(top) return {kg:num(top.kg), reps:num(top.reps), why:'semana leve · mesma carga, longe da falha', de:base.de, inc:base.inc};
   }
-  if(!v) return travaDuplaProgressao(ajustePosicao(base, e, id, ref) || base, e);
+  if(!v){
+    const aj=ajustePosicao(base, e, id, ref);
+    if(aj) delete aj.alvos;                       // posição nova: um alvo só, o por-série era da posição de referência
+    return travaDuplaProgressao(aj || base, e);
+  }
   // reentrada: nunca sobe. Corta a carga e volta pro piso da faixa.
   const rng=parseRange(e.r);
   const passo=loadStepFor(id, e) || 2.5;
@@ -5338,7 +5388,7 @@ function renderDay(d){
        aparecer juntos dizendo coisas opostas na mesma tela. */
     const st = progressState(id, e);
     const sug = st && st.sug;
-    const sugBlock = sug ? `<div class="suggest">${I.spark}<span>Meta: <span class="v">${fmtKg(sug.kg)}kg × ${sug.reps}</span></span><span class="why">${sug.why}</span></div>` : '';
+    const sugBlock = sug ? `<div class="suggest">${I.spark}<span>Meta: <span class="v">${metaTxt(sug, e, planned)}</span>${esforcoTxt(sug, e)?`<span class="metaef">${esforcoTxt(sug, e)}</span>`:''}</span><span class="why">${sug.why}</span></div>` : '';
 
     const swap = st && st.k==='trocar';
     const alts = EXERCISE_ALTERNATIVES[e.n] || [];

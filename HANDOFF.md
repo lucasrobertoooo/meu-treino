@@ -2,7 +2,9 @@
 
 PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPhone na academia.
 
-**Última atualização:** 2026-09-29.01 (**Auditoria geral** — 5 achados corrigidos, incluindo um de tela branca; modelo de duração unificado. SHELL v63)
+**Última atualização:** 2026-11-24.02 (Meta por série — ver seção. SHELL v67)
+
+**Antes: 2026-09-29.01 (**Auditoria geral** — 5 achados corrigidos, incluindo um de tela branca; modelo de duração unificado. SHELL v63)
 
 **Antes: 2026-09-28.01 (**Peso e reps não sobem mais juntos** — dois bugs meus na feature de ordem, com trava de invariante e varredura de todas as metas. SHELL v62)
 
@@ -74,6 +76,16 @@ PWA single-file de hipertrofia ABCD Push/Pull. App pessoal pro Lucas usar no iPh
 
 
 ## Auditoria e correções (2026-11-15.01, SHELL v64)
+
+### Meta por série (2026-11-24.02, SHELL v67)
+A Meta era um número único, tirado da PIOR série (12·11·10·9·8 virava "Meta 9"): quem seguia parava a 1ª série com 3+ reps sobrando. E a carga só subia com TODAS as séries no topo, o que 4-5 séries perto da falha quase nunca fecham.
+- **`alvosPorSerie`**: cada série parte do que ela fez. RIR 2+ soma a sobra menos 1 (máx. +3); RIR 0-1 repete, e só a 1ª série abaixo do topo ganha +1; sem RIR, +1. No topo vira "10+".
+- **`topoAtingido`**: sobe a carga com melhor série no topo, pior a até 2 reps dele (1 em faixa curta) e média a até 1.
+- **`metaTxt`/`esforcoTxt`**: card mostra "12kg · 12+ / 12 / 10 / 9 / 8" e "pare com 1-2 (composto) / 0-2 (isolador) sobrando". Semana leve e volta de pausa não cobram esforço. Mudança de posição usa um alvo só (`alvos` é descartado).
+- Limite: `progressState` ainda mede progresso pela melhor série (`cmpTop`). Com a 1ª parada no topo e as outras subindo, pode dizer "no topo sem subir a carga".
+- As tolerâncias de subida (2/1 rep, média 1) são regra prática, não número de estudo. Parâmetro de esforço: Robinson 2024, Refalo 2024.
+- **Divergência proposital**: o app dela tem a mesma ideia com parâmetros do plano dela (RIR 2 em composto, folga 1) e a progressão do graviton invertida.
+- Testes: `t_esforco.js` (19) e `t_esforco_ela.js` (21).
 
 ### Treino que passa da meia-noite (2026-11-24.01) — os DOIS apps
 Bug grave relatado em 23→24/11: o treino da Priscila "sumiu" à meia-noite. As séries não foram apagadas — ficaram com a data de 23/11, e a tela passou a mostrar o "treino de hoje" (24/11, vazio); séries marcadas depois iam pra outra data, às vezes em outra sessão.
