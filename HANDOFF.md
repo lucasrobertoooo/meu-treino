@@ -84,7 +84,7 @@ A Meta era um número único, tirado da PIOR série (12·11·10·9·8 virava "Me
 - **`metaTxt`/`esforcoTxt`**: card mostra "12kg · 12+ / 12 / 10 / 9 / 8" e "pare com 1-2 (composto) / 0-2 (isolador) sobrando". Semana leve e volta de pausa não cobram esforço. Mudança de posição usa um alvo só (`alvos` é descartado).
 - Limite: `progressState` ainda mede progresso pela melhor série (`cmpTop`). Com a 1ª parada no topo e as outras subindo, pode dizer "no topo sem subir a carga".
 - As tolerâncias de subida (2/1 rep, média 1) são regra prática, não número de estudo. Parâmetro de esforço: Robinson 2024, Refalo 2024.
-- **Divergência proposital**: o app dela tem a mesma ideia com parâmetros do plano dela (RIR 2 em composto, folga 1) e a progressão do graviton invertida.
+- **Divergência proposital**: o app dela segue o documento dela (1 a 3 sobrando sempre, carga sobe só com o topo em todas as séries) e a progressão do graviton é invertida.
 - Testes: `t_esforco.js` (19) e `t_esforco_ela.js` (21).
 
 ### Treino que passa da meia-noite (2026-11-24.01) — os DOIS apps
